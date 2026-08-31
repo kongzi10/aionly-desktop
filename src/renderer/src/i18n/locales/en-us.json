@@ -6299,7 +6299,8 @@
     "limit": {
       "limit_day": "Daily quota",
       "rest": "Remaining quota",
-      "title": "quota"
+      "title": "quota",
+      "unlimited": "Unlimited"
     }
   },
   "warning": {

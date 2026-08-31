@@ -6299,7 +6299,8 @@
     "limit": {
       "limit_day": "1日あたりの限度額",
       "rest": "残り枠",
-      "title": "限度額"
+      "title": "限度額",
+      "unlimited": "無制限"
     }
   },
   "warning": {

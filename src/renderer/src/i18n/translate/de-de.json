@@ -6299,7 +6299,8 @@
     "limit": {
       "limit_day": "Tägliches Kontingent",
       "rest": "Verbleibendes Kontingent",
-      "title": "Kontingent"
+      "title": "Kontingent",
+      "unlimited": "Unbegrenzt"
     }
   },
   "warning": {

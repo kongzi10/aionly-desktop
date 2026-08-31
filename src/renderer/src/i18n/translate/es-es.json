@@ -6299,7 +6299,8 @@
     "limit": {
       "limit_day": "Cuota diaria",
       "rest": "Saldo restante",
-      "title": "Cuota"
+      "title": "Cuota",
+      "unlimited": "Ilimitado"
     }
   },
   "warning": {

@@ -6299,7 +6299,8 @@
     "limit": {
       "limit_day": "Hạn mức hàng ngày",
       "rest": "Hạn mức còn lại",
-      "title": "hạn mức"
+      "title": "hạn mức",
+      "unlimited": "Không giới hạn"
     }
   },
   "warning": {

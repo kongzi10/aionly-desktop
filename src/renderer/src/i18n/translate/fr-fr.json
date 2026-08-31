@@ -6299,7 +6299,8 @@
     "limit": {
       "limit_day": "Quota quotidien",
       "rest": "Solde restant",
-      "title": "quota"
+      "title": "quota",
+      "unlimited": "Illimité"
     }
   },
   "warning": {

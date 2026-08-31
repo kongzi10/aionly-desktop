@@ -6299,7 +6299,8 @@
     "limit": {
       "limit_day": "Limită zilnică",
       "rest": "Limită rămasă",
-      "title": "limită"
+      "title": "limită",
+      "unlimited": "Nelimitat"
     }
   },
   "warning": {

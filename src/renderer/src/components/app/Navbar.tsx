@@ -102,14 +102,23 @@ export const Navbar: FC<Props> = ({ children, ...props }) => {
             align={{ offset: [0, -8] }}
             content={
               <LimitContainer>
-                <div className="item">
-                  <div className="title">{t('user.limit.limit_day')}</div>
-                  <div className="value">{childLimit?.limitTotal}</div>
-                </div>
-                <div className="item">
-                  <div className="title">{t('user.limit.rest')}</div>
-                  <div className="value rest">{childLimit?.restotal}</div>
-                </div>
+                {childLimit?.limitTotal == null ? (
+                  // 服务端额度返回null，视为不限额，只显示一行
+                  <div className="item">
+                    <div className="value unlimited">{t('user.limit.unlimited')}</div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="item">
+                      <div className="title">{t('user.limit.limit_day')}</div>
+                      <div className="value">{childLimit?.limitTotal}</div>
+                    </div>
+                    <div className="item">
+                      <div className="title">{t('user.limit.rest')}</div>
+                      <div className="value rest">{childLimit?.restotal}</div>
+                    </div>
+                  </>
+                )}
               </LimitContainer>
             }>
             <RechargeContainer>
@@ -323,6 +332,9 @@ const LimitContainer = styled.div`
     font-weight: 600;
     &.rest{
       color: rgb(247, 127, 38);
+    }
+    &.unlimited{
+      color: red;
     }
   }
 `
