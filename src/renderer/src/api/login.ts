@@ -8,7 +8,7 @@ export const loginApi = (params) => {
   const body = { ...params }
   const gt = String(body.grantType || '')
   if ((gt === 'sms' || gt === 'email') && body.registerProduct == null) {
-    body.registerProduct = 'aionly'
+    body.registerProduct = 'aionly_client'
   }
   return http.post(`/auth/login`, body, { loading: false, headers: { isToken: false, isEncrypt: true } }) // 正常 post json 请求  ==>  application/json
 }
