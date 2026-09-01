@@ -6298,6 +6298,7 @@
   "user": {
     "limit": {
       "limit_day": "Limită zilnică",
+      "limit_month": "Limită lunară",
       "rest": "Limită rămasă",
       "title": "limită",
       "unlimited": "Nelimitat"

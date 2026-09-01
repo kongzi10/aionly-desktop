@@ -6298,6 +6298,7 @@
   "user": {
     "limit": {
       "limit_day": "Tägliches Kontingent",
+      "limit_month": "Monatliches Kontingent",
       "rest": "Verbleibendes Kontingent",
       "title": "Kontingent",
       "unlimited": "Unbegrenzt"

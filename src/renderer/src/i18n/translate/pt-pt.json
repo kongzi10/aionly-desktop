@@ -6298,6 +6298,7 @@
   "user": {
     "limit": {
       "limit_day": "Limite diário",
+      "limit_month": "Limite mensal",
       "rest": "Cota restante",
       "title": "cota",
       "unlimited": "Ilimitado"

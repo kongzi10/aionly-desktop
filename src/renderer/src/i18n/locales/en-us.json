@@ -6298,6 +6298,7 @@
   "user": {
     "limit": {
       "limit_day": "Daily quota",
+      "limit_month": "Monthly quota",
       "rest": "Remaining quota",
       "title": "quota",
       "unlimited": "Unlimited"

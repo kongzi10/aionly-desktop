@@ -6298,6 +6298,7 @@
   "user": {
     "limit": {
       "limit_day": "每日额度",
+      "limit_month": "每月额度",
       "rest": "剩余额度",
       "title": "额度",
       "unlimited": "不限额"

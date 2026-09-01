@@ -6298,6 +6298,7 @@
   "user": {
     "limit": {
       "limit_day": "Quota quotidien",
+      "limit_month": "Quota mensuel",
       "rest": "Solde restant",
       "title": "quota",
       "unlimited": "Illimité"

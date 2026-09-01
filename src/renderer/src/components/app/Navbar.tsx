@@ -110,7 +110,10 @@ export const Navbar: FC<Props> = ({ children, ...props }) => {
                 ) : (
                   <>
                     <div className="item">
-                      <div className="title">{t('user.limit.limit_day')}</div>
+                      {/* configPeriod: 1=日度限额，2=月度限额，缺省按日度兼容旧接口 */}
+                      <div className="title">
+                        {childLimit?.configPeriod === '2' ? t('user.limit.limit_month') : t('user.limit.limit_day')}
+                      </div>
                       <div className="value">{childLimit?.limitTotal}</div>
                     </div>
                     <div className="item">

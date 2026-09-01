@@ -6298,6 +6298,7 @@
   "user": {
     "limit": {
       "limit_day": "Hạn mức hàng ngày",
+      "limit_month": "Hạn mức hàng tháng",
       "rest": "Hạn mức còn lại",
       "title": "hạn mức",
       "unlimited": "Không giới hạn"
