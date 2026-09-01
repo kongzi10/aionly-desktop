@@ -11,10 +11,21 @@ import type { Model, Provider } from '@renderer/types'
 import { classNames } from '@renderer/utils'
 import { Avatar, Empty, Modal, Spin } from 'antd'
 import { first } from 'lodash'
-import React, { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
+import React, {
+  startTransition,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import SelectModelSearchBar from '../searchbar'
 import type { FlatListItem, FlatListModel } from '../types'
 
 const PAGE_SIZE = 12
@@ -43,6 +54,26 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
   const [open, setOpen] = useState(true)
   const [isLoading, _setIsLoading] = useState(false)
   const listRef = useRef<DynamicVirtualListRef>(null)
+  const [_searchText, _setSearchText] = useState('')
+  const searchText = useDeferredValue(_searchText)
+
+  const setSearchText = useCallback((text: string) => {
+    _setSearchText(text)
+  }, [])
+  // 记录已收起的分组（值为 serviceName），默认全部展开
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set())
+
+  const toggleGroupCollapsed = useCallback((groupKey: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupKey)) {
+        next.delete(groupKey)
+      } else {
+        next.add(groupKey)
+      }
+      return next
+    })
+  }, [])
 
   const userInfo: any = useAppSelector(selectUserInfo)
   const { getUserEnabledPlan } = useUserTokenPlan(userInfo?.userId)
@@ -197,6 +228,12 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
       return seen.has(k) ? false : (seen.add(k), true)
     })
 
+    // 搜索过滤：按 modelName 搜索
+    if (searchText.trim()) {
+      const lowerSearchText = searchText.toLowerCase()
+      filterModels = filterModels.filter((m: any) => m.modelName.toLowerCase().includes(lowerSearchText))
+    }
+
     // 按 serviceName 分组
     const groupedByService = filterModels.reduce(
       (acc, model) => {
@@ -222,17 +259,29 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
         isSelected: false
       })
 
-      // 添加该分组下的所有模型
-      const typedModels = models as typeof filterModels
-      typedModels.forEach((model) => {
-        items.push(createModelItem(model))
-      })
+      // 如果分组未收起，添加该分组下的所有模型
+      if (!collapsedGroups.has(serviceName)) {
+        const typedModels = models as typeof filterModels
+        typedModels.forEach((model) => {
+          items.push(createModelItem(model))
+        })
+      }
     })
 
     // 获取可选择的模型项（过滤掉分组标题）
     const modelItems = items.filter((item) => item.type === 'model')
     return { listItems: items, modelItems }
-  }, [models, createModelItem, tokenPlanModels])
+  }, [
+    models,
+    createModelItem,
+    tokenPlanModels,
+    searchText,
+    collapsedGroups,
+    modelFilter,
+    fromType,
+    getFilteredModels,
+    userEnabledPlan
+  ])
 
   const listHeight = useMemo(() => {
     return Math.min(PAGE_SIZE, listItems.length) * ITEM_HEIGHT
@@ -339,8 +388,14 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
     (item: FlatListItem) => {
       const isFocused = item.key === focusedItemKey
       if (item.type === 'group') {
+        const serviceName = String(item.name)
+        const isCollapsed = collapsedGroups.has(serviceName)
         return (
-          <GroupItem>
+          <GroupItem onClick={() => toggleGroupCollapsed(serviceName)}>
+            <ChevronRight
+              size={16}
+              style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }}
+            />
             {item.name}
             {/* {item.actions}*/}
           </GroupItem>
@@ -362,7 +417,7 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
         </ModelItem>
       )
     },
-    [focusedItemKey, handleItemClick, setFocusedItemKey]
+    [focusedItemKey, handleItemClick, setFocusedItemKey, collapsedGroups, toggleGroupCollapsed]
   )
 
   return (
@@ -386,9 +441,10 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
         }
       }}
       footer={null}>
-      {listItems.length > 0 ? (
-        <ListContainer onMouseMove={() => !isMouseOver && setIsMouseOver(true)}>
-          <Spin spinning={loading}>
+      <ListContainer onMouseMove={() => !isMouseOver && setIsMouseOver(true)}>
+        <SelectModelSearchBar onSearch={setSearchText} />
+        <Spin spinning={loading}>
+          {listItems.length > 0 ? (
             <DynamicVirtualList
               ref={listRef}
               list={listItems}
@@ -402,15 +458,13 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
               onChange={handleDynamicListChange}>
               {rowRenderer}
             </DynamicVirtualList>
-          </Spin>
-        </ListContainer>
-      ) : (
-        <Spin spinning={loading}>
-          <EmptyState>
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
-          </EmptyState>
+          ) : (
+            <EmptyState>
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            </EmptyState>
+          )}
         </Spin>
-      )}
+      </ListContainer>
     </Modal>
   )
 }
@@ -442,6 +496,12 @@ const GroupItem = styled.div`
   color: var(--color-text-3);
   z-index: 1;
   background: var(--modal-background);
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background-color: var(--color-background-mute);
+  }
 
   .action-icon {
     cursor: pointer;
