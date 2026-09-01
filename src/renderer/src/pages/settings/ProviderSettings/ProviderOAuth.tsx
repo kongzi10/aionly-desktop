@@ -8,6 +8,7 @@ import topImage from '@renderer/assets/images/settings/top.png'
 import { HStack } from '@renderer/components/Layout'
 import { PROVIDER_URLS } from '@renderer/config/providers'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
+import { useIsPayLaterUser } from '@renderer/hooks/usePayLaterUser'
 import { useProvider } from '@renderer/hooks/useProvider'
 import ApiOptionsSettingsPopup from '@renderer/pages/settings/ProviderSettings/ApiOptionsSettings/ApiOptionsSettingsPopup'
 import { useAppSelector } from '@renderer/store'
@@ -39,6 +40,7 @@ const ProviderOAuth: FC<Props> = ({ providerId, fancyProviderName }) => {
   const { t } = useTranslation()
   const { provider /*updateProvider*/ } = useProvider(providerId)
   const { handleToBillManagement, handleToRecharge } = useMinappPopup()
+  const isPayLaterUser = useIsPayLaterUser()
   const userInfo: any = useAppSelector(selectUserInfo)
 
   // TODO: 这里需要更新ApiKey
@@ -106,13 +108,15 @@ const ProviderOAuth: FC<Props> = ({ providerId, fancyProviderName }) => {
       </OAuthButton>*/}
 
       <div className="right">
-        {/* 子账号没有余额充值和账单 */}
+        {/* 子账号没有余额充值和账单，后付用户不显示充值按钮（确认非后付才渲染，避免闪现） */}
         {userInfo?.userSubjectType != '2' && (
           <HStack gap={10}>
             <Button type="primary" onClick={handleClickBills}>
               {t('settings.provider.bills')}
             </Button>
-            <OrangeButton onClick={handleClickRecharge}>{t('settings.provider.charge')}</OrangeButton>
+            {isPayLaterUser === false && (
+              <OrangeButton onClick={handleClickRecharge}>{t('settings.provider.charge')}</OrangeButton>
+            )}
           </HStack>
         )}
       </div>

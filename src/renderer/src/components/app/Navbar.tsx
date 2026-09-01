@@ -5,6 +5,7 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
+import { useIsPayLaterUser } from '@renderer/hooks/usePayLaterUser'
 import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useNavbarPosition } from '@renderer/hooks/useSettings'
 import { getThemeModeLabel } from '@renderer/i18n/label'
@@ -32,6 +33,7 @@ export const Navbar: FC<Props> = ({ children, ...props }) => {
   const { isTopNavbar } = useNavbarPosition()
   const { minappShow } = useRuntime()
   const { handleToRecharge } = useMinappPopup()
+  const isPayLaterUser = useIsPayLaterUser()
   const userInfo: any = useAppSelector(selectUserInfo)
   const defaultChildLimit = {
     limitTotal: '0.00',
@@ -83,17 +85,23 @@ export const Navbar: FC<Props> = ({ children, ...props }) => {
     <NavbarContainer {...props} style={{ backgroundColor }} $isFullScreen={isFullscreen}>
       {children}
       <>
-        {/* 主账号金币数 */}
+        {/* 主账号金币数（后付用户只展示余额，不显示充值入口；确认非后付才渲染充值，避免闪现） */}
         {userInfo?.userSubjectType != '2' && (
-          <RechargeContainer onClick={handleToRecharge}>
+          <RechargeContainer
+            onClick={isPayLaterUser === false ? handleToRecharge : undefined}
+            $isPayLater={isPayLaterUser !== false}>
             <img className="img-bullion" src={bullionImage} alt="" />
             {isLoading ? (
               <Skeleton.Input active size="small" style={{ width: 60, height: 20, minWidth: 60 }} />
             ) : (
               <span className="money">{hzBalance.toFixed(2)}</span>
             )}
-            <Divider type="vertical" style={{ margin: '0 2px' }} />
-            <span className="pay">{t('settings.provider.oauth.topup')}</span>
+            {isPayLaterUser === false && (
+              <>
+                <Divider type="vertical" style={{ margin: '0 2px' }} />
+                <span className="pay">{t('settings.provider.oauth.topup')}</span>
+              </>
+            )}
           </RechargeContainer>
         )}
         {/* 子账户额度 */}
@@ -296,7 +304,7 @@ const Icon = styled.div<{ theme: string }>`
     }
   }
 `
-const RechargeContainer = styled.div`
+const RechargeContainer = styled.div<{ $isPayLater?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -309,11 +317,11 @@ const RechargeContainer = styled.div`
   color: #ff6000;
   font-weight: 600;
   margin: 1px 10px 0 0;
-  cursor: pointer;
+  cursor: ${({ $isPayLater }) => ($isPayLater ? 'default' : 'pointer')};
   -webkit-app-region: none;
 
   &:hover {
-    color: #f00;
+    color: ${({ $isPayLater }) => ($isPayLater ? '#ff6000' : '#f00')};
   }
 
   .img-bullion {
