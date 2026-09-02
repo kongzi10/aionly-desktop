@@ -1,6 +1,12 @@
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
-import { ModelAttribute, transformToModel, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
+import {
+  type AiOnlyModel,
+  fetchAiOnlyModelsApi,
+  ModelAttribute,
+  transformToModel,
+  useAiOnlyModels
+} from '@renderer/hooks/useAiOnlyModels'
 import useUserTokenPlan from '@renderer/hooks/useUserTokenPlan'
 import { useAppSelector } from '@renderer/store'
 import { selectUserInfo } from '@renderer/store/user'
@@ -12,7 +18,7 @@ import type { SelectProps } from 'antd'
 import { Avatar, Select, Spin } from 'antd'
 // import { sortBy } from 'lodash'
 import type { BaseSelectRef } from 'rc-select'
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 interface ModelOption {
@@ -50,6 +56,11 @@ interface ModelSelectorProps extends SelectProps {
  * @param showAvatar 是否显示模型图标
  * @param showSuffix 是否在模型名称后显示服务商作为后缀
  */
+/** 远程模糊搜索防抖间隔（ms） */
+const SEARCH_DEBOUNCE_MS = 300
+/** 远程模糊搜索单次拉取的最大条数 */
+const SEARCH_PAGE_SIZE = 50
+
 const ModelSelector = ({
   // providers,
   predicate,
@@ -59,6 +70,9 @@ const ModelSelector = ({
   autoFetch = true,
   apiModels,
   loading: externalLoading,
+  onSearch: externalOnSearch,
+  onPopupScroll: externalOnPopupScroll,
+  filterOption: externalFilterOption,
   ref,
   ...props
 }: ModelSelectorProps & { ref?: React.Ref<BaseSelectRef> | null }) => {
@@ -196,9 +210,81 @@ const ModelSelector = ({
     [showAvatar]
   )
 
+  /**
+   * 远程模糊搜索：分页接口只加载了部分数据，本地过滤搜不到未加载分页里的模型，
+   * 输入关键词时改为调用后端 modelName 模糊查询（防抖），清空关键词后还原。
+   */
+  const [searchText, setSearchText] = useState('')
+  const [remoteModels, setRemoteModels] = useState<AiOnlyModel[]>([])
+  // remoteModels 对应的关键词：仅当输入框关键词与已到达的远程结果一致时才切换数据源，
+  // 防抖等待期间继续展示本地过滤结果，避免下拉框闪现空列表
+  const [remoteKeyword, setRemoteKeyword] = useState('')
+  const [remoteSearching, setRemoteSearching] = useState(false)
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const searchRequestIdRef = useRef(0)
+
+  const handleSearch = useCallback(
+    (text: string) => {
+      externalOnSearch?.(text)
+      setSearchText(text)
+
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current)
+        searchTimerRef.current = undefined
+      }
+
+      // 关键词清空：作废在途请求并还原本地数据
+      if (!text) {
+        searchRequestIdRef.current++
+        setRemoteKeyword('')
+        setRemoteSearching(false)
+        return
+      }
+
+      // tokenPlan 套餐数据本身就是全量，前端过滤即可
+      if (userEnabledPlan) {
+        return
+      }
+
+      searchTimerRef.current = setTimeout(async () => {
+        const requestId = ++searchRequestIdRef.current
+        setRemoteSearching(true)
+        try {
+          const { models } = await fetchAiOnlyModelsApi({ modelName: text, pageSize: SEARCH_PAGE_SIZE })
+          // 丢弃过期请求的结果
+          if (requestId === searchRequestIdRef.current) {
+            setRemoteModels(models)
+            setRemoteKeyword(text)
+          }
+        } finally {
+          if (requestId === searchRequestIdRef.current) {
+            setRemoteSearching(false)
+          }
+        }
+      }, SEARCH_DEBOUNCE_MS)
+    },
+    [externalOnSearch, userEnabledPlan]
+  )
+
+  useEffect(
+    () => () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current)
+      }
+    },
+    []
+  )
+
   // 构建 AiOnly 模型选项，优先使用父组件传入的 apiModels，否则从 hook 获取
+  // 远程搜索结果到达后展示服务端返回的结果，清空关键词后还原本地已加载的数据
+  const isRemoteSearch = !!searchText && searchText === remoteKeyword && !userEnabledPlan
+
   const aionlyOptions = useMemo((): SelectOption[] => {
-    let filteredModels = !!userEnabledPlan ? tokenPlanModels : (apiModels ?? getFilteredModels())
+    let filteredModels = userEnabledPlan
+      ? tokenPlanModels
+      : isRemoteSearch
+        ? remoteModels
+        : (apiModels ?? getFilteredModels())
 
     // 应用 predicate 过滤
     if (predicate) {
@@ -227,33 +313,65 @@ const ModelSelector = ({
     // 不分组，直接返回所有模型
     const result = filteredModels.map((m) => getAiOnlyModelOption(m, m.serviceName || 'Unknown'))
     return result
-  }, [tokenPlanModels, apiModels, getFilteredModels, grouped, getAiOnlyModelOption, predicate, userEnabledPlan])
+  }, [
+    tokenPlanModels,
+    apiModels,
+    getFilteredModels,
+    grouped,
+    getAiOnlyModelOption,
+    predicate,
+    userEnabledPlan,
+    isRemoteSearch,
+    remoteModels
+  ])
+
+  // 远程搜索结果已由服务端按关键词过滤，本地不再过滤
+  const handleFilterOption = useCallback(
+    (input: string, option: any) => {
+      if (isRemoteSearch) {
+        return true
+      }
+      return typeof externalFilterOption === 'function'
+        ? externalFilterOption(input, option)
+        : modelSelectFilter(input, option)
+    },
+    [isRemoteSearch, externalFilterOption]
+  )
 
   const handlePopupRender = useCallback(
     (menu) => {
-      return <Spin spinning={externalLoading ?? loading}>{menu}</Spin>
+      return <Spin spinning={remoteSearching || (externalLoading ?? loading)}>{menu}</Spin>
     },
-    [externalLoading, loading]
+    [remoteSearching, externalLoading, loading]
   )
 
-  // 只有在没有 userEnabledPlan 时才启用滚动加载
+  // 搜索状态下展示的是服务端搜索结果，不再滚动分页；
+  // 未搜索时优先使用父组件传入的滚动加载，否则走内部 hook（无 tokenPlan 才启用）
   const handlePopupScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
+      if (isRemoteSearch) {
+        return
+      }
+      if (externalOnPopupScroll) {
+        externalOnPopupScroll(e)
+        return
+      }
       if (!userEnabledPlan) {
         handleScroll(e)
       }
     },
-    [userEnabledPlan, handleScroll]
+    [isRemoteSearch, externalOnPopupScroll, userEnabledPlan, handleScroll]
   )
 
   return (
     <Select
       ref={ref}
       options={aionlyOptions}
-      filterOption={modelSelectFilter}
+      filterOption={handleFilterOption}
       labelRender={labelRender}
       showSearch
-      loading={loading}
+      loading={loading || remoteSearching}
+      onSearch={handleSearch}
       onPopupScroll={handlePopupScroll}
       popupRender={handlePopupRender}
       {...props}
