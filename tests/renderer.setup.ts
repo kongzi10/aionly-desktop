@@ -28,10 +28,18 @@ vi.mock('uuid', () => ({
 }))
 
 vi.mock('axios', () => {
-  const defaultAxiosMock = {
+  const axiosInstanceMock = {
     get: vi.fn().mockResolvedValue({ data: {} }), // Mocking axios GET request
-    post: vi.fn().mockResolvedValue({ data: {} }) // Mocking axios POST request
+    post: vi.fn().mockResolvedValue({ data: {} }), // Mocking axios POST request
+    interceptors: {
+      request: { use: vi.fn() },
+      response: { use: vi.fn() }
+    }
     // You can add other axios methods like put, delete etc. as needed
+  }
+  const defaultAxiosMock = {
+    ...axiosInstanceMock,
+    create: vi.fn().mockReturnValue(axiosInstanceMock)
   }
 
   const isAxiosError = (error: unknown): error is { isAxiosError?: boolean } =>

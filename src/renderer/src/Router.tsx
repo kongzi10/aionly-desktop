@@ -13,6 +13,7 @@ import TabsContainer from './components/Tab/TabContainer'
 import NavigationHandler from './handler/NavigationHandler'
 // import { useOnboardingState } from './hooks/useOnboardingState'
 import { useNavbarPosition } from './hooks/useSettings'
+import AgentRouterPage from './pages/agentRouter/AgentRouterPage'
 import AgentPage from './pages/agents/AgentPage'
 import CodeToolsPage from './pages/code/CodeToolsPage'
 import FilesPage from './pages/files/FilesPage'
@@ -42,6 +43,7 @@ const Router: FC = () => {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/agents" element={<AgentPage />} />
+            <Route path="/agent-router" element={<AgentRouterPage />} />
             <Route path="/store" element={<AssistantPresetsPage />} />
             <Route path="/paintings/*" element={<PaintingsRoutePage />} />
             <Route path="/translate" element={<TranslatePage />} />

@@ -453,6 +453,28 @@ export enum IpcChannel {
   OpenClaw_CheckUpdate = 'openclaw:check-update',
   OpenClaw_PerformUpdate = 'openclaw:perform-update',
 
+  // Agent Router
+  AgentRouter_InspectTarget = 'agent-router:inspect-target',
+  AgentRouter_IdentifyConfig = 'agent-router:identify-config',
+  AgentRouter_SelectConfig = 'agent-router:select-config',
+  AgentRouter_GetRouteConfig = 'agent-router:get-route-config',
+  AgentRouter_ListAgentCredentialSummaries = 'agent-router:list-agent-credential-summaries',
+  AgentRouter_ResolveAgentRouteCredential = 'agent-router:resolve-agent-route-credential',
+  AgentRouter_SaveRouteModels = 'agent-router:save-route-models',
+  AgentRouter_CreateAgentRoute = 'agent-router:create-agent-route',
+  AgentRouter_UpdateAgentRoute = 'agent-router:update-agent-route',
+  AgentRouter_RemoveRouteModels = 'agent-router:remove-route-models',
+  AgentRouter_ListGlobalTemplates = 'agent-router:list-global-templates',
+  AgentRouter_CreateGlobalTemplate = 'agent-router:create-global-template',
+  AgentRouter_DeleteGlobalTemplate = 'agent-router:delete-global-template',
+  AgentRouter_CopyTemplatesToAgent = 'agent-router:copy-templates-to-agent',
+  AgentRouter_ListAppliedWorkBuddyRoutes = 'agent-router:list-applied-workbuddy-routes',
+  AgentRouter_PreviewWorkBuddyRoutes = 'agent-router:preview-workbuddy-routes',
+  AgentRouter_Apply = 'agent-router:apply',
+  AgentRouter_ListBackups = 'agent-router:list-backups',
+  AgentRouter_Rollback = 'agent-router:rollback',
+  AgentRouter_TargetChanged = 'agent-router:target-changed',
+
   // Analytics
   Analytics_TrackTokenUsage = 'analytics:track-token-usage'
 }

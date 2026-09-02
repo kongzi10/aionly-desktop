@@ -191,6 +191,12 @@ const MainMenus: FC = () => {
         iconActive: 'icon-xiaochengxuxuanzhong'
       }
     ]
+    const agentRouterMenu = {
+      path: '/agent-router',
+      name: 'agent_router',
+      icon: 'icon-lianjie',
+      iconActive: 'icon-lianjie'
+    }
     if (serviceInfo?.planStatus == 1) {
       return [
         ...base,
@@ -199,10 +205,11 @@ const MainMenus: FC = () => {
           name: 'token plan',
           icon: 'icon-ziyuan1',
           iconActive: 'icon-ziyuan2'
-        }
+        },
+        agentRouterMenu
       ]
     }
-    return base
+    return [...base, agentRouterMenu]
   }, [defaultPaintingProvider, serviceInfo?.planStatus])
 
   // console.log('sidebarIcons', sidebarIcons)

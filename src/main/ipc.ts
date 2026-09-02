@@ -7,6 +7,7 @@ import type { TokenUsageData } from '@cherrystudio/analytics-client'
 import { loggerService } from '@logger'
 import { isLinux, isMac, isPortable, isWin } from '@main/constant'
 import { generateSignature } from '@main/integration/marketapi'
+import { ConfigFileWatcher } from '@main/services/agentRouter/ConfigFileWatcher'
 import anthropicService from '@main/services/AnthropicService'
 import { getIpCountry } from '@main/utils/ipService'
 import {
@@ -19,6 +20,13 @@ import {
 } from '@main/utils/process'
 import { handleZoomFactor } from '@main/utils/zoom'
 import type { SpanEntity, TokenUsage } from '@mcp-trace/trace-core'
+import type {
+  AgentRouteModel,
+  AgentRouteRef,
+  AgentRouterTargetId,
+  CreateAgentRouteTemplateRequest,
+  UpdateAgentRouteRequest
+} from '@shared/agentRouter'
 import type { UpgradeChannel } from '@shared/config/constant'
 import { HOME_APP_DIR, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH } from '@shared/config/constant'
 import type { LocalTransferConnectPayload } from '@shared/config/types'
@@ -39,6 +47,7 @@ import type { ProxyConfig } from 'electron'
 import { BrowserWindow, dialog, ipcMain, session, shell, systemPreferences, webContents } from 'electron'
 import fontList from 'font-list'
 
+import { AgentRouterService } from './services/agentRouter'
 import { agentMessageRepository } from './services/agents/database'
 import { skillService } from './services/agents/skills/SkillService'
 import { analyticsService } from './services/AnalyticsService'
@@ -46,7 +55,6 @@ import { apiServerService } from './services/ApiServerService'
 import appService from './services/AppService'
 import AppUpdater from './services/AppUpdater'
 import BackupManager from './services/BackupManager'
-import MarketOAuthService from './services/MarketOAuthService'
 import { codeToolsService } from './services/CodeToolsService'
 import { ConfigKeys, configManager } from './services/ConfigManager'
 import CopilotService from './services/CopilotService'
@@ -58,6 +66,7 @@ import FileService from './services/FileSystemService'
 import KnowledgeService from './services/KnowledgeService'
 import { lanTransferClientService } from './services/lanTransfer'
 import { localTransferService } from './services/LocalTransferService'
+import MarketOAuthService from './services/MarketOAuthService'
 import mcpService from './services/MCPService'
 import MemoryService from './services/memory/MemoryService'
 import { openTraceWindow, setTraceWindowTitle } from './services/NodeTraceService'
@@ -118,6 +127,97 @@ const memoryService = MemoryService.getInstance()
 const dxtService = new DxtService()
 
 export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) {
+  const agentRouter = new AgentRouterService({ dataRoot: path.join(app.getPath('userData'), 'Data', 'agent-router') })
+
+  let workBuddyConfigPath = path.join(homedir(), '.workbuddy', 'models.json')
+  const configWatcher = new ConfigFileWatcher(() => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IpcChannel.AgentRouter_TargetChanged, 'workbuddy')
+    }
+  })
+  const watchWorkBuddyConfig = () => {
+    if (!configWatcher.watch(workBuddyConfigPath)) {
+      logger.warn(`Unable to watch WorkBuddy config directory: ${path.dirname(workBuddyConfigPath)}`)
+    }
+  }
+  watchWorkBuddyConfig()
+  mainWindow.once('closed', () => configWatcher.close())
+
+  ipcMain.handle(IpcChannel.AgentRouter_SelectConfig, async (_, targetId: AgentRouterTargetId) => {
+    if (targetId !== 'workbuddy') return null
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select WorkBuddy models.json',
+      properties: ['openFile'],
+      defaultPath: workBuddyConfigPath,
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const configPath = path.resolve(result.filePaths[0])
+    workBuddyConfigPath = configPath
+    watchWorkBuddyConfig()
+    return configPath
+  })
+  ipcMain.handle(IpcChannel.AgentRouter_InspectTarget, (_, targetId: AgentRouterTargetId) => {
+    if (targetId !== 'workbuddy') return null
+    return agentRouter.inspectTarget('workbuddy', workBuddyConfigPath)
+  })
+  ipcMain.handle(IpcChannel.AgentRouter_IdentifyConfig, (_, filePath: string) => agentRouter.identifyConfig(filePath))
+  ipcMain.handle(IpcChannel.AgentRouter_GetRouteConfig, (_, accountId: string) =>
+    agentRouter.getRouteConfig(accountId, 'workbuddy', workBuddyConfigPath)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_ListAgentCredentialSummaries, (_, accountId: string) =>
+    agentRouter.listAgentCredentialSummaries(accountId, 'workbuddy')
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_ResolveAgentRouteCredential, (_, accountId: string, route: AgentRouteRef) =>
+    agentRouter.resolveAgentRouteCredential(accountId, 'workbuddy', route)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_SaveRouteModels, (_, accountId: string, models: AgentRouteModel[]) =>
+    agentRouter.saveRouteModels(accountId, 'workbuddy', models)
+  )
+  ipcMain.handle(
+    IpcChannel.AgentRouter_CreateAgentRoute,
+    (_, accountId: string, request: CreateAgentRouteTemplateRequest) =>
+      agentRouter.createAgentRoute(accountId, 'workbuddy', request)
+  )
+  ipcMain.handle(
+    IpcChannel.AgentRouter_UpdateAgentRoute,
+    (_, accountId: string, route: AgentRouteRef, request: UpdateAgentRouteRequest) =>
+      agentRouter.updateAgentRoute(accountId, 'workbuddy', route, request)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_RemoveRouteModels, (_, accountId: string, routes: AgentRouteRef[]) =>
+    agentRouter.removeRouteModels(accountId, 'workbuddy', routes)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_ListGlobalTemplates, (_, accountId: string) =>
+    agentRouter.listGlobalTemplates(accountId, 'workbuddy')
+  )
+  ipcMain.handle(
+    IpcChannel.AgentRouter_CreateGlobalTemplate,
+    (_, accountId: string, request: CreateAgentRouteTemplateRequest) =>
+      agentRouter.createGlobalTemplate(accountId, request)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_DeleteGlobalTemplate, (_, accountId: string, templateId: string) =>
+    agentRouter.deleteGlobalTemplate(accountId, templateId)
+  )
+  ipcMain.handle(
+    IpcChannel.AgentRouter_CopyTemplatesToAgent,
+    (_, accountId: string, targetId: AgentRouterTargetId, templateIds: string[]) =>
+      agentRouter.copyTemplatesToAgent(accountId, targetId, templateIds)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_ListAppliedWorkBuddyRoutes, () =>
+    agentRouter.listAppliedWorkBuddyRoutes(workBuddyConfigPath)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_PreviewWorkBuddyRoutes, (_, request) =>
+    agentRouter.previewWorkBuddyRoutes(workBuddyConfigPath, request)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_Apply, (_, request) => agentRouter.apply(request))
+  ipcMain.handle(IpcChannel.AgentRouter_ListBackups, () => agentRouter.listBackups(workBuddyConfigPath))
+  ipcMain.handle(
+    IpcChannel.AgentRouter_Rollback,
+    (_, targetId: AgentRouterTargetId, backupId: string, expectedRevision: string) =>
+      targetId === 'workbuddy'
+        ? agentRouter.rollback(workBuddyConfigPath, backupId, expectedRevision)
+        : Promise.reject(Object.assign(new Error('Target is not available'), { code: 'TARGET_NOT_FOUND' }))
+  )
   const appUpdater = new AppUpdater()
   const notificationService = new NotificationService()
 

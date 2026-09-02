@@ -113,5 +113,6 @@ export const selectMyBalance = (state: { user: UserState }) => state.user.myBala
 export const selectServiceInfo = (state: { user: UserState }) => state.user.serviceInfo
 export const selectIndentCount = (state: { user: UserState }) => state.user.indentCount
 export const selectAiOnlyModels = (state: { user: UserState }) => state.user.aiOnlyModels
+export const selectApiKey = (state: { user: UserState }) => state.user.apiKey
 
 export default userSlice.reducer

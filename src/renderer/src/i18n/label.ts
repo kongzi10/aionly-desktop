@@ -200,7 +200,8 @@ const sidebarIconKeyMap = {
   settings: 'settings.title',
   identity: 'identity.title',
   logout: 'logout.title',
-  'token plan': 'tokenPlan.title'
+  'token plan': 'tokenPlan.title',
+  agent_router: 'agentRouter.title'
 } as const
 
 export const getSidebarIconLabel = (key: string): string => {

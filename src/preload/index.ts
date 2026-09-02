@@ -3,6 +3,15 @@ import type { TokenUsageData } from '@cherrystudio/analytics-client'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { SpanEntity, TokenUsage } from '@mcp-trace/trace-core'
 import type { SpanContext } from '@opentelemetry/api'
+import type {
+  AgentRouteModel,
+  AgentRouterApplyRequest,
+  AgentRouteRef,
+  AgentRouterTargetId,
+  CreateAgentRouteTemplateRequest,
+  PreviewWorkBuddyRoutesRequest,
+  UpdateAgentRouteRequest
+} from '@shared/agentRouter'
 import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
 import type { LogLevel, LogSourceWithContext } from '@shared/config/logger'
 import type {
@@ -98,6 +107,45 @@ export function tracedInvoke(channel: string, spanContext: SpanContext | undefin
 
 // Custom APIs for renderer
 const api = {
+  agentRouter: {
+    onTargetChanged: (callback: (targetId: AgentRouterTargetId) => void): (() => void) => {
+      const listener = (_: Electron.IpcRendererEvent, targetId: AgentRouterTargetId) => callback(targetId)
+      ipcRenderer.on(IpcChannel.AgentRouter_TargetChanged, listener)
+      return () => ipcRenderer.removeListener(IpcChannel.AgentRouter_TargetChanged, listener)
+    },
+    inspectTarget: (targetId: AgentRouterTargetId) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_InspectTarget, targetId),
+    identifyConfig: (filePath: string) => ipcRenderer.invoke(IpcChannel.AgentRouter_IdentifyConfig, filePath),
+    selectConfig: (targetId: AgentRouterTargetId) => ipcRenderer.invoke(IpcChannel.AgentRouter_SelectConfig, targetId),
+    getRouteConfig: (accountId: string) => ipcRenderer.invoke(IpcChannel.AgentRouter_GetRouteConfig, accountId),
+    listAgentCredentialSummaries: (accountId: string) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_ListAgentCredentialSummaries, accountId),
+    resolveAgentRouteCredential: (accountId: string, route: AgentRouteRef) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_ResolveAgentRouteCredential, accountId, route),
+    saveRouteModels: (accountId: string, models: AgentRouteModel[]) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_SaveRouteModels, accountId, models),
+    createAgentRoute: (accountId: string, request: CreateAgentRouteTemplateRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_CreateAgentRoute, accountId, request),
+    updateAgentRoute: (accountId: string, route: AgentRouteRef, request: UpdateAgentRouteRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_UpdateAgentRoute, accountId, route, request),
+    removeRouteModels: (accountId: string, routes: AgentRouteRef[]) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_RemoveRouteModels, accountId, routes),
+    listGlobalTemplates: (accountId: string) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_ListGlobalTemplates, accountId),
+    createGlobalTemplate: (accountId: string, request: CreateAgentRouteTemplateRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_CreateGlobalTemplate, accountId, request),
+    deleteGlobalTemplate: (accountId: string, templateId: string) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_DeleteGlobalTemplate, accountId, templateId),
+    copyTemplatesToAgent: (accountId: string, targetId: AgentRouterTargetId, templateIds: string[]) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_CopyTemplatesToAgent, accountId, targetId, templateIds),
+    listAppliedWorkBuddyRoutes: () => ipcRenderer.invoke(IpcChannel.AgentRouter_ListAppliedWorkBuddyRoutes),
+    previewWorkBuddyRoutes: (request: PreviewWorkBuddyRoutesRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_PreviewWorkBuddyRoutes, request),
+    apply: (request: AgentRouterApplyRequest) => ipcRenderer.invoke(IpcChannel.AgentRouter_Apply, request),
+    listBackups: (targetId: AgentRouterTargetId) => ipcRenderer.invoke(IpcChannel.AgentRouter_ListBackups, targetId),
+    rollback: (targetId: AgentRouterTargetId, backupId: string, expectedRevision: string) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_Rollback, targetId, backupId, expectedRevision)
+  },
   getAppInfo: () => ipcRenderer.invoke(IpcChannel.App_Info),
   getWebviewPreloadPath: () => ipcRenderer.invoke(IpcChannel.App_GetWebviewPreloadPath),
   getDiskInfo: (directoryPath: string): Promise<{ free: number; size: number } | null> =>
