@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterSources'
+import { useTokenPlanModels } from '../hooks/useTokenPlanModels'
 import { RouteModelTypes } from './RouteCapabilities'
 
 interface EditFormValues {
@@ -24,7 +25,6 @@ export const RouteList = ({
   apiCredentials = [],
   tokenPlanCredentials = [],
   apiModels = [],
-  tokenPlanModels = [],
   onRemove,
   onUpdateRoute,
   onRevealCredential,
@@ -37,7 +37,6 @@ export const RouteList = ({
   apiCredentials?: AgentRouterCredential[]
   tokenPlanCredentials?: AgentRouterCredential[]
   apiModels?: RouteModel[]
-  tokenPlanModels?: RouteModel[]
   onRemove: (route: AgentRouteModel) => void
   onUpdateRoute: (route: AgentRouteModel, request: UpdateAgentRouteRequest) => Promise<void>
   onRevealCredential?: (route: AgentRouteModel) => Promise<string>
@@ -55,17 +54,19 @@ export const RouteList = ({
   const [editForm] = Form.useForm<EditFormValues>()
   const editAccessMode = Form.useWatch('accessMode', editForm)
   const editCredentialId = Form.useWatch('credentialId', editForm)
-  if (!routes.length)
-    return <CompactEmpty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('agentRouter.noRoutes')} />
 
   const credentialsById = new Map(credentials.map((credential) => [credential.id, credential]))
   const editCredential = routeToEdit ? credentialsById.get(routeToEdit.credentialId) : undefined
   const editCredentials = editAccessMode === 'tokenPlan' ? tokenPlanCredentials : apiCredentials
+  const selectedEditCredential = editCredentials.find((credential) => credential.id === editCredentialId)
+  const { models: tokenPlanModels } = useTokenPlanModels(routeToEdit ? selectedEditCredential : undefined)
   const editModels = editAccessMode === 'tokenPlan' ? tokenPlanModels : apiModels
   const editModel = routeToEdit ? editModels.find((model) => model.id === routeToEdit.modelId) : undefined
   const editModelTypes = editModel?.modelTypes ?? routeToEdit?.modelTypes
-  const selectedEditCredential = editCredentials.find((credential) => credential.id === editCredentialId)
   const selectedEditKey = editCredentialId === CURRENT_CREDENTIAL ? revealedCurrentKey : selectedEditCredential?.value
+
+  if (!routes.length)
+    return <CompactEmpty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('agentRouter.noRoutes')} />
 
   const toggleEditKeyVisibility = async () => {
     if (showEditKey) {

@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RouteList } from '../RouteList'
 
+vi.mock('@renderer/api/billManagement', () => ({ selectTokenPlanHourlyDayUsageApi: vi.fn() }))
+vi.mock('../../utils/modelCapabilities', () => ({ resolveAgentRouteModelTypes: () => [] }))
+
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
 const route: AgentRouteModel = {

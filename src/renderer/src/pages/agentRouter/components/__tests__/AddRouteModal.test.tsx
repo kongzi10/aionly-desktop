@@ -1,8 +1,12 @@
+import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
 import zhCN from '@renderer/i18n/locales/zh-cn.json'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AddRouteModal } from '../AddRouteModal'
+
+vi.mock('@renderer/api/billManagement', () => ({ selectTokenPlanHourlyDayUsageApi: vi.fn() }))
+vi.mock('../../utils/modelCapabilities', () => ({ resolveAgentRouteModelTypes: () => [] }))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -62,7 +66,6 @@ describe('AddRouteModal', () => {
         modelTypes: ['function_calling', 'web_search', 'reasoning'] as const
       }
     ],
-    tokenPlanModels: [],
     onCancel: vi.fn(),
     onCreate: vi.fn().mockResolvedValue(undefined)
   }
@@ -104,6 +107,53 @@ describe('AddRouteModal', () => {
     await waitFor(() =>
       expect(onCreate).toHaveBeenCalledWith(
         expect.objectContaining({ modelId: 'gpt-5', displayName: 'gpt-5', apiKey: 'sk-secret' })
+      )
+    )
+  })
+
+  it('loads models for the selected TokenPlan key and clears the model when switching keys', async () => {
+    vi.mocked(selectTokenPlanHourlyDayUsageApi)
+      .mockResolvedValueOnce({ rows: [{ model: 'plan-one-model', modelName: 'One' }] })
+      .mockResolvedValueOnce({ rows: [{ model: 'plan-two-model', modelName: 'Two' }] })
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    render(
+      <AddRouteModal
+        {...commonProps}
+        onAdd={vi.fn()}
+        onCreate={onCreate}
+        tokenPlanCredentials={[
+          { id: 'tk-1', kind: 'tokenPlan', label: 'Plan One', value: 'secret-one', planId: 'p1', subscriptionId: 's1' },
+          { id: 'tk-2', kind: 'tokenPlan', label: 'Plan Two', value: 'secret-two', planId: 'p2', subscriptionId: 's2' }
+        ]}
+      />
+    )
+    fireEvent.mouseDown(screen.getByLabelText('agentRouter.accessMode'))
+    fireEvent.click(await screen.findByText('TokenPlan'))
+    fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
+    fireEvent.click(await screen.findByText('Plan One'))
+    await waitFor(() =>
+      expect(selectTokenPlanHourlyDayUsageApi).toHaveBeenCalledWith({ subscribeId: 's1', planId: 'p1' })
+    )
+    await waitFor(() => expect(screen.getByLabelText('agentRouter.modelId')).not.toBeDisabled())
+    fireEvent.mouseDown(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click((await screen.findAllByText('plan-one-model')).at(-1)!)
+    fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
+    fireEvent.click(await screen.findByText('Plan Two'))
+    await waitFor(() =>
+      expect(selectTokenPlanHourlyDayUsageApi).toHaveBeenCalledWith({ subscribeId: 's2', planId: 'p2' })
+    )
+    expect(screen.getByLabelText('agentRouter.modelId').closest('.ant-select')).not.toHaveTextContent('plan-one-model')
+    await waitFor(() => expect(screen.getByLabelText('agentRouter.modelId')).not.toBeDisabled())
+    fireEvent.mouseDown(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click((await screen.findAllByText('plan-two-model')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'agentRouter.createRoute' }))
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          modelId: 'plan-two-model',
+          tokenPlanId: 'p2',
+          apiKey: 'secret-two'
+        })
       )
     )
   })

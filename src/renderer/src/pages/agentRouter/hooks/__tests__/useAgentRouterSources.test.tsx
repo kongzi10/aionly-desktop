@@ -1,7 +1,9 @@
+import type * as sharedConstants from '@shared/config/constant'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAgentRouterSources } from '../useAgentRouterSources'
+import { useTokenPlanModels } from '../useTokenPlanModels'
 
 const storeState = vi.hoisted(() => ({ models: [] as Record<string, unknown>[] }))
 const apiModelResponse = vi.hoisted(() => ({
@@ -16,7 +18,7 @@ vi.mock('@renderer/config/models/websearch', () => ({ isWebSearchModel: () => fa
 
 vi.mock('@renderer/hooks/useUserTokenPlan', () => ({
   default: () => ({
-    getUserEnabledPlan: () => ({ id: 'subscription-1', planId: 'plan-1', apikey: 'token-plan-secret' })
+    getUserEnabledPlan: () => null
   })
 }))
 
@@ -62,7 +64,7 @@ vi.mock('@renderer/store/user', () => ({
 }))
 
 vi.mock('@shared/config/constant', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@shared/config/constant')>()),
+  ...(await importOriginal<typeof sharedConstants>()),
   APP_API_HOST: 'https://api.aionly.com'
 }))
 
@@ -105,15 +107,19 @@ describe('useAgentRouterSources', () => {
       kind: 'tokenPlan',
       label: 'Pro Plan',
       value: 'tp-plan-secret',
-      planId: 'plan-1'
+      planId: 'plan-1',
+      subscriptionId: '7'
     })
   })
 
-  it('exposes the selected Token Plan and loads only its models', async () => {
-    const { result } = renderHook(() => useAgentRouterSources())
+  it('loads the selected credential models without an enabled local plan', async () => {
+    const { result } = renderHook(() => {
+      const sources = useAgentRouterSources()
+      return useTokenPlanModels(sources.tokenPlanCredentials[0])
+    })
 
     await waitFor(() =>
-      expect(result.current.tokenPlanModels).toEqual([
+      expect(result.current.models).toEqual([
         {
           id: 'aionly.plan-model',
           name: 'Plan model',
@@ -121,7 +127,7 @@ describe('useAgentRouterSources', () => {
         }
       ])
     )
-    expect(selectTokenPlanModels).toHaveBeenCalledWith({ subscribeId: 'subscription-1', planId: 'plan-1' })
+    expect(selectTokenPlanModels).toHaveBeenCalledWith({ subscribeId: '7', planId: 'plan-1' })
   })
 
   it('exposes each API model id only once', async () => {

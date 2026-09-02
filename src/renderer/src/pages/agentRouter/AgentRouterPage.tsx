@@ -121,7 +121,6 @@ const AgentRouterPage = () => {
                   apiCredentials={router.apiCredentials}
                   tokenPlanCredentials={router.tokenPlanCredentials}
                   apiModels={router.apiModels}
-                  tokenPlanModels={router.tokenPlanModels}
                   onRemove={(route) => void router.removeRoute(route)}
                   onUpdateRoute={router.updateAgentRoute}
                   onRevealCredential={router.revealAgentRouteCredential}
@@ -140,7 +139,6 @@ const AgentRouterPage = () => {
         apiCredentials={router.apiCredentials}
         tokenPlanCredentials={router.tokenPlanCredentials}
         apiModels={router.apiModels}
-        tokenPlanModels={router.tokenPlanModels}
         onCancel={() => setAdding(false)}
         onAdd={(templateIds) => void router.copyTemplatesToAgent(templateIds)}
         onCreate={router.createAgentRoute}
@@ -150,7 +148,6 @@ const AgentRouterPage = () => {
         apiCredentials={router.apiCredentials}
         tokenPlanCredentials={router.tokenPlanCredentials}
         apiModels={router.apiModels}
-        tokenPlanModels={router.tokenPlanModels}
         onCancel={() => setCreatingTemplate(false)}
         onCreate={async (request) => {
           try {

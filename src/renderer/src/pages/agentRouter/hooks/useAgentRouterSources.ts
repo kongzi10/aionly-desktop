@@ -1,8 +1,6 @@
 import { getApikeyList } from '@renderer/api/apikey'
 import { getIndexTokenPlanPageListApi } from '@renderer/api/balance'
-import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
 import { pageListApi } from '@renderer/api/openManagement'
-import useUserTokenPlan from '@renderer/hooks/useUserTokenPlan'
 import { useAppSelector } from '@renderer/store'
 import { selectApiKey, selectUserInfo } from '@renderer/store/user'
 import type { Model } from '@renderer/types'
@@ -25,6 +23,8 @@ export interface AgentRouterCredential {
   value: string
   /** 仅 TokenPlan 凭证携带，对应 AgentRouteModel.tokenPlanId */
   planId?: string
+  /** 套餐订阅 ID，用于查询该密钥对应的模型范围。 */
+  subscriptionId?: string
 }
 
 const CREDENTIAL_LIST_PAGE_SIZE = 100
@@ -43,25 +43,10 @@ export const useAgentRouterSources = () => {
   const [apiCredentials, setApiCredentials] = useState<AgentRouterCredential[]>([])
   const [apiModels, setApiModels] = useState<RouteModel[]>([])
   const [tokenPlanCredentials, setTokenPlanCredentials] = useState<AgentRouterCredential[]>([])
-  const [tokenPlanRevision, setTokenPlanRevision] = useState(0)
-  const [tokenPlanModels, setTokenPlanModels] = useState<RouteModel[]>([])
-  const [tokenPlanModelsLoading, setTokenPlanModelsLoading] = useState(false)
   const user = useAppSelector(selectUserInfo) as { userId?: string; id?: string }
   const fallbackApiKey = useAppSelector(selectApiKey)
   const accountId = String(user.userId ?? user.id ?? '')
-  const { getUserEnabledPlan } = useUserTokenPlan(accountId)
-  const tokenPlan = getUserEnabledPlan() as {
-    id?: string
-    planId?: string
-    apikey?: string
-    apiKey?: string
-    key?: string
-  } | null
-  const tokenPlanApiKey = tokenPlan?.apikey ?? tokenPlan?.apiKey ?? tokenPlan?.key
-  const tokenPlanSubscriptionId = tokenPlan?.id
-  const tokenPlanId = tokenPlan?.planId ?? tokenPlanSubscriptionId
   const refreshTokenPlan = useCallback(() => {
-    setTokenPlanRevision((revision) => revision + 1)
     setCredentialsRevision((revision) => revision + 1)
   }, [])
 
@@ -115,7 +100,11 @@ export const useAgentRouterSources = () => {
   }, [accountId])
 
   useEffect(() => {
-    if (!accountId) return
+    if (!accountId) {
+      setApiCredentials([])
+      setTokenPlanCredentials([])
+      return
+    }
     let active = true
     // 账号 API 密钥列表（可能存在多个）
     getApikeyList({ pageNum: 1, pageSize: CREDENTIAL_LIST_PAGE_SIZE })
@@ -139,13 +128,14 @@ export const useAgentRouterSources = () => {
       .then((response: { rows?: Record<string, unknown>[] }) => {
         if (!active) return
         const list = (response.rows ?? [])
-          .filter((row) => typeof row.apikey === 'string' && row.apikey)
+          .filter((row) => typeof row.apikey === 'string' && row.apikey && row.id != null && row.planId != null)
           .map((row) => ({
             id: `token-plan-${row.id}`,
             kind: 'tokenPlan' as const,
             label: String(row.planName ?? row.id ?? ''),
             value: String(row.apikey),
-            planId: String(row.planId ?? row.id ?? '')
+            planId: String(row.planId),
+            subscriptionId: String(row.id)
           }))
         setTokenPlanCredentials(list)
       })
@@ -157,53 +147,11 @@ export const useAgentRouterSources = () => {
     }
   }, [accountId, credentialsRevision])
 
-  useEffect(() => {
-    if (!tokenPlanSubscriptionId || !tokenPlanId) {
-      setTokenPlanModels([])
-      return
-    }
-    let active = true
-    setTokenPlanModelsLoading(true)
-    void selectTokenPlanHourlyDayUsageApi({ subscribeId: tokenPlanSubscriptionId, planId: tokenPlanId })
-      .then((response: { rows?: Record<string, unknown>[] }) => {
-        if (!active) return
-        setTokenPlanModels(
-          uniqueRouteModels(
-            (response.rows ?? [])
-              .map((item) => ({
-                id: String(item.model ?? item.baseId ?? ''),
-                name: String(item.modelName ?? item.baseId ?? item.model ?? ''),
-                modelTypes: resolveAgentRouteModelTypes({
-                  ...item,
-                  id: String(item.model ?? item.baseId ?? ''),
-                  name: String(item.modelName ?? item.baseId ?? item.model ?? ''),
-                  provider: 'aionly',
-                  group: String(item.serviceName ?? ''),
-                  capabilities: Array.isArray(item.capabilities) ? item.capabilities : undefined
-                } as Model)
-              }))
-              .filter((model) => model.id)
-          )
-        )
-      })
-      .catch(() => {
-        if (active) setTokenPlanModels([])
-      })
-      .finally(() => {
-        if (active) setTokenPlanModelsLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [tokenPlanId, tokenPlanRevision, tokenPlanSubscriptionId])
-
   return useMemo(
     () => ({
       accountId,
       apiUrl: `${APP_API_HOST.replace(/\/$/, '')}/v1`,
       apiModels,
-      tokenPlanModels,
-      tokenPlanModelsLoading,
       // 列表为空时回退到 Redux 中的账号基础密钥，保证 API 类别始终可用
       apiCredentials: apiCredentials.length
         ? apiCredentials
@@ -213,35 +161,9 @@ export const useAgentRouterSources = () => {
       credentialAliases: fallbackApiKey
         ? [{ id: 'aionly-api', kind: 'api' as const, label: 'AiOnly', value: fallbackApiKey }]
         : [],
-      tokenPlanCredentials:
-        tokenPlanCredentials.length > 0
-          ? tokenPlanCredentials
-          : tokenPlan && tokenPlanApiKey
-            ? [
-                {
-                  id: `token-plan-${tokenPlan.id ?? tokenPlan.planId ?? 'active'}`,
-                  kind: 'tokenPlan' as const,
-                  label: String(tokenPlan.planId ?? tokenPlanSubscriptionId ?? 'TokenPlan'),
-                  value: String(tokenPlanApiKey),
-                  planId: String(tokenPlanId ?? 'active')
-                }
-              ]
-            : [],
+      tokenPlanCredentials,
       refreshTokenPlan
     }),
-    [
-      accountId,
-      apiCredentials,
-      fallbackApiKey,
-      apiModels,
-      refreshTokenPlan,
-      tokenPlan,
-      tokenPlanApiKey,
-      tokenPlanCredentials,
-      tokenPlanId,
-      tokenPlanModels,
-      tokenPlanModelsLoading,
-      tokenPlanSubscriptionId
-    ]
+    [accountId, apiCredentials, fallbackApiKey, apiModels, refreshTokenPlan, tokenPlanCredentials]
   )
 }

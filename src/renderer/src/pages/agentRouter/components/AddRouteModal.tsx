@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterSources'
+import { useTokenPlanModels } from '../hooks/useTokenPlanModels'
 import { RouteModelTypes } from './RouteCapabilities'
 
 interface FormValues {
@@ -23,7 +24,6 @@ export const AddRouteModal = ({
   apiCredentials,
   tokenPlanCredentials,
   apiModels,
-  tokenPlanModels,
   onCancel,
   onAdd,
   onCreate
@@ -33,7 +33,6 @@ export const AddRouteModal = ({
   apiCredentials: AgentRouterCredential[]
   tokenPlanCredentials: AgentRouterCredential[]
   apiModels: RouteModel[]
-  tokenPlanModels: RouteModel[]
   onCancel: () => void
   onAdd: (templateIds: string[]) => void
   onCreate: (request: CreateAgentRouteRequest) => Promise<void>
@@ -49,8 +48,9 @@ export const AddRouteModal = ({
   const credentialId = Form.useWatch('credentialId', form)
   const modelId = Form.useWatch('modelId', form)
   const credentials = accessMode === 'api' ? apiCredentials : tokenPlanCredentials
-  const models = accessMode === 'api' ? apiModels : tokenPlanModels
   const credential = credentials.find((item) => item.id === credentialId)
+  const { models: tokenPlanModels, loading: modelsLoading } = useTokenPlanModels(open ? credential : undefined)
+  const models = accessMode === 'api' ? apiModels : tokenPlanModels
   const selectedModel = models.find((model) => model.id === modelId)
 
   const close = () => {
@@ -148,6 +148,7 @@ export const AddRouteModal = ({
             </Form.Item>
             <Form.Item name="credentialId" label={t('agentRouter.apiKey')} rules={[{ required: true }]}>
               <Select
+                onChange={() => form.setFieldValue('modelId', undefined)}
                 optionLabelProp="selectedLabel"
                 options={credentials.map((item) => ({
                   value: item.id,
@@ -172,7 +173,11 @@ export const AddRouteModal = ({
               />
             </Form.Item>
             <Form.Item name="modelId" label={t('agentRouter.modelId')} rules={[{ required: true }]}>
-              <Select disabled={!credential} options={models.map((model) => ({ value: model.id, label: model.id }))} />
+              <Select
+                loading={modelsLoading}
+                disabled={!credential || modelsLoading}
+                options={models.map((model) => ({ value: model.id, label: model.id }))}
+              />
             </Form.Item>
             {selectedModel ? (
               <ModelTypeSection>
