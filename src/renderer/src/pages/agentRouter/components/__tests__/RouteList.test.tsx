@@ -29,7 +29,7 @@ describe('RouteList', () => {
     })
   })
 
-  it('edits the display name and exposes the enabled switch', async () => {
+  it('keeps the name fixed while editing credentials and exposes the enabled switch', async () => {
     const onUpdateRoute = vi.fn()
     const onEnabledChange = vi.fn()
     const onRevealCredential = vi.fn().mockResolvedValue('sk-secret')
@@ -45,12 +45,13 @@ describe('RouteList', () => {
       />
     )
     expect(screen.getByText('GPT-5')).toBeInTheDocument()
+    expect(screen.getByText('gpt-5').tagName).toBe('STRONG')
+    expect(screen.getByText('Key')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch'))
     expect(onEnabledChange).toHaveBeenCalledWith(route, false)
     fireEvent.click(screen.getByRole('button', { name: /agentRouter.edit/ }))
-    const input = screen.getByRole('textbox', { name: 'agentRouter.displayName' })
-    fireEvent.change(input, { target: { value: '' } })
-    expect(screen.getByText('agentRouter.modelTypes')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'agentRouter.displayName' })).not.toBeInTheDocument()
+    expect(screen.queryByText('agentRouter.modelTypes')).not.toBeInTheDocument()
     expect(screen.queryByText('agentRouter.modelTypesUnavailable')).not.toBeInTheDocument()
     expect(screen.getAllByLabelText('agentRouter.accessMode')[0]).not.toBeDisabled()
     expect(screen.getAllByLabelText('agentRouter.apiKey')[0]).not.toBeDisabled()
@@ -62,7 +63,7 @@ describe('RouteList', () => {
     await waitFor(() =>
       expect(onUpdateRoute).toHaveBeenCalledWith(
         route,
-        expect.objectContaining({ displayName: '', accessMode: 'api', apiKey: undefined })
+        expect.objectContaining({ displayName: 'AiOnly', accessMode: 'api', apiKey: undefined })
       )
     )
   })

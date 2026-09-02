@@ -26,6 +26,7 @@ import type {
   AgentRouterTargetId,
   CreateAgentRouteRequest,
   CreateAgentRouteTemplateRequest,
+  NamedAgentRouterCredential,
   UpdateAgentRouteRequest
 } from '@shared/agentRouter'
 import type { UpgradeChannel } from '@shared/config/constant'
@@ -158,16 +159,18 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     watchWorkBuddyConfig()
     return configPath
   })
-  ipcMain.handle(IpcChannel.AgentRouter_InspectTarget, (_, targetId: AgentRouterTargetId) => {
+  ipcMain.handle(IpcChannel.AgentRouter_InspectTarget, (_, targetId: AgentRouterTargetId, accountId?: string) => {
     if (targetId !== 'workbuddy') return null
-    return agentRouter.inspectTarget('workbuddy', workBuddyConfigPath)
+    return agentRouter.inspectTarget('workbuddy', workBuddyConfigPath, accountId)
   })
   ipcMain.handle(IpcChannel.AgentRouter_IdentifyConfig, (_, filePath: string) => agentRouter.identifyConfig(filePath))
   ipcMain.handle(IpcChannel.AgentRouter_GetRouteConfig, (_, accountId: string) =>
     agentRouter.getRouteConfig(accountId, 'workbuddy', workBuddyConfigPath)
   )
-  ipcMain.handle(IpcChannel.AgentRouter_ListAgentCredentialSummaries, (_, accountId: string) =>
-    agentRouter.listAgentCredentialSummaries(accountId, 'workbuddy')
+  ipcMain.handle(
+    IpcChannel.AgentRouter_ListAgentCredentialSummaries,
+    (_, accountId: string, knownCredentials?: NamedAgentRouterCredential[]) =>
+      agentRouter.listAgentCredentialSummaries(accountId, 'workbuddy', knownCredentials)
   )
   ipcMain.handle(IpcChannel.AgentRouter_ResolveAgentRouteCredential, (_, accountId: string, route: AgentRouteRef) =>
     agentRouter.resolveAgentRouteCredential(accountId, 'workbuddy', route)
@@ -186,8 +189,10 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.AgentRouter_RemoveRouteModels, (_, accountId: string, routes: AgentRouteRef[]) =>
     agentRouter.removeRouteModels(accountId, 'workbuddy', routes)
   )
-  ipcMain.handle(IpcChannel.AgentRouter_ListGlobalTemplates, (_, accountId: string) =>
-    agentRouter.listGlobalTemplates(accountId, 'workbuddy')
+  ipcMain.handle(
+    IpcChannel.AgentRouter_ListGlobalTemplates,
+    (_, accountId: string, knownCredentials?: NamedAgentRouterCredential[]) =>
+      agentRouter.listGlobalTemplates(accountId, 'workbuddy', knownCredentials)
   )
   ipcMain.handle(
     IpcChannel.AgentRouter_CreateGlobalTemplate,

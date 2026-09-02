@@ -1,6 +1,6 @@
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
-import zhCN from '@renderer/i18n/locales/zh-cn.json'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AddRouteModal } from '../AddRouteModal'
@@ -10,7 +10,12 @@ vi.mock('../../utils/modelCapabilities', () => ({ resolveAgentRouteModelTypes: (
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) => (options?.count === undefined ? key : `${key}:${options.count}`)
+    t: (key: string, options?: { count?: number; modelIds?: string }) =>
+      options?.modelIds !== undefined
+        ? `${key}:${options.modelIds}`
+        : options?.count === undefined
+          ? key
+          : `${key}:${options.count}`
   })
 }))
 
@@ -75,8 +80,8 @@ describe('AddRouteModal', () => {
     render(<AddRouteModal {...commonProps} onAdd={onAdd} />)
     fireEvent.click(screen.getByRole('tab', { name: 'agentRouter.useGlobalConfiguration' }))
     expect(screen.getByText(/••••1234/)).toBeInTheDocument()
-    expect(screen.getAllByText('models.type.function_calling')).toHaveLength(2)
-    expect(screen.getByText('models.type.reasoning')).toBeInTheDocument()
+    expect(screen.queryByText('models.type.function_calling')).not.toBeInTheDocument()
+    expect(screen.queryByText('models.type.reasoning')).not.toBeInTheDocument()
     expect(screen.queryByText('models.type.vision')).not.toBeInTheDocument()
     expect(screen.queryByText('agentRouter.modelTypesUnavailable')).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: /joined-model/ })).toBeDisabled()
@@ -88,27 +93,210 @@ describe('AddRouteModal', () => {
   it('creates a direct Agent route through the first path', async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined)
     render(<AddRouteModal {...commonProps} onAdd={vi.fn()} onCreate={onCreate} />)
-    expect(screen.getByText('agentRouter.displayName').closest('.ant-form-item-label')).toHaveStyle({
-      flex: '0 0 86px'
-    })
-    expect(zhCN.agentRouter.displayNameModelFallback).toBe('默认使用模型 ID')
+    expect(screen.queryByLabelText('agentRouter.displayName')).not.toBeInTheDocument()
+    expect(screen.queryByText('agentRouter.createOverwriteHint')).not.toBeInTheDocument()
     fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
     fireEvent.click(await screen.findByText('Key'))
     expect(screen.getByText('••••••••••••••••••••••••')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('agentRouter.toggleApiKeyVisibility'))
     expect(screen.getByText('sk-secret')).toBeInTheDocument()
-    fireEvent.mouseDown(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
     fireEvent.click((await screen.findAllByText('gpt-5')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
     expect(screen.queryByText('GPT Five')).not.toBeInTheDocument()
-    expect(screen.getByText('agentRouter.modelTypes')).toBeInTheDocument()
-    expect(screen.getByText('models.type.websearch')).toBeInTheDocument()
+    expect(screen.queryByText('agentRouter.modelTypes')).not.toBeInTheDocument()
+    expect(screen.queryByText('models.type.websearch')).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: 'models.type.websearch' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'agentRouter.createRoute' }))
     await waitFor(() =>
-      expect(onCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ modelId: 'gpt-5', displayName: 'gpt-5', apiKey: 'sk-secret' })
-      )
+      expect(onCreate).toHaveBeenCalledWith([
+        expect.objectContaining({ modelId: 'gpt-5', displayName: 'AiOnly', apiKey: 'sk-secret', credentialName: 'Key' })
+      ])
     )
+  })
+
+  it('submits all selected models with their own capabilities in one batch', async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    render(
+      <AddRouteModal
+        {...commonProps}
+        onAdd={vi.fn()}
+        onCreate={onCreate}
+        apiModels={[...commonProps.apiModels, { id: 'claude-sonnet', name: 'Claude', modelTypes: ['vision'] }]}
+      />
+    )
+    fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
+    fireEvent.click(await screen.findByText('Key'))
+    fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click((await screen.findAllByText('gpt-5')).at(-1)!)
+    fireEvent.click((await screen.findAllByText('claude-sonnet')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: 'agentRouter.createRoute' }))
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith([
+        expect.objectContaining({ modelId: 'gpt-5', modelTypes: ['function_calling', 'web_search', 'reasoning'] }),
+        expect.objectContaining({ modelId: 'claude-sonnet', modelTypes: ['vision'] })
+      ])
+    )
+  })
+
+  it('searches model IDs in the picker without clearing previous selections', async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    render(
+      <AddRouteModal
+        {...commonProps}
+        onAdd={vi.fn()}
+        onCreate={onCreate}
+        apiModels={[...commonProps.apiModels, { id: 'claude-sonnet', name: 'Claude', modelTypes: [] }]}
+      />
+    )
+    fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
+    fireEvent.click(await screen.findByText('Key'))
+    fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click((await screen.findAllByText('gpt-5')).at(-1)!)
+    await userEvent.click(screen.getByPlaceholderText('agentRouter.searchModelId'))
+    await userEvent.type(screen.getByPlaceholderText('agentRouter.searchModelId'), 'CLAUDE')
+    expect(screen.queryByRole('checkbox', { name: 'gpt-5' })).not.toBeInTheDocument()
+    fireEvent.click((await screen.findAllByText('claude-sonnet')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: 'agentRouter.createRoute' }))
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith([
+        expect.objectContaining({ modelId: 'gpt-5' }),
+        expect.objectContaining({ modelId: 'claude-sonnet' })
+      ])
+    )
+  })
+
+  it.each(['create', 'global'])('confirms a conflicting %s addition only after clicking add', async (path) => {
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    const onCancel = vi.fn()
+    render(
+      <AddRouteModal
+        {...commonProps}
+        onCreate={onCreate}
+        onAdd={onAdd}
+        onCancel={onCancel}
+        routes={[
+          {
+            modelId: 'gpt-5',
+            displayName: 'AiOnly',
+            accessMode: 'api',
+            credentialId: 'old-key',
+            enabled: true,
+            modelTypes: [],
+            routedAt: ''
+          }
+        ]}
+        onRevealCredential={vi.fn().mockResolvedValue('sk-other')}
+      />
+    )
+    expect(screen.queryByText(/^agentRouter.confirmCloseSameModel/)).not.toBeInTheDocument()
+    if (path === 'global') {
+      fireEvent.click(screen.getByRole('tab', { name: 'agentRouter.useGlobalConfiguration' }))
+      fireEvent.click(screen.getByRole('checkbox', { name: /gpt-5/ }))
+    } else {
+      fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
+      fireEvent.click(await screen.findByText('Key'))
+      fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
+      fireEvent.click((await screen.findAllByText('gpt-5')).at(-1)!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
+    }
+    const addLabel = path === 'global' ? 'agentRouter.addSelectedModels:1' : 'agentRouter.createRoute'
+    fireEvent.click(screen.getByRole('button', { name: addLabel }))
+    expect(await screen.findByText('agentRouter.confirmCloseSameModel:gpt-5')).toBeInTheDocument()
+    expect(onAdd).not.toHaveBeenCalled()
+    expect(onCreate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.cancel' }).at(-1)!)
+    expect(onCancel).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: addLabel }))
+    await screen.findByText('agentRouter.confirmCloseSameModel:gpt-5')
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
+    await waitFor(() => expect(path === 'global' ? onAdd : onCreate).toHaveBeenCalledTimes(1))
+  })
+
+  it('lists only the selected model IDs whose routes are currently enabled', async () => {
+    render(
+      <AddRouteModal
+        {...commonProps}
+        onAdd={vi.fn()}
+        templates={[
+          { ...templates[0], modelId: 'gpt-5' },
+          { ...templates[0], templateId: 'second', modelId: 'claude-sonnet' },
+          { ...templates[0], templateId: 'third', modelId: 'disabled-model' }
+        ]}
+        routes={['gpt-5', 'claude-sonnet', 'disabled-model', 'unselected-model'].map((modelId) => ({
+          modelId,
+          credentialId: modelId,
+          displayName: 'AiOnly',
+          accessMode: 'api',
+          enabled: modelId !== 'disabled-model',
+          modelTypes: [],
+          routedAt: ''
+        }))}
+      />
+    )
+    fireEvent.click(screen.getByRole('tab', { name: 'agentRouter.useGlobalConfiguration' }))
+    for (const checkbox of screen.getAllByRole('checkbox')) fireEvent.click(checkbox)
+    fireEvent.click(screen.getByRole('button', { name: 'agentRouter.addSelectedModels:3' }))
+    expect(await screen.findByText('agentRouter.confirmCloseSameModel:gpt-5、claude-sonnet')).toBeInTheDocument()
+  })
+
+  it('adds two new same-ID templates without warning when no existing route is active', async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    render(
+      <AddRouteModal
+        {...commonProps}
+        onAdd={onAdd}
+        templates={[templates[0], { ...templates[0], templateId: 'another-key', maskedKey: '••••5678' }]}
+      />
+    )
+    fireEvent.click(screen.getByRole('tab', { name: 'agentRouter.useGlobalConfiguration' }))
+    for (const checkbox of screen.getAllByRole('checkbox')) fireEvent.click(checkbox)
+    fireEvent.click(screen.getByRole('button', { name: 'agentRouter.addSelectedModels:2' }))
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(['template-1', 'another-key']))
+    expect(screen.queryByText(/^agentRouter.confirmCloseSameModel/)).not.toBeInTheDocument()
+  })
+
+  it('does not warn for an exact duplicate even if a different key is currently active', async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    render(
+      <AddRouteModal
+        {...commonProps}
+        onAdd={vi.fn()}
+        onCreate={onCreate}
+        routes={[
+          {
+            modelId: 'gpt-5',
+            displayName: 'AiOnly',
+            accessMode: 'api',
+            credentialId: 'same-key',
+            enabled: false,
+            modelTypes: [],
+            routedAt: ''
+          },
+          {
+            modelId: 'gpt-5',
+            displayName: 'AiOnly',
+            accessMode: 'api',
+            credentialId: 'other-key',
+            enabled: true,
+            modelTypes: [],
+            routedAt: ''
+          }
+        ]}
+        onRevealCredential={async (route) => (route.credentialId === 'same-key' ? 'sk-secret' : 'sk-other')}
+      />
+    )
+    fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
+    fireEvent.click(await screen.findByText('Key'))
+    fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click((await screen.findAllByText('gpt-5')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: 'agentRouter.createRoute' }))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText(/^agentRouter.confirmCloseSameModel/)).not.toBeInTheDocument()
   })
 
   it('loads models for the selected TokenPlan key and clears the model when switching keys', async () => {
@@ -135,38 +323,41 @@ describe('AddRouteModal', () => {
       expect(selectTokenPlanHourlyDayUsageApi).toHaveBeenCalledWith({ subscribeId: 's1', planId: 'p1' })
     )
     await waitFor(() => expect(screen.getByLabelText('agentRouter.modelId')).not.toBeDisabled())
-    fireEvent.mouseDown(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
     fireEvent.click((await screen.findAllByText('plan-one-model')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
     fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
     fireEvent.click(await screen.findByText('Plan Two'))
     await waitFor(() =>
       expect(selectTokenPlanHourlyDayUsageApi).toHaveBeenCalledWith({ subscribeId: 's2', planId: 'p2' })
     )
-    expect(screen.getByLabelText('agentRouter.modelId').closest('.ant-select')).not.toHaveTextContent('plan-one-model')
+    expect(screen.getByLabelText('agentRouter.modelId').parentElement).not.toHaveTextContent('plan-one-model')
     await waitFor(() => expect(screen.getByLabelText('agentRouter.modelId')).not.toBeDisabled())
-    fireEvent.mouseDown(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
     fireEvent.click((await screen.findAllByText('plan-two-model')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
     fireEvent.click(screen.getByRole('button', { name: 'agentRouter.createRoute' }))
     await waitFor(() =>
-      expect(onCreate).toHaveBeenCalledWith(
+      expect(onCreate).toHaveBeenCalledWith([
         expect.objectContaining({
           modelId: 'plan-two-model',
           tokenPlanId: 'p2',
           apiKey: 'secret-two'
         })
-      )
+      ])
     )
   })
 
-  it('warns when the selected model and key already exist', async () => {
-    const onCreate = vi.fn().mockRejectedValue(new Error('Duplicate Agent route'))
+  it('keeps the dialog open and reports a failed batch', async () => {
+    const onCreate = vi.fn().mockRejectedValue(new Error('WRITE_FAILED'))
     render(<AddRouteModal {...commonProps} onAdd={vi.fn()} onCreate={onCreate} />)
     fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
     fireEvent.click(await screen.findByText('Key'))
-    fireEvent.mouseDown(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
     fireEvent.click((await screen.findAllByText('gpt-5')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
     fireEvent.click(screen.getByRole('button', { name: 'agentRouter.createRoute' }))
 
-    expect(await screen.findByText('agentRouter.routeAlreadyExists')).toBeInTheDocument()
+    expect(await screen.findByText('agentRouter.createFailed')).toBeInTheDocument()
   })
 })

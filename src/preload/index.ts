@@ -10,6 +10,7 @@ import type {
   AgentRouterTargetId,
   CreateAgentRouteRequest,
   CreateAgentRouteTemplateRequest,
+  NamedAgentRouterCredential,
   PreviewWorkBuddyRoutesRequest,
   UpdateAgentRouteRequest
 } from '@shared/agentRouter'
@@ -114,13 +115,13 @@ const api = {
       ipcRenderer.on(IpcChannel.AgentRouter_TargetChanged, listener)
       return () => ipcRenderer.removeListener(IpcChannel.AgentRouter_TargetChanged, listener)
     },
-    inspectTarget: (targetId: AgentRouterTargetId) =>
-      ipcRenderer.invoke(IpcChannel.AgentRouter_InspectTarget, targetId),
+    inspectTarget: (targetId: AgentRouterTargetId, accountId?: string) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_InspectTarget, targetId, accountId),
     identifyConfig: (filePath: string) => ipcRenderer.invoke(IpcChannel.AgentRouter_IdentifyConfig, filePath),
     selectConfig: (targetId: AgentRouterTargetId) => ipcRenderer.invoke(IpcChannel.AgentRouter_SelectConfig, targetId),
     getRouteConfig: (accountId: string) => ipcRenderer.invoke(IpcChannel.AgentRouter_GetRouteConfig, accountId),
-    listAgentCredentialSummaries: (accountId: string) =>
-      ipcRenderer.invoke(IpcChannel.AgentRouter_ListAgentCredentialSummaries, accountId),
+    listAgentCredentialSummaries: (accountId: string, knownCredentials?: NamedAgentRouterCredential[]) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_ListAgentCredentialSummaries, accountId, knownCredentials),
     resolveAgentRouteCredential: (accountId: string, route: AgentRouteRef) =>
       ipcRenderer.invoke(IpcChannel.AgentRouter_ResolveAgentRouteCredential, accountId, route),
     saveRouteModels: (accountId: string, models: AgentRouteModel[]) =>
@@ -131,8 +132,8 @@ const api = {
       ipcRenderer.invoke(IpcChannel.AgentRouter_UpdateAgentRoute, accountId, route, request),
     removeRouteModels: (accountId: string, routes: AgentRouteRef[]) =>
       ipcRenderer.invoke(IpcChannel.AgentRouter_RemoveRouteModels, accountId, routes),
-    listGlobalTemplates: (accountId: string) =>
-      ipcRenderer.invoke(IpcChannel.AgentRouter_ListGlobalTemplates, accountId),
+    listGlobalTemplates: (accountId: string, knownCredentials?: NamedAgentRouterCredential[]) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_ListGlobalTemplates, accountId, knownCredentials),
     createGlobalTemplate: (accountId: string, request: CreateAgentRouteTemplateRequest) =>
       ipcRenderer.invoke(IpcChannel.AgentRouter_CreateGlobalTemplate, accountId, request),
     deleteGlobalTemplate: (accountId: string, templateId: string) =>

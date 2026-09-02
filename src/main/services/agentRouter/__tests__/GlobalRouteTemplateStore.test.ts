@@ -45,7 +45,7 @@ describe('global route template persistence', () => {
     expect(await snapshots.resolve('account-1', 'workbuddy', credentialId)).toBe('tp-independent-secret')
   })
 
-  it('rejects the same model id with the same key but allows a different key', async () => {
+  it('skips the same model id with the same key but allows a different key', async () => {
     const root = await mkdtemp(join(process.env.TEMP ?? process.cwd(), 'agent-router-template-'))
     const store = new GlobalRouteTemplateStore(root)
     const request = {
@@ -55,8 +55,8 @@ describe('global route template persistence', () => {
       modelTypes: ['function_calling', 'reasoning'] as const
     }
 
-    await store.create('account-1', request)
-    await expect(store.create('account-1', request)).rejects.toThrow('Duplicate global route template')
+    const first = await store.create('account-1', request)
+    await expect(store.create('account-1', request)).resolves.toEqual(first)
     await expect(store.create('account-1', { ...request, apiKey: 'sk-different-key' })).resolves.toBeDefined()
   })
 })

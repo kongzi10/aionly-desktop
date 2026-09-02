@@ -28,7 +28,10 @@ export const GlobalTemplateList = ({
           </Identity>
           <Meta>
             <AccessMode>{template.accessMode === 'api' ? 'API' : 'TokenPlan'}</AccessMode>
-            <Masked>{template.maskedKey}</Masked>
+            <KeyIdentity>
+              <span>{template.credentialName}</span>
+              <Masked>{template.maskedKey}</Masked>
+            </KeyIdentity>
             <DeleteButton
               type="text"
               size="small"
@@ -53,3 +56,5 @@ const Meta = styled.div`min-width:0;display:flex;align-items:center;justify-cont
 const AccessMode = styled(Tag)`min-width:62px;margin:0;text-align:center;`
 const Masked = styled.code`min-width:92px;color:var(--color-text-3);font-size:11px;`
 const DeleteButton = styled(Button)`padding-inline:5px;font-size:11px;`
+
+const KeyIdentity = styled.div`min-width:0;display:flex;flex-direction:column;gap:2px;span{font-size:11px;}`

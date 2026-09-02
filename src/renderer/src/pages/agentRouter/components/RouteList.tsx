@@ -1,7 +1,7 @@
 import { DeleteOutlined, DownOutlined, EditOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
 import type { AgentRouteModel, UpdateAgentRouteRequest } from '@shared/agentRouter'
 import type { TableColumnsType } from 'antd'
-import { Button, Empty, Form, Input, message, Modal, Select, Switch, Table, Tag } from 'antd'
+import { Button, Empty, Form, message, Modal, Select, Switch, Table, Tag } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -11,7 +11,6 @@ import { useTokenPlanModels } from '../hooks/useTokenPlanModels'
 import { RouteModelTypes } from './RouteCapabilities'
 
 interface EditFormValues {
-  displayName?: string
   accessMode: 'api' | 'tokenPlan'
   credentialId: string
 }
@@ -87,10 +86,10 @@ export const RouteList = ({
       render: (_, route) => (
         <RouteIdentity>
           <NameLine>
-            <strong>{route.displayName}</strong>
+            <strong>{route.modelId}</strong>
             <RouteModelTypes compact modelTypes={route.modelTypes} />
           </NameLine>
-          <span>{route.modelId}</span>
+          <span>{route.displayName}</span>
         </RouteIdentity>
       )
     },
@@ -109,7 +108,10 @@ export const RouteList = ({
       render: (credentialId: string) => {
         const credential = credentialsById.get(credentialId)
         return credential ? (
-          <MutedText title={credential.label}>{credential.maskedValue}</MutedText>
+          <RouteIdentity>
+            <strong>{credential.label}</strong>
+            <MutedText>{credential.maskedValue}</MutedText>
+          </RouteIdentity>
         ) : (
           <MutedText>{t('agentRouter.credentialUnavailable')}</MutedText>
         )
@@ -144,7 +146,6 @@ export const RouteList = ({
               setShowEditKey(false)
               setRevealedCurrentKey(undefined)
               editForm.setFieldsValue({
-                displayName: route.displayName,
                 accessMode: route.accessMode,
                 credentialId: CURRENT_CREDENTIAL
               })
@@ -196,7 +197,8 @@ export const RouteList = ({
           const selectedCredential = editCredentials.find((credential) => credential.id === values.credentialId)
           try {
             await onUpdateRoute(routeToEdit, {
-              displayName: values.displayName,
+              displayName: 'AiOnly',
+              credentialName: selectedCredential?.label,
               accessMode: values.accessMode,
               tokenPlanId:
                 values.accessMode === 'tokenPlan' ? (selectedCredential?.planId ?? routeToEdit.tokenPlanId) : undefined,
@@ -214,9 +216,6 @@ export const RouteList = ({
           }
         }}>
         <Form form={editForm} labelCol={{ flex: '86px' }} labelAlign="left" colon={false} style={{ marginTop: 15 }}>
-          <Form.Item name="displayName" label={t('agentRouter.displayName')}>
-            <Input aria-label={t('agentRouter.displayName')} placeholder={t('agentRouter.displayNameModelFallback')} />
-          </Form.Item>
           <Form.Item name="accessMode" label={t('agentRouter.accessMode')}>
             <Select
               aria-label={t('agentRouter.accessMode')}
@@ -279,11 +278,6 @@ export const RouteList = ({
               options={[{ value: routeToEdit?.modelId, label: routeToEdit?.modelId }]}
             />
           </Form.Item>
-          {editModelTypes ? (
-            <ModelTypeSection>
-              <RouteModelTypes modelTypes={editModelTypes} />
-            </ModelTypeSection>
-          ) : null}
         </Form>
       </StyledEditModal>
       <OverwriteModal
@@ -361,7 +355,6 @@ const StyledEditModal = styled(Modal)`
   .ant-select-selection-item { line-height: 34px !important; }
   .ant-select-arrow { inset-block-start: 50%; margin-top: 0; display: flex; align-items: center; transform: translateY(-50%); }
 `
-const ModelTypeSection = styled.div`margin-top:4px;padding:16px 0 2px;border-top:1px solid var(--color-border);`
 
 const SuffixControls = styled.span`height:100%;display:inline-flex;align-items:center;gap:8px;`
 const KeyVisibility = styled.button`padding:0;display:inline-flex;align-items:center;border:0;background:transparent;color:var(--color-text-3);cursor:pointer;`

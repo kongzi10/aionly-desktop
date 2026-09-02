@@ -12,6 +12,7 @@ import type {
   ApplyResult,
   CreateAgentRouteRequest,
   CreateAgentRouteTemplateRequest,
+  NamedAgentRouterCredential,
   PreviewWorkBuddyRoutesRequest,
   RedactedCredentialSummary,
   RedactedTargetEntry,
@@ -49,7 +50,11 @@ export class AgentRouterService {
     this.credentialSnapshots = new AgentCredentialSnapshotStore(options.dataRoot)
   }
 
-  async listGlobalTemplates(accountId: string, targetId: AgentRouterTargetId = 'workbuddy') {
+  async listGlobalTemplates(
+    accountId: string,
+    targetId: AgentRouterTargetId = 'workbuddy',
+    knownCredentials: NamedAgentRouterCredential[] = []
+  ) {
     const [templates, config] = await Promise.all([
       this.templates.list(accountId),
       this.routes.getRouteConfig(accountId, targetId)
@@ -65,6 +70,8 @@ export class AgentRouterService {
         const key = await this.templates.resolveKey(accountId, template.templateId).catch(() => undefined)
         return {
           ...template,
+          credentialName:
+            knownCredentials.find((credential) => credential.value === key)?.label || template.credentialName,
           joined: routesWithKeys.some((route) => route.modelId === template.modelId && route.key === key)
         }
       })
@@ -81,7 +88,8 @@ export class AgentRouterService {
 
   async listAgentCredentialSummaries(
     accountId: string,
-    targetId: AgentRouterTargetId
+    targetId: AgentRouterTargetId,
+    knownCredentials: NamedAgentRouterCredential[] = []
   ): Promise<RedactedCredentialSummary[]> {
     const config = await this.routes.getRouteConfig(accountId, targetId)
     return Promise.all(
@@ -91,7 +99,10 @@ export class AgentRouterService {
           return {
             id: route.credentialId,
             accessMode: route.accessMode,
-            label: route.accessMode === 'api' ? 'API' : 'TokenPlan',
+            label:
+              knownCredentials.find((credential) => credential.value === value)?.label ||
+              route.credentialName ||
+              (route.accessMode === 'api' ? 'API' : 'TokenPlan'),
             maskedValue: maskSecret(value),
             available: true,
             tokenPlanId: route.tokenPlanId
@@ -100,7 +111,7 @@ export class AgentRouterService {
           return {
             id: route.credentialId,
             accessMode: route.accessMode,
-            label: route.accessMode === 'api' ? 'API' : 'TokenPlan',
+            label: route.credentialName || (route.accessMode === 'api' ? 'API' : 'TokenPlan'),
             maskedValue: '',
             available: false,
             reason: 'credentialInvalid' as const,
@@ -124,7 +135,11 @@ export class AgentRouterService {
     return this.credentialSnapshots.resolve(accountId, targetId, route.credentialId)
   }
 
-  async copyTemplatesToAgent(accountId: string, targetId: AgentRouterTargetId, templateIds: string[]): Promise<void> {
+  async copyTemplatesToAgent(
+    accountId: string,
+    targetId: AgentRouterTargetId,
+    templateIds: string[]
+  ): Promise<AgentRouteModel[]> {
     if (targetId !== 'workbuddy') throw new AgentRouterError('TARGET_NOT_FOUND', 'Target is not available')
     const templates = await this.templates.list(accountId)
     const byId = new Map(templates.map((template) => [template.templateId, template]))
@@ -147,17 +162,19 @@ export class AgentRouterService {
         createdCredentialIds.push(credentialId)
         copied.push({
           modelId: template.modelId,
-          displayName: template.modelId,
+          displayName: 'AiOnly',
+          credentialName: template.credentialName,
           accessMode: template.accessMode,
           credentialId,
           tokenPlanId: template.tokenPlanId,
-          enabled: false,
+          enabled: true,
           modelTypes: template.modelTypes,
           routedAt: new Date().toISOString()
         })
         existing.push({ modelId: template.modelId, key })
       }
       await this.routes.saveRouteModels(accountId, targetId, copied)
+      return copied
     } catch (error) {
       await Promise.all(createdCredentialIds.map((id) => this.credentialSnapshots.remove(accountId, targetId, id)))
       throw error
@@ -177,17 +194,18 @@ export class AgentRouterService {
     for (const route of current.models) {
       const key = await this.credentialSnapshots.resolve(accountId, targetId, route.credentialId).catch(() => undefined)
       if (route.modelId === request.modelId && key === request.apiKey) {
-        throw new AgentRouterError('INVALID_REQUEST', 'Duplicate Agent route')
+        return route
       }
     }
     const credentialId = await this.credentialSnapshots.create(accountId, targetId, request.apiKey)
     const route: AgentRouteModel = {
       modelId: request.modelId,
-      displayName: request.displayName || request.modelId,
+      displayName: 'AiOnly',
+      credentialName: request.credentialName,
       accessMode: request.accessMode,
       credentialId,
       tokenPlanId: request.tokenPlanId,
-      enabled: false,
+      enabled: true,
       modelTypes: request.modelTypes,
       routedAt: new Date().toISOString()
     }
@@ -233,7 +251,8 @@ export class AgentRouterService {
 
     const updated: AgentRouteModel = {
       ...route,
-      displayName: request.displayName?.trim() || route.modelId,
+      displayName: 'AiOnly',
+      credentialName: request.apiKey ? request.credentialName : route.credentialName,
       accessMode: request.accessMode,
       credentialId,
       tokenPlanId: request.accessMode === 'tokenPlan' ? request.tokenPlanId : undefined,
@@ -253,7 +272,7 @@ export class AgentRouterService {
     }
   }
 
-  async inspectTarget(targetId: 'workbuddy', configPath: string): Promise<TargetSnapshot> {
+  async inspectTarget(targetId: 'workbuddy', configPath: string, accountId?: string): Promise<TargetSnapshot> {
     if (targetId !== 'workbuddy') throw new AgentRouterError('TARGET_NOT_FOUND', 'Target is not available')
     const normalizedPath = resolve(configPath)
     try {
@@ -262,7 +281,15 @@ export class AgentRouterService {
         stat(normalizedPath)
       ])
       const parsed = this.adapter.parse(snapshot.content)
-      const managedEntryCount = parsed.entries.filter(({ value }) => this.adapter.isAionlyEntry(value)).length
+      const config = accountId ? await this.routes.getRouteConfig(accountId, targetId) : { models: [] }
+      const managedIds = accountId
+        ? await this.findManagedEntryIds(
+            accountId,
+            parsed.entries.map(({ value }) => value),
+            config.models
+          )
+        : new Set<string>()
+      const managedEntryCount = managedIds.size
       await access(normalizedPath)
       return {
         targetId: 'workbuddy',
@@ -389,8 +416,8 @@ export class AgentRouterService {
           return this.adapter.buildEntry(model, credential, request.apiUrl)
         })
     )
-    const managedIds = new Set(current.filter((entry) => this.adapter.isAionlyEntry(entry)).map((entry) => entry.id))
-    const entries = this.adapter.merge(current, generated)
+    const managedIds = await this.findManagedEntryIds(request.accountId, current, config.models, credentials)
+    const entries = this.adapter.merge(current, generated, managedIds)
     const counts = this.countChanges(current, generated, managedIds)
     const pending: PendingWorkBuddyApply = {
       accountId: request.accountId,
@@ -438,6 +465,31 @@ export class AgentRouterService {
       expectedRevision,
       verify: (content) => this.adapter.parse(content)
     })
+  }
+
+  private async findManagedEntryIds(
+    accountId: string,
+    entries: WorkBuddyEntry[],
+    models: AgentRouteModel[],
+    credentials = new Map<string, string>()
+  ): Promise<Set<string>> {
+    const managedKeys = new Set(
+      await Promise.all(
+        models.map(async (route) => {
+          const key =
+            credentials.get(route.credentialId) ??
+            (await this.credentialSnapshots.resolve(accountId, 'workbuddy', route.credentialId).catch(() => undefined))
+          return key ? JSON.stringify([route.modelId, key]) : undefined
+        })
+      )
+    )
+    return new Set(
+      entries
+        .filter(
+          (entry) => this.adapter.isAionlyEntry(entry) && managedKeys.has(JSON.stringify([entry.id, entry.apiKey]))
+        )
+        .map((entry) => entry.id)
+    )
   }
 
   private redact(entry: WorkBuddyEntry): RedactedTargetEntry {

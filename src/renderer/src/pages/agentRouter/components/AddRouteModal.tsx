@@ -1,19 +1,19 @@
 import { DownOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
-import type { AgentRouteTemplate, CreateAgentRouteRequest } from '@shared/agentRouter'
-import { Button, Checkbox, Empty, Form, Input, message, Modal, Select, Tabs } from 'antd'
+import type { AgentRouteModel, AgentRouteTemplate, CreateAgentRouteRequest } from '@shared/agentRouter'
+import { Button, Checkbox, Empty, Form, message, Modal, Select, Tabs } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterSources'
 import { useTokenPlanModels } from '../hooks/useTokenPlanModels'
-import { RouteModelTypes } from './RouteCapabilities'
+import { ModelIdSelect } from './ModelIdSelect'
+import { RouteFormModal } from './RouteFormModal'
 
 interface FormValues {
   accessMode: 'api' | 'tokenPlan'
   credentialId: string
-  modelId: string
-  displayName?: string
+  modelIds: string[]
 }
 
 const HIDDEN_API_KEY = '••••••••••••••••••••••••'
@@ -21,6 +21,8 @@ const HIDDEN_API_KEY = '••••••••••••••••••�
 export const AddRouteModal = ({
   open,
   templates,
+  routes = [],
+  onRevealCredential,
   apiCredentials,
   tokenPlanCredentials,
   apiModels,
@@ -30,12 +32,14 @@ export const AddRouteModal = ({
 }: {
   open: boolean
   templates: AgentRouteTemplate[]
+  routes?: AgentRouteModel[]
+  onRevealCredential?: (route: AgentRouteModel) => Promise<string>
   apiCredentials: AgentRouterCredential[]
   tokenPlanCredentials: AgentRouterCredential[]
   apiModels: RouteModel[]
   onCancel: () => void
-  onAdd: (templateIds: string[]) => void
-  onCreate: (request: CreateAgentRouteRequest) => Promise<void>
+  onAdd: (templateIds: string[]) => Promise<void>
+  onCreate: (requests: CreateAgentRouteRequest[]) => Promise<void>
 }) => {
   const { t } = useTranslation()
   const [messageApi, contextHolder] = message.useMessage()
@@ -43,73 +47,114 @@ export const AddRouteModal = ({
   const [path, setPath] = useState<'create' | 'global'>('create')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [conflictingModelIds, setConflictingModelIds] = useState<string[]>([])
+  const confirming = conflictingModelIds.length > 0
   const [showKey, setShowKey] = useState(false)
   const accessMode = Form.useWatch('accessMode', form) ?? 'api'
   const credentialId = Form.useWatch('credentialId', form)
-  const modelId = Form.useWatch('modelId', form)
+  const modelIds: string[] = Form.useWatch('modelIds', form) ?? []
   const credentials = accessMode === 'api' ? apiCredentials : tokenPlanCredentials
   const credential = credentials.find((item) => item.id === credentialId)
   const { models: tokenPlanModels, loading: modelsLoading } = useTokenPlanModels(open ? credential : undefined)
   const models = accessMode === 'api' ? apiModels : tokenPlanModels
-  const selectedModel = models.find((model) => model.id === modelId)
+  const selectedModels = models.filter((model) => modelIds.includes(model.id))
 
   const close = () => {
     form.resetFields()
     setSelectedIds([])
+    setConflictingModelIds([])
     setPath('create')
     setShowKey(false)
     onCancel()
   }
 
-  const submitCreate = async () => {
-    const values = await form.validateFields()
-    if (!selectedModel || !credential) return
+  const submit = async () => {
+    if (saving) return
+    if (path === 'create' && (!selectedModels.length || !credential)) return
+    if (path === 'global' && !selectedIds.length) return
     setSaving(true)
     try {
-      await onCreate({
-        modelId: selectedModel.id,
-        displayName: values.displayName?.trim() || selectedModel.id,
-        accessMode,
-        tokenPlanId: accessMode === 'tokenPlan' ? credential.planId : undefined,
-        apiKey: credential.value,
-        modelTypes: selectedModel.modelTypes
-      })
-      close()
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('Duplicate Agent route')) {
-        messageApi.warning(t('agentRouter.routeAlreadyExists'))
+      if (path === 'global') {
+        await onAdd(selectedIds)
+      } else if (credential) {
+        await onCreate(
+          selectedModels.map((model) => ({
+            modelId: model.id,
+            displayName: 'AiOnly',
+            credentialName: credential.label,
+            accessMode,
+            tokenPlanId: accessMode === 'tokenPlan' ? credential.planId : undefined,
+            apiKey: credential.value,
+            modelTypes: model.modelTypes
+          }))
+        )
       }
+      close()
+    } catch {
+      messageApi.error(t('agentRouter.createFailed'))
     } finally {
       setSaving(false)
     }
   }
 
-  const submitGlobal = () => {
-    if (selectedIds.length === 0) return
-    onAdd(selectedIds)
-    close()
+  const requestSubmit = async () => {
+    if (saving || checking || confirming) return
+    setChecking(true)
+    try {
+      let conflicts: AgentRouteModel[] = []
+      if (path === 'global') {
+        const selected = templates.filter((template) => selectedIds.includes(template.templateId) && !template.joined)
+        const ids = new Set(selected.map((template) => template.modelId))
+        conflicts = routes.filter((route) => route.enabled && ids.has(route.modelId))
+      } else if (credential) {
+        const matching = routes.filter((route) => modelIds.includes(route.modelId))
+        if (matching.some((route) => route.enabled)) {
+          const existing = await Promise.all(
+            matching.map(async (route) => ({
+              route,
+              key: await onRevealCredential?.(route).catch(() => undefined)
+            }))
+          )
+          const newIds = new Set(
+            modelIds.filter(
+              (id) => !existing.some(({ route, key }) => route.modelId === id && key === credential.value)
+            )
+          )
+          conflicts = matching.filter((route) => route.enabled && newIds.has(route.modelId))
+        }
+      }
+      if (conflicts.length) setConflictingModelIds([...new Set(conflicts.map((route) => route.modelId))])
+      else await submit()
+    } finally {
+      setChecking(false)
+    }
   }
 
   return (
     <>
       {contextHolder}
-      <StyledModal
+      <RouteFormModal
         open={open}
         width={560}
         centered
         title={t('agentRouter.addModelsToWorkBuddy')}
-        onCancel={close}
+        onCancel={() => {
+          if (!saving && !checking) close()
+        }}
         destroyOnHidden
         footer={[
-          <Button key="cancel" onClick={close}>
+          <Button key="cancel" onClick={close} disabled={saving || checking}>
             {t('common.cancel')}
           </Button>,
           <Button
             key="submit"
             type="primary"
-            loading={saving}
-            disabled={path === 'global' && selectedIds.length === 0}
-            onClick={() => void (path === 'create' ? submitCreate() : submitGlobal())}>
+            loading={saving || checking}
+            disabled={
+              path === 'global' ? selectedIds.length === 0 : !credential || !selectedModels.length || modelsLoading
+            }
+            onClick={() => void requestSubmit()}>
             {path === 'create'
               ? t('agentRouter.createRoute')
               : t('agentRouter.addSelectedModels', { count: selectedIds.length })}
@@ -117,7 +162,9 @@ export const AddRouteModal = ({
         ]}>
         <Tabs
           activeKey={path}
-          onChange={(key) => setPath(key as 'create' | 'global')}
+          onChange={(key) => {
+            if (!saving && !checking) setPath(key as 'create' | 'global')
+          }}
           items={[
             { key: 'create', label: t('agentRouter.createRoute') },
             { key: 'global', label: t('agentRouter.useGlobalConfiguration') }
@@ -126,18 +173,16 @@ export const AddRouteModal = ({
         {path === 'create' ? (
           <Form
             form={form}
+            disabled={saving || checking}
             labelCol={{ flex: '86px' }}
             labelAlign="left"
             colon={false}
-            style={{ marginTop: 15 }}
+            wrapperCol={{ flex: 1 }}
             initialValues={{ accessMode: 'api' }}>
-            <Form.Item name="displayName" label={t('agentRouter.displayName')}>
-              <Input placeholder={t('agentRouter.displayNameModelFallback')} />
-            </Form.Item>
             <Form.Item name="accessMode" label={t('agentRouter.accessMode')}>
               <Select
                 onChange={() => {
-                  form.setFieldsValue({ credentialId: undefined, modelId: undefined } as Partial<FormValues>)
+                  form.setFieldsValue({ credentialId: undefined, modelIds: [] } as Partial<FormValues>)
                   setShowKey(false)
                 }}
                 options={[
@@ -146,9 +191,9 @@ export const AddRouteModal = ({
                 ]}
               />
             </Form.Item>
-            <Form.Item name="credentialId" label={t('agentRouter.apiKey')} rules={[{ required: true }]}>
+            <Form.Item name="credentialId" label={t('agentRouter.apiKey')}>
               <Select
-                onChange={() => form.setFieldValue('modelId', undefined)}
+                onChange={() => form.setFieldValue('modelIds', [])}
                 optionLabelProp="selectedLabel"
                 options={credentials.map((item) => ({
                   value: item.id,
@@ -172,18 +217,13 @@ export const AddRouteModal = ({
                 }
               />
             </Form.Item>
-            <Form.Item name="modelId" label={t('agentRouter.modelId')} rules={[{ required: true }]}>
-              <Select
+            <Form.Item name="modelIds" label={t('agentRouter.modelId')}>
+              <ModelIdSelect
+                models={models}
                 loading={modelsLoading}
-                disabled={!credential || modelsLoading}
-                options={models.map((model) => ({ value: model.id, label: model.id }))}
+                disabled={!credential || modelsLoading || saving || checking}
               />
             </Form.Item>
-            {selectedModel ? (
-              <ModelTypeSection>
-                <RouteModelTypes modelTypes={selectedModel.modelTypes} />
-              </ModelTypeSection>
-            ) : null}
           </Form>
         ) : (
           <>
@@ -210,14 +250,12 @@ export const AddRouteModal = ({
                         <Identity>
                           <strong>{template.modelId}</strong>
                           <span>
-                            {template.accessMode === 'api' ? 'API' : 'TokenPlan'} · {template.maskedKey}
+                            {template.accessMode === 'api' ? 'API' : 'TokenPlan'} · {template.credentialName} ·{' '}
+                            {template.maskedKey}
                           </span>
                         </Identity>
                       </Checkbox>
-                      <CardMeta>
-                        <RouteModelTypes compact modelTypes={template.modelTypes} />
-                        {joined ? <Joined>{t('agentRouter.alreadyAdded')}</Joined> : null}
-                      </CardMeta>
+                      <CardMeta>{joined ? <Joined>{t('agentRouter.alreadyAdded')}</Joined> : null}</CardMeta>
                     </Card>
                   )
                 })
@@ -225,26 +263,24 @@ export const AddRouteModal = ({
             </List>
           </>
         )}
-      </StyledModal>
+      </RouteFormModal>
+      <Modal
+        open={confirming}
+        centered
+        width={400}
+        title={t('agentRouter.confirmCloseSameModel', { modelIds: conflictingModelIds.join('、') })}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        onCancel={() => setConflictingModelIds([])}
+        onOk={() => {
+          setConflictingModelIds([])
+          void submit()
+        }}
+      />
     </>
   )
 }
 
-const StyledModal = styled(Modal)`
-  .ant-modal-content { padding: 22px 18px 14px; border-radius: 12px; }
-  .ant-modal-header { margin: 0 0 20px; }
-  .ant-modal-title { font-size: 16px; font-weight: 700; }
-  .ant-modal-footer { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-border); }
-  .ant-form-item { margin-bottom: 16px; }
-  .ant-form-item-label > label { font-weight: 650; }
-  .ant-input { height: 36px; border-radius: 9px; background: var(--color-background-soft); }
-  .ant-select-single { height: 36px; }
-  .ant-select-selector { height: 36px !important; min-height: 36px !important; border-radius: 9px !important; background: var(--color-background-soft) !important; }
-  .ant-select-selection-wrap { height: 34px; align-self: stretch; align-items: center; }
-  .ant-select-selection-item, .ant-select-selection-placeholder { line-height: 34px !important; }
-  .ant-select-arrow { inset-block-start: 50%; margin-top: 0; display: flex; align-items: center; transform: translateY(-50%); }
-`
-const ModelTypeSection = styled.div`grid-column:1/-1;margin-top:4px;padding:16px 0 2px;border-top:1px solid var(--color-border);`
 const SuffixControls = styled.span`height:100%;display:inline-flex;align-items:center;gap:8px;`
 const KeyVisibility = styled.button`padding:0;display:inline-flex;align-items:center;border:0;background:transparent;color:var(--color-text-3);cursor:pointer;`
 const Hint = styled.p`margin:0 0 10px;color:var(--color-text-3);font-size:11px;`

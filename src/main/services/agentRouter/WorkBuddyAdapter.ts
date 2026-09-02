@@ -146,7 +146,11 @@ export class WorkBuddyAdapter {
     }
   }
 
-  merge(current: WorkBuddyEntry[], generated: WorkBuddyEntry[]): WorkBuddyEntry[] {
+  merge(
+    current: WorkBuddyEntry[],
+    generated: WorkBuddyEntry[],
+    managedIds = new Set(current.filter((entry) => this.isAionlyEntry(entry)).map((entry) => entry.id))
+  ): WorkBuddyEntry[] {
     const generatedIds = new Set(generated.map((entry) => entry.id))
 
     for (const entry of current) {
@@ -158,7 +162,7 @@ export class WorkBuddyAdapter {
       }
     }
 
-    const preserved = current.filter((entry) => !this.isAionlyEntry(entry))
+    const preserved = current.filter((entry) => !managedIds.has(entry.id) && !generatedIds.has(entry.id))
     return [...preserved, ...generated]
   }
 

@@ -33,12 +33,13 @@ export class GlobalRouteTemplateStore {
     const templates = await this.list(accountId)
     for (const item of templates) {
       if (item.modelId === request.modelId && (await this.resolveKey(accountId, item.templateId)) === request.apiKey) {
-        throw new Error(`Duplicate global route template: ${request.modelId}`)
+        return item
       }
     }
     const template: AgentRouteTemplate = {
       templateId: randomUUID(),
       modelId: request.modelId,
+      credentialName: request.credentialName,
       accessMode: request.accessMode,
       tokenPlanId: request.tokenPlanId,
       modelTypes: request.modelTypes,

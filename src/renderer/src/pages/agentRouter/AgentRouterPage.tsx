@@ -136,11 +136,13 @@ const AgentRouterPage = () => {
       <AddRouteModal
         open={adding}
         templates={router.globalTemplates}
+        routes={router.routes}
+        onRevealCredential={router.revealAgentRouteCredential}
         apiCredentials={router.apiCredentials}
         tokenPlanCredentials={router.tokenPlanCredentials}
         apiModels={router.apiModels}
         onCancel={() => setAdding(false)}
-        onAdd={(templateIds) => void router.copyTemplatesToAgent(templateIds)}
+        onAdd={router.copyTemplatesToAgent}
         onCreate={router.createAgentRoute}
       />
       <CreateGlobalTemplateModal
@@ -153,10 +155,7 @@ const AgentRouterPage = () => {
           try {
             await router.createGlobalTemplate(request)
           } catch (error) {
-            const duplicate = error instanceof Error && error.message.includes('Duplicate global route template')
-            messageApi.warning(
-              duplicate ? t('agentRouter.globalTemplateAlreadyCreated') : t('agentRouter.createFailed')
-            )
+            messageApi.error(t('agentRouter.createFailed'))
             throw error
           }
         }}

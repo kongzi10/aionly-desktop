@@ -80,6 +80,12 @@ describe('AgentRouterService WorkBuddy routes', () => {
       supportsReasoning: false,
       useCustomProtocol: false
     }
+    await service.createAgentRoute('account-a', 'workbuddy', {
+      modelId: 'old',
+      accessMode: 'api',
+      apiKey: 'old-secret',
+      modelTypes: []
+    })
     await writeFile(configPath, `${JSON.stringify([external, managed], null, 2)}\n`, 'utf8')
     await service.saveRouteModels('account-a', 'workbuddy', [{ ...model, enabled: false }])
     const snapshot = await service.inspectTarget('workbuddy', configPath)
@@ -97,6 +103,51 @@ describe('AgentRouterService WorkBuddy routes', () => {
       expectedRevision: preview.expectedRevision
     })
     expect(JSON.parse(await readFile(configPath, 'utf8'))).toEqual([external])
+  })
+
+  it('preserves unregistered AiOnly entries when applying managed routes', async () => {
+    const external = {
+      id: 'manual-aionly',
+      name: 'Manual',
+      vendor: 'Custom',
+      url: 'https://api.aionly.com/v1',
+      apiKey: 'sk-manual',
+      supportsToolCall: false,
+      supportsImages: false,
+      supportsReasoning: false,
+      useCustomProtocol: false
+    }
+    await writeFile(configPath, JSON.stringify([external]))
+    const snapshot = await service.inspectTarget('workbuddy', configPath, 'account-a')
+    const preview = await service.previewWorkBuddyRoutes(configPath, {
+      accountId: 'account-a',
+      expectedRevision: snapshot.revision!,
+      apiUrl: 'https://api.aionly.com/v1',
+      enabledRoutes: [],
+      resolvedCredentials: []
+    })
+    expect(preview.counts.removed).toBe(0)
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+    expect(JSON.parse(await readFile(configPath, 'utf8'))).toEqual([external])
+  })
+
+  it('resolves names of legacy credential snapshots by exact key', async () => {
+    await service.createAgentRoute('account-a', 'workbuddy', {
+      modelId: 'gpt-5',
+      accessMode: 'api',
+      apiKey: 'sk-legacy',
+      modelTypes: []
+    })
+    expect(
+      await service.listAgentCredentialSummaries('account-a', 'workbuddy', [
+        { value: 'sk-unrelated', label: 'Other' },
+        { value: 'sk-legacy', label: 'Legacy key name' }
+      ])
+    ).toEqual([expect.objectContaining({ label: 'Legacy key name', maskedValue: 'sk-l••••gacy' })])
   })
 
   it('rejects a non-Aionly duplicate model id', async () => {
@@ -165,6 +216,69 @@ describe('AgentRouterService WorkBuddy routes', () => {
     expect(preview.counts.added).toBe(0)
   })
 
+  it('skips an exact duplicate and fixes direct and copied names to AiOnly', async () => {
+    const request = {
+      modelId: 'gpt-5',
+      displayName: 'Custom',
+      accessMode: 'api' as const,
+      apiKey: 'sk-direct',
+      credentialName: 'Production',
+      modelTypes: ['reasoning'] as const
+    }
+    const created = await service.createAgentRoute('account-a', 'workbuddy', request)
+    const duplicate = await service.createAgentRoute('account-a', 'workbuddy', request)
+    expect(duplicate.credentialId).toBe(created.credentialId)
+    expect(created).toMatchObject({ displayName: 'AiOnly', enabled: true })
+    expect((await service.getRouteConfig('account-a', 'workbuddy')).models).toHaveLength(1)
+    expect(await service.listAgentCredentialSummaries('account-a', 'workbuddy')).toEqual([
+      expect.objectContaining({ label: 'Production' })
+    ])
+    const template = await service.createGlobalTemplate('account-a', { ...request, modelId: 'claude-sonnet' })
+    await service.copyTemplatesToAgent('account-a', 'workbuddy', [template.templateId, template.templateId])
+    await service.deleteGlobalTemplate('account-a', template.templateId)
+    const routes = (await service.getRouteConfig('account-a', 'workbuddy')).models
+    expect(routes).toHaveLength(2)
+    expect(routes.every((route) => route.displayName === 'AiOnly')).toBe(true)
+    expect(await service.listAgentCredentialSummaries('account-a', 'workbuddy')).toEqual([
+      expect.objectContaining({ label: 'Production' }),
+      expect.objectContaining({ label: 'Production' })
+    ])
+  })
+
+  it('counts only exact registered model and key matches as managed', async () => {
+    await service.createAgentRoute('account-a', 'workbuddy', {
+      modelId: 'gpt-5',
+      accessMode: 'api',
+      apiKey: 'sk-owned',
+      modelTypes: []
+    })
+    const entry = {
+      id: 'gpt-5',
+      name: 'AiOnly',
+      vendor: 'Custom',
+      url: 'https://api.aionly.com/v1',
+      apiKey: 'sk-owned',
+      supportsToolCall: false,
+      supportsImages: false,
+      supportsReasoning: false,
+      useCustomProtocol: false
+    }
+    await writeFile(configPath, JSON.stringify([entry, { ...entry, id: 'unregistered' }]))
+    expect(await service.inspectTarget('workbuddy', configPath, 'account-a')).toMatchObject({
+      managedEntryCount: 1,
+      externalEntryCount: 1
+    })
+    expect(await service.inspectTarget('workbuddy', configPath, 'account-b')).toMatchObject({
+      managedEntryCount: 0,
+      externalEntryCount: 2
+    })
+    await writeFile(configPath, JSON.stringify([{ ...entry, apiKey: 'sk-other' }]))
+    expect(await service.inspectTarget('workbuddy', configPath, 'account-a')).toMatchObject({
+      managedEntryCount: 0,
+      externalEntryCount: 1
+    })
+  })
+
   it('reveals the plaintext credential only for an existing Agent route', async () => {
     const route = await service.createAgentRoute('account-a', 'workbuddy', {
       modelId: 'gpt-5',
@@ -188,7 +302,7 @@ describe('AgentRouterService WorkBuddy routes', () => {
     ).rejects.toMatchObject({ code: 'INVALID_REQUEST' })
   })
 
-  it('creates direct and global-copy routes disabled and only marks an exact model-and-key match as joined', async () => {
+  it('derives state from WorkBuddy and only marks an exact model-and-key match as joined', async () => {
     const first = await service.createGlobalTemplate('account-a', {
       modelId: 'gpt-5',
       accessMode: 'api',
@@ -218,6 +332,38 @@ describe('AgentRouterService WorkBuddy routes', () => {
     expect(await service.listGlobalTemplates('account-a', 'workbuddy')).toEqual([
       expect.objectContaining({ templateId: first.templateId, joined: true }),
       expect.objectContaining({ templateId: second.templateId, joined: true })
+    ])
+  })
+
+  it('retains both same-model routes when applying a different key', async () => {
+    const first = await service.createAgentRoute('account-a', 'workbuddy', {
+      modelId: 'gpt-5',
+      accessMode: 'api',
+      apiKey: 'sk-first',
+      modelTypes: []
+    })
+    const second = await service.createAgentRoute('account-a', 'workbuddy', {
+      modelId: 'gpt-5',
+      accessMode: 'api',
+      apiKey: 'sk-second',
+      modelTypes: []
+    })
+    const snapshot = await service.inspectTarget('workbuddy', configPath, 'account-a')
+    const preview = await service.previewWorkBuddyRoutes(configPath, {
+      accountId: 'account-a',
+      expectedRevision: snapshot.revision!,
+      enabledRoutes: [second],
+      resolvedCredentials: [],
+      apiUrl: 'https://api.aionly.com/v1'
+    })
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+    expect((await service.getRouteConfig('account-a', 'workbuddy', configPath)).models).toEqual([
+      expect.objectContaining({ credentialId: first.credentialId, enabled: false }),
+      expect.objectContaining({ credentialId: second.credentialId, enabled: true })
     ])
   })
 
@@ -275,7 +421,7 @@ describe('AgentRouterService WorkBuddy routes', () => {
 
     expect(updated).toMatchObject({
       modelId: 'gpt-5',
-      displayName: 'gpt-5',
+      displayName: 'AiOnly',
       accessMode: 'tokenPlan',
       tokenPlanId: 'plan-pro',
       modelTypes: ['vision', 'reasoning', 'function_calling']

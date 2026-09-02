@@ -55,6 +55,7 @@ export const AGENT_ROUTE_MODEL_TYPES = [
 export type AgentRouteModelType = (typeof AGENT_ROUTE_MODEL_TYPES)[number]
 
 export interface AgentRouteModel {
+  credentialName?: string
   modelId: string
   displayName: string
   accessMode: AgentRouteAccessMode
@@ -71,6 +72,7 @@ export interface AgentRouteConfig {
 }
 
 export interface AgentRouteTemplate {
+  credentialName?: string
   templateId: string
   modelId: string
   accessMode: AgentRouteAccessMode
@@ -82,6 +84,7 @@ export interface AgentRouteTemplate {
 }
 
 export interface CreateAgentRouteRequest {
+  credentialName?: string
   modelId: string
   displayName?: string
   accessMode: AgentRouteAccessMode
@@ -91,6 +94,7 @@ export interface CreateAgentRouteRequest {
 }
 
 export interface UpdateAgentRouteRequest {
+  credentialName?: string
   displayName?: string
   accessMode: AgentRouteAccessMode
   tokenPlanId?: string
@@ -104,6 +108,7 @@ export interface AgentRouteRef {
 }
 
 export interface CreateAgentRouteTemplateRequest {
+  credentialName?: string
   modelId: string
   accessMode: AgentRouteAccessMode
   tokenPlanId?: string
@@ -203,3 +208,8 @@ export interface AgentRouterSuccess<T> {
 }
 
 export type AgentRouterResult<T> = AgentRouterSuccess<T> | AgentRouterFailure
+
+export interface NamedAgentRouterCredential {
+  value: string
+  label: string
+}

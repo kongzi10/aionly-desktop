@@ -42,17 +42,18 @@ describe('CreateGlobalTemplateModal', () => {
       expect(selectTokenPlanHourlyDayUsageApi).toHaveBeenCalledWith({ subscribeId: 'sub', planId: 'plan' })
     )
     await waitFor(() => expect(screen.getByLabelText('agentRouter.modelId')).not.toBeDisabled())
-    fireEvent.mouseDown(screen.getByLabelText('agentRouter.modelId'))
+    fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
     fireEvent.click((await screen.findAllByText('plan-model')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
     fireEvent.click(screen.getByRole('button', { name: 'OK' }))
     await waitFor(() =>
-      expect(onCreate).toHaveBeenCalledWith(
+      expect(onCreate).toHaveBeenCalledWith([
         expect.objectContaining({
           modelId: 'plan-model',
           tokenPlanId: 'plan',
           apiKey: 'tk-secret'
         })
-      )
+      ])
     )
   })
 
@@ -74,17 +75,18 @@ describe('CreateGlobalTemplateModal', () => {
     fireEvent.click(await screen.findByText('生图'))
     expect(screen.getByText('••••••••••••••••••••••••')).toBeInTheDocument()
     expect(screen.queryByText('agentRouter.apiKeyStoredLocally')).not.toBeInTheDocument()
-    fireEvent.mouseDown(screen.getAllByRole('combobox')[2])
+    fireEvent.click(screen.getByLabelText('agentRouter.modelId'))
     fireEvent.click((await screen.findAllByText('gpt-5')).at(-1)!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
     fireEvent.click(screen.getByRole('button', { name: 'OK' }))
     await waitFor(() =>
-      expect(onCreate).toHaveBeenCalledWith(
+      expect(onCreate).toHaveBeenCalledWith([
         expect.objectContaining({
           modelId: 'gpt-5',
           apiKey: 'sk-secret-1234',
           modelTypes: ['function_calling', 'reasoning']
         })
-      )
+      ])
     )
   })
 })
