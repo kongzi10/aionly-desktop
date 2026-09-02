@@ -24,6 +24,7 @@ import type {
   AgentRouteModel,
   AgentRouteRef,
   AgentRouterTargetId,
+  CreateAgentRouteRequest,
   CreateAgentRouteTemplateRequest,
   UpdateAgentRouteRequest
 } from '@shared/agentRouter'
@@ -174,10 +175,8 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.AgentRouter_SaveRouteModels, (_, accountId: string, models: AgentRouteModel[]) =>
     agentRouter.saveRouteModels(accountId, 'workbuddy', models)
   )
-  ipcMain.handle(
-    IpcChannel.AgentRouter_CreateAgentRoute,
-    (_, accountId: string, request: CreateAgentRouteTemplateRequest) =>
-      agentRouter.createAgentRoute(accountId, 'workbuddy', request)
+  ipcMain.handle(IpcChannel.AgentRouter_CreateAgentRoute, (_, accountId: string, request: CreateAgentRouteRequest) =>
+    agentRouter.createAgentRoute(accountId, 'workbuddy', request)
   )
   ipcMain.handle(
     IpcChannel.AgentRouter_UpdateAgentRoute,

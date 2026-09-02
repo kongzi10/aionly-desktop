@@ -14,7 +14,6 @@ describe('GlobalTemplateList', () => {
           {
             templateId: 'one',
             modelId: 'gpt-5',
-            displayName: 'Custom display name',
             accessMode: 'api',
             modelTypes: ['function_calling'],
             createdAt: 'now',
@@ -26,7 +25,6 @@ describe('GlobalTemplateList', () => {
     )
     expect(screen.getByText('••••1234')).toBeInTheDocument()
     expect(screen.getByText('gpt-5')).toBeInTheDocument()
-    expect(screen.queryByText('Custom display name')).not.toBeInTheDocument()
     expect(screen.getByText('models.type.function_calling')).toBeInTheDocument()
     expect(screen.queryByText('agentRouter.modelTypes')).not.toBeInTheDocument()
     expect(screen.queryByText('agentRouter.edit')).not.toBeInTheDocument()

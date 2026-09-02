@@ -41,7 +41,6 @@ describe('CreateGlobalTemplateModal', () => {
       expect(onCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           modelId: 'gpt-5',
-          displayName: 'GPT-5',
           apiKey: 'sk-secret-1234',
           modelTypes: ['function_calling', 'reasoning']
         })

@@ -140,7 +140,6 @@ describe('AgentRouterService WorkBuddy routes', () => {
   it('copies a global template into an independent Agent route credential', async () => {
     const template = await service.createGlobalTemplate('account-a', {
       modelId: 'claude-sonnet',
-      displayName: 'Claude Sonnet',
       accessMode: 'api',
       apiKey: 'sk-copied-secret',
       modelTypes: ['function_calling']
@@ -192,14 +191,12 @@ describe('AgentRouterService WorkBuddy routes', () => {
   it('creates direct and global-copy routes disabled and only marks an exact model-and-key match as joined', async () => {
     const first = await service.createGlobalTemplate('account-a', {
       modelId: 'gpt-5',
-      displayName: 'GPT-5 A',
       accessMode: 'api',
       apiKey: 'sk-key-a',
       modelTypes: ['function_calling']
     })
     const second = await service.createGlobalTemplate('account-a', {
       modelId: 'gpt-5',
-      displayName: 'GPT-5 B',
       accessMode: 'api',
       apiKey: 'sk-key-b',
       modelTypes: ['function_calling']

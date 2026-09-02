@@ -52,7 +52,6 @@ export const CreateGlobalTemplateModal = ({
     try {
       await onCreate({
         modelId: selectedModel.id,
-        displayName: selectedModel.name,
         accessMode,
         tokenPlanId: accessMode === 'tokenPlan' ? credential.planId : undefined,
         apiKey: credential.value,

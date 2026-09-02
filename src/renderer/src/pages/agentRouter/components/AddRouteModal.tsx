@@ -203,10 +203,9 @@ export const AddRouteModal = ({
                           )
                         }>
                         <Identity>
-                          <strong>{template.displayName}</strong>
+                          <strong>{template.modelId}</strong>
                           <span>
-                            {template.modelId} · {template.accessMode === 'api' ? 'API' : 'TokenPlan'} ·{' '}
-                            {template.maskedKey}
+                            {template.accessMode === 'api' ? 'API' : 'TokenPlan'} · {template.maskedKey}
                           </span>
                         </Identity>
                       </Checkbox>

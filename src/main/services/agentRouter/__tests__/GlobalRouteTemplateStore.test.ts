@@ -13,7 +13,6 @@ describe('global route template persistence', () => {
 
     const created = await store.create('account-1', {
       modelId: 'gpt-5',
-      displayName: 'GPT-5',
       accessMode: 'api',
       apiKey: 'sk-plaintext-sentinel',
       modelTypes: ['function_calling', 'reasoning'] as const
@@ -33,7 +32,6 @@ describe('global route template persistence', () => {
     const snapshots = new AgentCredentialSnapshotStore(root)
     const template = await templates.create('account-1', {
       modelId: 'claude-sonnet',
-      displayName: 'Claude Sonnet',
       accessMode: 'tokenPlan',
       tokenPlanId: 'plan-pro',
       apiKey: 'tp-independent-secret',
@@ -52,7 +50,6 @@ describe('global route template persistence', () => {
     const store = new GlobalRouteTemplateStore(root)
     const request = {
       modelId: 'gpt-5',
-      displayName: 'GPT-5',
       accessMode: 'api' as const,
       apiKey: 'sk-same-key',
       modelTypes: ['function_calling', 'reasoning'] as const

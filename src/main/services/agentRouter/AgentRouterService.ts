@@ -10,6 +10,7 @@ import type {
   ApplyCounts,
   ApplyPreview,
   ApplyResult,
+  CreateAgentRouteRequest,
   CreateAgentRouteTemplateRequest,
   PreviewWorkBuddyRoutesRequest,
   RedactedCredentialSummary,
@@ -146,7 +147,7 @@ export class AgentRouterService {
         createdCredentialIds.push(credentialId)
         copied.push({
           modelId: template.modelId,
-          displayName: template.displayName,
+          displayName: template.modelId,
           accessMode: template.accessMode,
           credentialId,
           tokenPlanId: template.tokenPlanId,
@@ -166,7 +167,7 @@ export class AgentRouterService {
   async createAgentRoute(
     accountId: string,
     targetId: AgentRouterTargetId,
-    request: CreateAgentRouteTemplateRequest
+    request: CreateAgentRouteRequest
   ): Promise<AgentRouteModel> {
     if (targetId !== 'workbuddy') throw new AgentRouterError('TARGET_NOT_FOUND', 'Target is not available')
     if (!request.modelId || !request.apiKey || (request.accessMode === 'tokenPlan') !== Boolean(request.tokenPlanId)) {

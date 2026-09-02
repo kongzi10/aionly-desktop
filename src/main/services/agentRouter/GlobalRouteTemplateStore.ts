@@ -39,7 +39,6 @@ export class GlobalRouteTemplateStore {
     const template: AgentRouteTemplate = {
       templateId: randomUUID(),
       modelId: request.modelId,
-      displayName: request.displayName || request.modelId,
       accessMode: request.accessMode,
       tokenPlanId: request.tokenPlanId,
       modelTypes: request.modelTypes,

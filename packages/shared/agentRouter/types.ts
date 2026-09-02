@@ -73,7 +73,6 @@ export interface AgentRouteConfig {
 export interface AgentRouteTemplate {
   templateId: string
   modelId: string
-  displayName: string
   accessMode: AgentRouteAccessMode
   tokenPlanId?: string
   modelTypes: readonly AgentRouteModelType[]
@@ -82,7 +81,14 @@ export interface AgentRouteTemplate {
   joined?: boolean
 }
 
-export type CreateAgentRouteRequest = CreateAgentRouteTemplateRequest
+export interface CreateAgentRouteRequest {
+  modelId: string
+  displayName?: string
+  accessMode: AgentRouteAccessMode
+  tokenPlanId?: string
+  apiKey: string
+  modelTypes: readonly AgentRouteModelType[]
+}
 
 export interface UpdateAgentRouteRequest {
   displayName?: string
@@ -99,7 +105,6 @@ export interface AgentRouteRef {
 
 export interface CreateAgentRouteTemplateRequest {
   modelId: string
-  displayName: string
   accessMode: AgentRouteAccessMode
   tokenPlanId?: string
   apiKey: string

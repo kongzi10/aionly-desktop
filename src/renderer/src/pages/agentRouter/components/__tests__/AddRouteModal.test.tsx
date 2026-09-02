@@ -14,7 +14,6 @@ const templates = [
   {
     templateId: 'template-1',
     modelId: 'gpt-5',
-    displayName: 'GPT-5',
     accessMode: 'api' as const,
     modelTypes: ['function_calling', 'reasoning'] as const,
     createdAt: '2026-08-31T00:00:00.000Z',
@@ -23,7 +22,6 @@ const templates = [
   {
     templateId: 'template-2',
     modelId: 'joined-model',
-    displayName: 'Joined Model',
     accessMode: 'tokenPlan' as const,
     tokenPlanId: 'plan-pro',
     modelTypes: ['function_calling'] as const,
@@ -34,7 +32,6 @@ const templates = [
   {
     templateId: 'template-3',
     modelId: 'unknown-capabilities',
-    displayName: 'Unknown capabilities',
     accessMode: 'api' as const,
     modelTypes: [] as const,
     createdAt: '2026-08-31T00:00:00.000Z',
@@ -79,8 +76,8 @@ describe('AddRouteModal', () => {
     expect(screen.getByText('models.type.reasoning')).toBeInTheDocument()
     expect(screen.queryByText('models.type.vision')).not.toBeInTheDocument()
     expect(screen.queryByText('agentRouter.modelTypesUnavailable')).not.toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: /Joined Model/ })).toBeDisabled()
-    fireEvent.click(screen.getByRole('checkbox', { name: /GPT-5/ }))
+    expect(screen.getByRole('checkbox', { name: /joined-model/ })).toBeDisabled()
+    fireEvent.click(screen.getByRole('checkbox', { name: /gpt-5/ }))
     fireEvent.click(screen.getByRole('button', { name: 'agentRouter.addSelectedModels:1' }))
     expect(onAdd).toHaveBeenCalledWith(['template-1'])
   })

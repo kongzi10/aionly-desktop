@@ -8,6 +8,7 @@ import type {
   AgentRouterApplyRequest,
   AgentRouteRef,
   AgentRouterTargetId,
+  CreateAgentRouteRequest,
   CreateAgentRouteTemplateRequest,
   PreviewWorkBuddyRoutesRequest,
   UpdateAgentRouteRequest
@@ -124,7 +125,7 @@ const api = {
       ipcRenderer.invoke(IpcChannel.AgentRouter_ResolveAgentRouteCredential, accountId, route),
     saveRouteModels: (accountId: string, models: AgentRouteModel[]) =>
       ipcRenderer.invoke(IpcChannel.AgentRouter_SaveRouteModels, accountId, models),
-    createAgentRoute: (accountId: string, request: CreateAgentRouteTemplateRequest) =>
+    createAgentRoute: (accountId: string, request: CreateAgentRouteRequest) =>
       ipcRenderer.invoke(IpcChannel.AgentRouter_CreateAgentRoute, accountId, request),
     updateAgentRoute: (accountId: string, route: AgentRouteRef, request: UpdateAgentRouteRequest) =>
       ipcRenderer.invoke(IpcChannel.AgentRouter_UpdateAgentRoute, accountId, route, request),
