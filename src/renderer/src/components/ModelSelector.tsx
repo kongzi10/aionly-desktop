@@ -3,6 +3,7 @@ import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 import {
   type AiOnlyModel,
   fetchAiOnlyModelsApi,
+  isModelPackageActive,
   ModelAttribute,
   transformToModel,
   useAiOnlyModels
@@ -251,9 +252,9 @@ const ModelSelector = ({
         setRemoteSearching(true)
         try {
           const { models } = await fetchAiOnlyModelsApi({ modelName: text, pageSize: SEARCH_PAGE_SIZE })
-          // 丢弃过期请求的结果
+          // 丢弃过期请求的结果；停用的量包模型（status='1'）不展示
           if (requestId === searchRequestIdRef.current) {
-            setRemoteModels(models)
+            setRemoteModels(models.filter(isModelPackageActive))
             setRemoteKeyword(text)
           }
         } finally {

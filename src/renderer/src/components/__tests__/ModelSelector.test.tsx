@@ -50,6 +50,7 @@ const { cannedModels, remoteModel, getUserEnabledPlanMock } = vi.hoisted(() => {
 vi.mock('@renderer/hooks/useAiOnlyModels', () => ({
   ModelAttribute: { TextModel: 'text_model', ImageModel: 'image_generation' },
   transformToModel: (item: any) => ({ ...item, id: item.baseId || item.model, name: item.modelName }),
+  isModelPackageActive: (model: any) => model?.status !== '1',
   fetchAiOnlyModelsApi: vi.fn().mockResolvedValue({ models: [], total: 0 }),
   useAiOnlyModels: vi.fn(() => ({
     models: [],
@@ -296,6 +297,19 @@ describe('ModelSelector', () => {
       // 等过防抖窗口（300ms），确认没有发起远程搜索
       await new Promise((resolve) => setTimeout(resolve, SEARCH_DEBOUNCE_MS + 100))
       expect(fetchAiOnlyModelsApi).not.toHaveBeenCalled()
+    })
+
+    it('should exclude deactivated models from remote search results', async () => {
+      const deactivatedModel = { ...remoteModel, baseId: 'stopped-model', modelName: 'Stopped Model', status: '1' }
+      vi.mocked(fetchAiOnlyModelsApi).mockResolvedValue({ models: [remoteModel, deactivatedModel], total: 2 })
+      const user = userEvent.setup()
+      render(<ModelSelector apiModels={[]} autoFetch={false} open />)
+
+      await user.type(screen.getByRole('combobox'), 'deep')
+
+      // 远程结果里 status='1' 的停用模型不展示
+      expect(await screen.findByText('deepseek-v3.1')).toBeInTheDocument()
+      expect(screen.queryByText('Stopped Model')).not.toBeInTheDocument()
     })
 
     afterEach(() => {

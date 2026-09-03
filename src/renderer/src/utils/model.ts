@@ -78,6 +78,12 @@ export function isFreeModel(model: Model) {
   return (model.id + model.name).toLocaleLowerCase().includes('free')
 }
 
+/**
+ * 判断量包模型是否有效：status='1' 表示用户已停用该量包模型，需要过滤
+ * 注意：tokenPlan 套餐明细接口返回的行没有 status 字段，不能按 status==='0' 正向判断
+ */
+export const isModelPackageActive = (model?: { status?: unknown } & Record<string, unknown>) => model?.status !== '1'
+
 export const getDuplicateModelNames = <T extends Pick<Model, 'name'>>(models: T[]): Set<string> => {
   const nameCounts = new Map<string, number>()
 

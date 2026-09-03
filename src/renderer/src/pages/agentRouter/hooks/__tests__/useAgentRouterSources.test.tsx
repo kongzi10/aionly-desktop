@@ -151,4 +151,18 @@ describe('useAgentRouterSources', () => {
     expect(result.current.apiModels[0].name).toBe('Claude Haiku')
     expect(result.current.apiModels.some((model) => model.id === 'plan-model')).toBe(false)
   })
+
+  it('filters out deactivated model packages', async () => {
+    apiModelResponse.rows = [
+      { baseId: 'gpt-5.2', modelName: 'GPT 5.2', packageNum: '先用后付', capabilities: [] },
+      { baseId: 'doubao-seed', modelName: 'Doubao Seed', packageNum: '先用后付', status: '1', capabilities: [] },
+      { baseId: 'glm-5.3', modelName: 'GLM 5.3', packageNum: '先用后付', status: '0', capabilities: [] }
+    ]
+    apiModelResponse.total = 3
+
+    const { result } = renderHook(() => useAgentRouterSources())
+
+    await waitFor(() => expect(result.current.apiModels).toHaveLength(2))
+    expect(result.current.apiModels.map((model) => model.id)).toEqual(['gpt-5.2', 'glm-5.3'])
+  })
 })

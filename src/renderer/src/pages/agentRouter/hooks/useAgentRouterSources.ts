@@ -5,6 +5,7 @@ import { useAppSelector } from '@renderer/store'
 import { selectApiKey, selectUserInfo } from '@renderer/store/user'
 import type { Model } from '@renderer/types'
 import { maskApiKey } from '@renderer/utils/api'
+import { isModelPackageActive } from '@renderer/utils/model'
 import type { AgentRouteModelType } from '@shared/agentRouter'
 import { APP_API_HOST } from '@shared/config/constant'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -71,7 +72,7 @@ export const useAgentRouterSources = () => {
         setApiModels(
           uniqueRouteModels(
             (response.rows ?? [])
-              .filter((item) => item.packageNum === '先用后付')
+              .filter((item) => item.packageNum === '先用后付' && isModelPackageActive(item))
               .map((item) => {
                 const model = {
                   ...item,

@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { selectUserInfo, setAiOnlyModels } from '@renderer/store/user'
 import { getDefaultEndpointTypeById } from '@renderer/tools'
 import type { ApiModel, Model, Provider } from '@renderer/types'
+import { isModelPackageActive } from '@renderer/utils/model'
 import { isNewApiProvider } from '@renderer/utils/provider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -14,8 +15,11 @@ import { useDefaultModel } from './useAssistant'
 
 const logger = loggerService.withContext('useAiOnlyModels')
 
-// 默认模型过滤器：只保留"先用后付"套餐的模型
-const DEFAULT_MODEL_FILTER = (model: AiOnlyModel) => model.packageNum === '先用后付'
+// re-export 供 ModelSelector 等组件复用（其测试 mock 了本模块，需从本模块导入）
+export { isModelPackageActive }
+
+// 默认模型过滤器：只保留"先用后付"套餐的有效模型（过滤掉用户已停用的）
+const DEFAULT_MODEL_FILTER = (model: AiOnlyModel) => model.packageNum === '先用后付' && isModelPackageActive(model)
 
 export const filterModels = (models: AiOnlyModel[], filter: (model: AiOnlyModel) => boolean = DEFAULT_MODEL_FILTER) => {
   if (models && Array.isArray(models)) {
