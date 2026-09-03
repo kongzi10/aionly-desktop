@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock the imported modules
 vi.mock('@renderer/components/Avatar/ModelAvatar', () => ({
@@ -181,6 +181,85 @@ describe('ModelSelector', () => {
     it('should fall back to hook models when apiModels is not provided', () => {
       render(<ModelSelector providers={[]} open />)
       expect(screen.getByText('text-embedding-ada-002')).toBeInTheDocument()
+    })
+  })
+
+  describe('fallback option for unloaded selected model', () => {
+    // 模拟"已保存但分页尚未加载到"的模型 value（与 getAiOnlyModelOption 生成的格式一致，group 为 serviceName）
+    const remoteValue = JSON.stringify({
+      id: 'deepseek-v3.1',
+      provider: 'aionly',
+      group: 'DeepSeek',
+      name: 'deepseek-v3.1'
+    })
+
+    beforeAll(() => {
+      // labelRender 兜底渲染的 antd Avatar 内部依赖 matchMedia，jsdom 未提供
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn()
+      }))
+    })
+
+    afterAll(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('should inject a fallback option when the selected model is not in loaded options', () => {
+      render(<ModelSelector apiModels={cannedModels} autoFetch={false} value={remoteValue} open />)
+
+      // 选中框 + 下拉兜底项各渲染一次模型名，而不是显示"未选择模型"
+      expect(screen.getAllByText('deepseek-v3.1')).toHaveLength(2)
+      // 兜底项带头像：框内 1 + 兜底 1 + 已加载 4
+      expect(screen.getAllByTestId('model-avatar')).toHaveLength(6)
+    })
+
+    it('should not inject a fallback option when the selected model exists in loaded options', () => {
+      const loadedValue = JSON.stringify({ id: 'gpt-4.1', provider: 'aionly', group: 'OpenAI', name: 'GPT-4.1' })
+      render(<ModelSelector apiModels={cannedModels} autoFetch={false} value={loadedValue} open />)
+
+      // 选中框 + 下拉真实选项，没有重复的兜底项
+      expect(screen.getAllByText('GPT-4.1')).toHaveLength(2)
+      // 框内 1 + 已加载 4，没有额外兜底
+      expect(screen.getAllByTestId('model-avatar')).toHaveLength(5)
+    })
+
+    it('should drop the fallback option once the real model is loaded', () => {
+      const { rerender } = render(<ModelSelector apiModels={cannedModels} autoFetch={false} value={remoteValue} open />)
+      // 选中框 + 下拉兜底项
+      expect(screen.getAllByText('deepseek-v3.1')).toHaveLength(2)
+
+      // 分页加载到该模型后，兜底项被真实选项替换
+      rerender(<ModelSelector apiModels={[...cannedModels, remoteModel]} autoFetch={false} value={remoteValue} open />)
+      expect(screen.getAllByText('deepseek-v3.1')).toHaveLength(2)
+      // 框内 1 + 已加载 4 + 真实选项 1
+      expect(screen.getAllByTestId('model-avatar')).toHaveLength(6)
+    })
+
+    it('should support legacy value with only modelName field', () => {
+      const legacyValue = JSON.stringify({
+        id: 'legacy-1',
+        provider: 'aionly',
+        group: 'chat',
+        modelName: 'Legacy Model'
+      })
+      render(<ModelSelector apiModels={cannedModels} autoFetch={false} value={legacyValue} open />)
+
+      expect(screen.getAllByText('Legacy Model')).toHaveLength(2)
+    })
+
+    it('should not inject anything when value is not valid JSON', () => {
+      render(<ModelSelector apiModels={cannedModels} autoFetch={false} value="not-a-json" open />)
+
+      // 无法反解出模型信息，不注入兜底，也不崩溃
+      expect(screen.queryByText('deepseek-v3.1')).not.toBeInTheDocument()
+      expect(screen.getAllByTestId('model-avatar')).toHaveLength(4)
     })
   })
 

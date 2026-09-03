@@ -326,6 +326,63 @@ const ModelSelector = ({
     remoteModels
   ])
 
+  /**
+   * 兜底选项：当前选中值不在已加载的选项中时（分页接口尚未加载到该模型），
+   * 用 value 中保存的模型信息生成一个临时选项，避免选中框显示"未选择模型"。
+   * 数据加载到真实选项后（value 相同）兜底自动消失。
+   */
+  const fallbackOption = useMemo((): ModelOption | null => {
+    const rawValue = props.value
+    if (typeof rawValue !== 'string' || !rawValue) {
+      return null
+    }
+
+    const exists = aionlyOptions.some((opt) =>
+      'options' in opt ? opt.options.some((o) => o.value === rawValue) : opt.value === rawValue
+    )
+    if (exists) {
+      return null
+    }
+
+    try {
+      const parsed = JSON.parse(rawValue) as {
+        id?: string
+        name?: string
+        modelName?: string
+        modelFileUrl?: string
+      }
+      const name = parsed?.name || parsed?.modelName
+      if (!name) {
+        return null
+      }
+      const fallbackModel = {
+        id: parsed.id,
+        name,
+        modelFileUrl: parsed.modelFileUrl,
+        provider: 'aionly'
+      }
+      return {
+        label: (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {showAvatar && <ModelAvatar model={fallbackModel} size={18} />}
+            <span>{name}</span>
+          </div>
+        ),
+        title: name,
+        value: rawValue
+      }
+    } catch {
+      // value 不是合法 JSON（如旧格式数据），无法反解出模型信息，保持原有展示
+      return null
+    }
+  }, [props.value, aionlyOptions, showAvatar])
+
+  // 兜底选项放在最前，保证下拉打开时能立即看到并选中当前已保存的模型
+  const mergedOptions = useMemo(
+    () => (fallbackOption ? [fallbackOption, ...aionlyOptions] : aionlyOptions),
+    [fallbackOption, aionlyOptions]
+  )
+
   // 远程搜索结果已由服务端按关键词过滤，本地不再过滤
   const handleFilterOption = useCallback(
     (input: string, option: any) => {
@@ -367,7 +424,7 @@ const ModelSelector = ({
   return (
     <Select
       ref={ref}
-      options={aionlyOptions}
+      options={mergedOptions}
       filterOption={handleFilterOption}
       labelRender={labelRender}
       showSearch
