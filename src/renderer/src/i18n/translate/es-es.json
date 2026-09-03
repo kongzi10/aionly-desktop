@@ -2397,9 +2397,9 @@
       "password_invalid": "Introduzca entre 6 y 20 caracteres: letras en inglés, números o símbolos (excepto espacio), y debe incluir al menos dos tipos entre letras, números y signos de puntuación.",
       "password_label": "Contraseña de subcuenta",
       "password_required": "Ingrese la contraseña de la subcuenta",
-      "phone_email_invalid": "Formato de número de teléfono o correo electrónico incorrecto",
-      "phone_email_label": "Número de teléfono móvil/correo electrónico de la cuenta principal",
-      "phone_email_required": "Introduce el número de teléfono móvil/correo electrónico de la cuenta principal",
+      "phone_email_invalid": "Formato de número de teléfono, correo electrónico o ID de cuenta incorrecto",
+      "phone_email_label": "Número de teléfono móvil/correo electrónico/ID de la cuenta principal",
+      "phone_email_required": "Introduce el número de teléfono móvil/correo electrónico/ID de la cuenta principal",
       "title": "Inicio de sesión de subcuenta",
       "username_label": "subcuenta",
       "username_required": "Introduzca la subcuenta"

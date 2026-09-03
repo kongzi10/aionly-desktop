@@ -2397,9 +2397,9 @@
       "password_invalid": "Vui lòng nhập 6-20 ký tự gồm chữ cái tiếng Anh, chữ số hoặc ký hiệu (ngoại trừ dấu cách), và phải chứa ít nhất hai loại trong số chữ cái, chữ số và dấu câu.",
       "password_label": "Mật khẩu tài khoản con",
       "password_required": "Vui lòng nhập mật khẩu tài khoản phụ",
-      "phone_email_invalid": "Số điện thoại hoặc email sai định dạng",
-      "phone_email_label": "Số điện thoại/email của tài khoản chính",
-      "phone_email_required": "Vui lòng nhập số điện thoại/email của tài khoản chính",
+      "phone_email_invalid": "Số điện thoại, email hoặc ID tài khoản sai định dạng",
+      "phone_email_label": "Số điện thoại/email/ID của tài khoản chính",
+      "phone_email_required": "Vui lòng nhập số điện thoại/email/ID của tài khoản chính",
       "title": "Đăng nhập tài khoản phụ",
       "username_label": "tài khoản phụ",
       "username_required": "Vui lòng nhập tài khoản phụ"

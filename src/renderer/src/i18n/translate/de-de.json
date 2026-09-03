@@ -2397,9 +2397,9 @@
       "password_invalid": "Bitte geben Sie 6–20 englische Buchstaben, Ziffern oder Sonderzeichen (außer Leerzeichen) ein, wobei Buchstaben, Ziffern und Satzzeichen mindestens zwei Arten enthalten müssen.",
       "password_label": "Unterkonto-Passwort",
       "password_required": "Bitte geben Sie das Passwort für das Unterkonto ein.",
-      "phone_email_invalid": "Ungültiges Format der Mobilnummer oder E-Mail-Adresse",
-      "phone_email_label": "Mobilfunknummer/E-Mail-Adresse des Hauptkontos",
-      "phone_email_required": "Bitte geben Sie die Mobiltelefonnummer/E-Mail-Adresse des Hauptkontos ein",
+      "phone_email_invalid": "Ungültiges Format der Mobilnummer, E-Mail-Adresse oder Konto-ID",
+      "phone_email_label": "Mobilfunknummer/E-Mail-Adresse/Konto-ID des Hauptkontos",
+      "phone_email_required": "Bitte geben Sie die Mobiltelefonnummer/E-Mail-Adresse/Konto-ID des Hauptkontos ein",
       "title": "Unterkonto-Anmeldung",
       "username_label": "Unterkonto",
       "username_required": "Bitte geben Sie das Unterkonto ein."

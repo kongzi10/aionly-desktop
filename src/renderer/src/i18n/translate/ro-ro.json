@@ -2397,9 +2397,9 @@
       "password_invalid": "Vă rugăm să introduceți 6-20 de litere, cifre sau simboluri (cu excepția spațiului) și să conțină cel puțin două dintre litere, cifre și semne de punctuație.",
       "password_label": "Parolă sub-cont",
       "password_required": "Introduceți parola subcontului",
-      "phone_email_invalid": "Formatul numărului de telefon sau al adresei de e-mail este incorect",
-      "phone_email_label": "Numărul de telefon mobil/e-mail al contului principal",
-      "phone_email_required": "Vă rugăm să introduceți numărul de telefon mobil/adresa de e-mail ale contului principal.",
+      "phone_email_invalid": "Formatul numărului de telefon, adresei de e-mail sau ID-ului contului este incorect",
+      "phone_email_label": "Numărul de telefon mobil/e-mail/ID-ul contului principal",
+      "phone_email_required": "Vă rugăm să introduceți numărul de telefon mobil/adresa de e-mail/ID-ul contului principal.",
       "title": "Autentificare subcont",
       "username_label": "subcont",
       "username_required": "Vă rugăm să introduceți subcontul."

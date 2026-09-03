@@ -2397,9 +2397,9 @@
       "password_invalid": "Por favor, insira de 6 a 20 letras, números ou símbolos (exceto espaços), contendo pelo menos dois tipos entre letras, números e sinais de pontuação.",
       "password_label": "Senha da subconta",
       "password_required": "Por favor, insira a senha da subconta",
-      "phone_email_invalid": "Formato inválido de número de celular ou e-mail",
-      "phone_email_label": "Número de celular/e-mail da conta principal",
-      "phone_email_required": "Insira o número de celular/e-mail da conta principal",
+      "phone_email_invalid": "Formato inválido de número de celular, e-mail ou ID da conta",
+      "phone_email_label": "Número de celular/e-mail/ID da conta principal",
+      "phone_email_required": "Insira o número de celular/e-mail/ID da conta principal",
       "title": "Login de subconta",
       "username_label": "Subconta",
       "username_required": "Insira a subconta"

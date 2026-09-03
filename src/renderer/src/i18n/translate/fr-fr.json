@@ -2397,9 +2397,9 @@
       "password_invalid": "Veuillez saisir de 6 à 20 caractères composés de lettres, de chiffres ou de symboles (à l’exclusion des espaces), et contenant au moins deux des éléments suivants : lettres, chiffres et signes de ponctuation.",
       "password_label": "Mot de passe du sous-compte",
       "password_required": "Veuillez saisir le mot de passe du sous-compte",
-      "phone_email_invalid": "Format du numéro de téléphone mobile ou de l'adresse e-mail incorrect",
-      "phone_email_label": "Numéro de téléphone mobile/e-mail du compte principal",
-      "phone_email_required": "Veuillez saisir le numéro de téléphone portable/l'adresse e-mail du compte principal",
+      "phone_email_invalid": "Format du numéro de téléphone mobile, de l'adresse e-mail ou de l'ID de compte incorrect",
+      "phone_email_label": "Numéro de téléphone mobile/e-mail/ID du compte principal",
+      "phone_email_required": "Veuillez saisir le numéro de téléphone portable/l'adresse e-mail/l'ID du compte principal",
       "title": "Connexion au sous-compte",
       "username_label": "Sous-compte",
       "username_required": "Veuillez saisir le sous-compte"

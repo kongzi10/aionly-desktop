@@ -91,8 +91,10 @@ export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
     /^(((13[0-9]{1})|(15[0-9]{1})|(16[0-9]{1})|(17[3-8]{1})|(18[0-9]{1})|(19[0-9]{1})|(14[5-7]{1}))+\d{8})$/
   // 邮箱正则
   const emailRegexp = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-  // 合并正则（手机号或邮箱）
-  const userNamePattern = new RegExp(`(${phoneRegexp.source})|(${emailRegexp.source})`)
+  // 账号ID正则（纯数字）
+  const accountIdRegexp = /^\d+$/
+  // 合并正则（手机号、邮箱或账号ID）
+  const userNamePattern = new RegExp(`(${phoneRegexp.source})|(${emailRegexp.source})|(${accountIdRegexp.source})`)
   // 密码正则
   // const passwordPattern = /^(?![\d]+$)(?![a-zA-Z]+$)(?![^\da-zA-Z]+$)([^\u4e00-\u9fa5\s]){6,20}$/
 
