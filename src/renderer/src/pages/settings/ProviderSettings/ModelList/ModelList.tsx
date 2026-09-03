@@ -85,6 +85,22 @@ const calculateModelGroups = (models: Model[], searchText: string, hasUserTokenP
 }
 
 /**
+ * 向上查找第一个可滚动容器（overflow-y 为 auto/scroll）
+ * 模型列表自身不产生滚动（overflowY hidden），实际滚动发生在页面的 SettingContainer 上
+ */
+const findScrollParent = (el: HTMLElement | null): HTMLElement | null => {
+  let node = el?.parentElement ?? null
+  while (node) {
+    const overflowY = getComputedStyle(node).overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll') {
+      return node
+    }
+    node = node.parentElement
+  }
+  return null
+}
+
+/**
  * 模型列表组件，用于 CRUD 操作和健康检查
  */
 const ModelList: React.FC<ModelListProps> = ({
@@ -120,7 +136,14 @@ const ModelList: React.FC<ModelListProps> = ({
 
   const listRef = useRef<DynamicVirtualListRef>(null)
 
-  const { getFilteredModels, loading, fetchNextPage, reset, hasMore } = useAiOnlyModels({
+  const {
+    getFilteredModels,
+    models: rawFetchedModels,
+    loading,
+    fetchNextPage,
+    reset,
+    hasMore
+  } = useAiOnlyModels({
     autoFetch: !hasUserTokenPlanData // 是否自动获取模型列表--启用了tokenPlan就不自动获取了
   })
 
@@ -245,6 +268,36 @@ const ModelList: React.FC<ModelListProps> = ({
       onPaginationStateChange({ fetchNextPage, loading, hasMore })
     }
   }, [onPaginationStateChange, fetchNextPage, loading, hasMore])
+
+  // 记录上次自动补页时的原始列表总条数，用于识别"补页未带来新数据"的异常情况
+  const autoFillCountRef = useRef<number | null>(null)
+
+  /** 内容不满一屏时自动加载下一页：全屏或"先用后付"过滤后条目过少时页面不产生滚动，滚动加载无法触发 */
+  useEffect(() => {
+    if (hasUserTokenPlanData || loading) return
+    if (!hasMore) {
+      autoFillCountRef.current = null
+      return
+    }
+    // 上次自动补页后原始列表长度未变化，说明后续页已无新数据，停止自动补页
+    if (autoFillCountRef.current !== null) {
+      if (autoFillCountRef.current === rawFetchedModels.length) return
+      autoFillCountRef.current = null
+    }
+    const container = findScrollParent(listRef.current?.scrollElement() ?? null)
+    if (!container) return
+    const tryFetch = () => {
+      if (container.scrollHeight <= container.clientHeight + 1) {
+        autoFillCountRef.current = rawFetchedModels.length
+        fetchNextPage()
+      }
+    }
+    tryFetch()
+    // 窗口尺寸变化（如最大化）可能让原本可滚动的页面变得不满一屏，同样需要补页
+    const observer = new ResizeObserver(() => tryFetch())
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [displayedModelGroups, loading, hasMore, hasUserTokenPlanData, fetchNextPage, rawFetchedModels.length])
 
   /*const modelCount = useMemo(() => {
     return Object.values(displayedModelGroups ?? {}).reduce((acc, group) => acc + group.length, 0)
