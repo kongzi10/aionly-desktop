@@ -165,7 +165,7 @@ const AgentRouterPage = () => {
 }
 
 const Page = styled.main`display:flex;flex:1;flex-direction:column;height:100vh;min-width:0;overflow:hidden;`
-const Content = styled.div`flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:22px 28px 32px;background:var(--color-background);`
+const Content = styled.div`flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:var(--base-border-radius);padding:22px 28px 32px;background:var(--color-background);`
 const WorkArea = styled.div`flex:1;min-height:0;display:grid;grid-template-columns:196px minmax(0,1fr);gap:24px;overflow:hidden;`
 const GlobalSection = styled.section`flex:1;min-height:0;margin-bottom:18px;overflow:auto;border:1px solid var(--color-border);border-radius:10px;background:var(--color-background);>div:first-child{padding:0 12px}`
 const TabBar = styled.div`flex-shrink:0;margin-bottom:18px;display:flex;gap:24px;border-bottom:1px solid var(--color-border);`
