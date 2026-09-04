@@ -2907,7 +2907,7 @@
         "title": "Supprimer l'application personnalisée"
       }
     },
-    "title": "Mini-programme"
+    "title": "Boîte à outils"
   },
   "minapps": {
     "ant-ling": "Ant Ling",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "Mini-programmes",
+    "apps": "Boîte à outils",
     "code": "Code",
     "files": "Fichiers",
     "home": "Page d'accueil",

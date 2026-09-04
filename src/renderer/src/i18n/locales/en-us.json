@@ -2907,7 +2907,7 @@
         "title": "Delete Custom App"
       }
     },
-    "title": "MinApp"
+    "title": "Toolbox"
   },
   "minapps": {
     "ant-ling": "Ant Ling",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "Apps",
+    "apps": "Toolbox",
     "code": "Code",
     "files": "Files",
     "home": "Home",

@@ -2907,7 +2907,7 @@
         "title": "删除自定义应用"
       }
     },
-    "title": "小程序"
+    "title": "工具箱"
   },
   "minapps": {
     "ant-ling": "蚂蚁百灵",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "小程序",
+    "apps": "工具箱",
     "code": "Code",
     "files": "文件",
     "home": "首页",

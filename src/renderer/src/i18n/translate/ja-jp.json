@@ -2907,7 +2907,7 @@
         "title": "カスタムアプリを削除"
       }
     },
-    "title": "ミニアプリ"
+    "title": "ツールボックス"
   },
   "minapps": {
     "ant-ling": "Ant Ling",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "アプリ",
+    "apps": "ツールボックス",
     "code": "Code",
     "files": "ファイル",
     "home": "ホーム",

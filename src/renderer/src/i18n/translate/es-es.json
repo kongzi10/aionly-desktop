@@ -2907,7 +2907,7 @@
         "title": "Eliminar aplicación personalizada"
       }
     },
-    "title": "Mini programa"
+    "title": "Caja de herramientas"
   },
   "minapps": {
     "ant-ling": "Ant Ling",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "Aplicaciones",
+    "apps": "Caja de herramientas",
     "code": "Código",
     "files": "Archivos",
     "home": "Inicio",

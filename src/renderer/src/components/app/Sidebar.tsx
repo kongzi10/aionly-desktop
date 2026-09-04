@@ -7,7 +7,6 @@ import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 // import { useMinapps } from '@renderer/hooks/useMinapps'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
 import { modelGenerating, useRuntime } from '@renderer/hooks/useRuntime'
-import { useSettings } from '@renderer/hooks/useSettings'
 import { getSidebarIconLabel /*getThemeModeLabel*/ } from '@renderer/i18n/label'
 import { useAppSelector } from '@renderer/store'
 import { selectServiceInfo } from '@renderer/store/user'
@@ -120,7 +119,6 @@ const Sidebar: FC = () => {
 const MainMenus: FC = () => {
   const { hideMinappPopup } = useMinappPopup()
   const { pathname } = useLocation()
-  const { /*sidebarIcons,*/ defaultPaintingProvider } = useSettings()
   const { minappShow } = useRuntime()
   const navigate = useNavigate()
   const { theme } = useTheme()
@@ -173,22 +171,11 @@ const MainMenus: FC = () => {
         iconActive: 'icon-zhinengtixuanzhong'
       },
       {
-        path: `/paintings/${defaultPaintingProvider}`,
-        name: 'paintings',
-        icon: 'icon-huihuamoren',
-        iconActive: 'icon-huihuaxuanzhong'
-      },
-      {
-        path: '/translate',
-        name: 'translate',
-        icon: 'icon-fanyimoren',
-        iconActive: 'icon-fanyixuanzhong'
-      },
-      {
+        // 工具箱(原小程序),绘画/翻译已收纳至工具箱页面
         path: '/apps',
         name: 'minapp',
-        icon: 'icon-xiaochengxumoren',
-        iconActive: 'icon-xiaochengxuxuanzhong'
+        icon: 'icon-gongjuxiang',
+        iconActive: 'icon-gongjuxiang'
       }
     ]
     const agentRouterMenu = {
@@ -210,7 +197,7 @@ const MainMenus: FC = () => {
       ]
     }
     return [...base, agentRouterMenu]
-  }, [defaultPaintingProvider, serviceInfo?.planStatus])
+  }, [serviceInfo?.planStatus])
 
   // console.log('sidebarIcons', sidebarIcons)
 

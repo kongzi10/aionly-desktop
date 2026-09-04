@@ -5,16 +5,18 @@ import App from '@renderer/components/MinApp/MinApp'
 import Scrollbar from '@renderer/components/Scrollbar'
 // import { useMinapps } from '@renderer/hooks/useMinapps'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-import { useNavbarPosition } from '@renderer/hooks/useSettings'
+import { useNavbarPosition, useSettings } from '@renderer/hooks/useSettings'
 import { Button, Input } from 'antd'
-import { Search, SettingsIcon } from 'lucide-react'
+import { Image, Languages, Search, SettingsIcon } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
 import DeepSeekHarnessButton from './components/DeepSeekHarnessButton'
+import ToolboxEntryButton from './components/ToolboxEntryButton'
 import MinappSettingsPopup from './MiniappSettings/MinappSettingsPopup'
 // import {WEB_UI_HOST} from "@shared/config/constant";
 // import AiOnlyLogo from "@renderer/assets/images/providers/aiOnly.png";
@@ -25,6 +27,8 @@ const AppsPage: FC = () => {
   // const { minapps } = useMinapps()
   const { isTopNavbar } = useNavbarPosition()
   const { minappShow } = useRuntime()
+  const { defaultPaintingProvider } = useSettings()
+  const navigate = useNavigate()
   const [apiApps, setApiApps] = useState([])
 
   const queryParams = useRef({
@@ -42,9 +46,9 @@ const AppsPage: FC = () => {
 
   // Calculate the required number of lines
   const itemsPerRow = Math.floor(930 / 115) // Maximum width divided by the width of each item (including spacing)
-  const rowCount = Math.ceil((apiApps.length + 1) / itemsPerRow) // +1 for the fixed DeepSeek Harness entry
+  const rowCount = Math.ceil((apiApps.length + 3) / itemsPerRow) // +2 for the fixed module entries, +1 for the fixed DeepSeek Harness entry
   // Each line height is 85px (60px icon + 5px margin + 12px text + spacing)
-  // DeepSeek Harness 名称换行占两行，其所在行（最后一行）需额外 ~16px
+  // DeepSeek Harness 名称换行占两行，其所在行需额外 ~16px
   const containerHeight = rowCount * 85 + (rowCount - 1) * 25 + 16 // 25px is the line spacing.
 
   // Disable right-click menu in blank area
@@ -127,10 +131,22 @@ const AppsPage: FC = () => {
             )}
             <AppsContainerWrapper>
               <AppsContainer style={{ height: containerHeight }}>
+                <ToolboxEntryButton
+                  icon={<Image size={36} strokeWidth={2} className="lucide-custom" aria-hidden="true" />}
+                  tone="blue"
+                  label={t('title.paintings')}
+                  onClick={() => navigate(`/paintings/${defaultPaintingProvider}`)}
+                />
+                <ToolboxEntryButton
+                  icon={<Languages size={36} strokeWidth={2} className="lucide-custom" aria-hidden="true" />}
+                  tone="cyan"
+                  label={t('title.translate')}
+                  onClick={() => navigate('/translate')}
+                />
+                <DeepSeekHarnessButton />
                 {apiApps.map((app: any) => (
                   <App key={app.id} app={app} />
                 ))}
-                <DeepSeekHarnessButton />
                 {/*<NewAppButton />*/}
               </AppsContainer>
             </AppsContainerWrapper>
@@ -208,6 +224,10 @@ const AppsContainer = styled.div`
   grid-template-columns: repeat(auto-fill, 90px);
   gap: 25px;
   justify-content: center;
+
+  > div {
+    justify-content: flex-start;
+  }
 `
 
 export default AppsPage

@@ -2907,7 +2907,7 @@
         "title": "Excluir aplicativo personalizado"
       }
     },
-    "title": "Pequeno aplicativo"
+    "title": "Caixa de ferramentas"
   },
   "minapps": {
     "ant-ling": "Ant Ling",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "Miniaplicativos",
+    "apps": "Caixa de ferramentas",
     "code": "Código",
     "files": "Arquivos",
     "home": "Página Inicial",

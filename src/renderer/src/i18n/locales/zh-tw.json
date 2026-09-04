@@ -2907,7 +2907,7 @@
         "title": "刪除自訂小工具"
       }
     },
-    "title": "小工具"
+    "title": "工具箱"
   },
   "minapps": {
     "ant-ling": "Ant Ling",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "小程式",
+    "apps": "工具箱",
     "code": "程式碼",
     "files": "檔案",
     "home": "首頁",

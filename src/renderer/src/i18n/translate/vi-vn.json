@@ -2907,7 +2907,7 @@
         "title": "Xóa Ứng dụng Tùy chỉnh"
       }
     },
-    "title": "Ứng dụng nhỏ"
+    "title": "Hộp công cụ"
   },
   "minapps": {
     "ant-ling": "Kiến Ling",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "Ứng dụng",
+    "apps": "Hộp công cụ",
     "code": "Mã",
     "files": "Tập tin",
     "home": "Trang chủ",

@@ -2,8 +2,7 @@
 import App from '@renderer/components/MinApp/MinApp'
 import { useMinapps } from '@renderer/hooks/useMinapps'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-import { useSettings } from '@renderer/hooks/useSettings'
-import { Code, FileSearch, Folder, Languages, LayoutGrid, NotepadText, Palette, Sparkle } from 'lucide-react'
+import { Code, FileSearch, Folder, LayoutGrid, NotepadText, Sparkle } from 'lucide-react'
 import type { FC } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +12,6 @@ import styled from 'styled-components'
 const LaunchpadPage: FC = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { defaultPaintingProvider } = useSettings()
   const { pinned } = useMinapps()
   const { openedKeepAliveMinapps } = useRuntime()
 
@@ -31,22 +29,10 @@ const LaunchpadPage: FC = () => {
       bgColor: 'linear-gradient(135deg, #10B981, #34D399)' // 知识库：翠绿色，代表生长和知识
     },
     {
-      icon: <Palette size={32} className="icon" />,
-      text: t('title.paintings'),
-      path: `/paintings/${defaultPaintingProvider}`,
-      bgColor: 'linear-gradient(135deg, #EC4899, #F472B6)' // 绘画：活力粉色，代表创造力和艺术
-    },
-    {
       icon: <Sparkle size={32} className="icon" />,
       text: t('title.store'),
       path: '/store',
       bgColor: 'linear-gradient(135deg, #6366F1, #4F46E5)' // AI助手：靛蓝渐变，代表智能和科技
-    },
-    {
-      icon: <Languages size={32} className="icon" />,
-      text: t('title.translate'),
-      path: '/translate',
-      bgColor: 'linear-gradient(135deg, #06B6D4, #0EA5E9)' // 翻译：明亮的青蓝色，代表沟通和流畅
     },
     {
       icon: <Folder size={32} className="icon" />,

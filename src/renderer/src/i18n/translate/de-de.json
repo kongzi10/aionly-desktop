@@ -2907,7 +2907,7 @@
         "title": "Benutzerdefinierte App entfernen"
       }
     },
-    "title": "Mini-Apps"
+    "title": "Werkzeugkasten"
   },
   "minapps": {
     "ant-ling": "Ant Ling",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "Mini-Apps",
+    "apps": "Werkzeugkasten",
     "code": "Code",
     "files": "Datei",
     "home": "Startseite",

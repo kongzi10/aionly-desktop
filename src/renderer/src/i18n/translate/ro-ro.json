@@ -2907,7 +2907,7 @@
         "title": "Șterge aplicația personalizată"
       }
     },
-    "title": "MinApp"
+    "title": "Trusă de unelte"
   },
   "minapps": {
     "ant-ling": "Ant Ling",
@@ -6259,7 +6259,7 @@
     }
   },
   "title": {
-    "apps": "Aplicații",
+    "apps": "Trusă de unelte",
     "code": "Cod",
     "files": "Fișiere",
     "home": "Acasă",
