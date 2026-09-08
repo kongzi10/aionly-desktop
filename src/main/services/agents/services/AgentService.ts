@@ -24,8 +24,8 @@ import {
 } from '../database/schema'
 import type { AgentModelField } from '../errors'
 import { skillService } from '../skills/SkillService'
-import { CLAW_AGENT_ID, isBuiltinAgentId } from './builtin/BuiltinAgentIds'
 import { seedWorkspaceTemplates } from './aionlyclaw/seedWorkspace'
+import { CLAW_AGENT_ID, isBuiltinAgentId } from './builtin/BuiltinAgentIds'
 
 const logger = loggerService.withContext('AgentService')
 

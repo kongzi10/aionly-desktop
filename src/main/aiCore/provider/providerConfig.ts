@@ -2,8 +2,8 @@ import {
   formatOllamaApiHost,
   isAnthropicProvider,
   isAzureOpenAIProvider,
-  isMarketAPIProvider,
   isGeminiProvider,
+  isMarketAPIProvider,
   isOllamaProvider,
   isPerplexityProvider,
   isVertexProvider

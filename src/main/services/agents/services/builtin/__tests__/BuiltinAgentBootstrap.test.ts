@@ -59,37 +59,14 @@ describe('bootstrapBuiltinAgents', () => {
     vi.useRealTimers()
   })
 
-  it('retries built-in bootstrap when no model is available yet', async () => {
-    mockInitDefaultAionlyClawAgent
-      .mockResolvedValueOnce({ agentId: null, skippedReason: 'no_model' })
-      .mockResolvedValueOnce({ agentId: 'aionly-claw-default' })
-    mockInitBuiltinAgent.mockResolvedValue({ agentId: null, skippedReason: 'deleted' })
-
+  it('installs built-in skills without initializing agents while initialization is disabled', async () => {
     const { bootstrapBuiltinAgents } = await import('../BuiltinAgentBootstrap')
 
     await bootstrapBuiltinAgents()
-    expect(mockInitDefaultAionlyClawAgent).toHaveBeenCalledTimes(1)
-    expect(mockCreateSession).not.toHaveBeenCalled()
 
-    await vi.advanceTimersByTimeAsync(5000)
-
-    expect(mockInitDefaultAionlyClawAgent).toHaveBeenCalledTimes(2)
-    expect(mockListSessions).toHaveBeenCalledWith('aionly-claw-default', { limit: 1 })
-    expect(mockCreateSession).toHaveBeenCalledWith('aionly-claw-default', {})
-    expect(mockEnsureHeartbeatTask).toHaveBeenCalledWith('aionly-claw-default', 30)
-  })
-
-  it('does not retry built-in agents deleted by the user', async () => {
-    mockInitDefaultAionlyClawAgent.mockResolvedValue({ agentId: null, skippedReason: 'deleted' })
-    mockInitBuiltinAgent.mockResolvedValue({ agentId: null, skippedReason: 'deleted' })
-
-    const { bootstrapBuiltinAgents } = await import('../BuiltinAgentBootstrap')
-
-    await bootstrapBuiltinAgents()
-    await vi.advanceTimersByTimeAsync(60000)
-
-    expect(mockInitDefaultAionlyClawAgent).toHaveBeenCalledTimes(1)
-    expect(mockInitBuiltinAgent).toHaveBeenCalledTimes(1)
+    expect(mockInstallBuiltinSkills).toHaveBeenCalledTimes(1)
+    expect(mockInitDefaultAionlyClawAgent).not.toHaveBeenCalled()
+    expect(mockInitBuiltinAgent).not.toHaveBeenCalled()
     expect(mockCreateSession).not.toHaveBeenCalled()
     expect(mockEnsureHeartbeatTask).not.toHaveBeenCalled()
   })

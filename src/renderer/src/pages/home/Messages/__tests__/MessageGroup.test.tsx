@@ -1,6 +1,6 @@
 import type { Topic } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
-import { createEvent, fireEvent, render } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -230,38 +230,7 @@ describe('MessageGroup', () => {
     expect(getComputedStyle(horizontalGroup).overflowY).toBe('hidden')
   })
 
-  it('prevents vertical wheel on non-content areas from bubbling to the outer chat scroll in horizontal layout', () => {
-    const parentWheel = vi.fn()
-    const messages = [createMessage('msg-1', 0, 'horizontal'), createMessage('msg-2', 1, 'horizontal')]
-    const topic = { id: 'topic-1' } as Topic
-
-    const { container } = render(
-      <div onWheel={parentWheel}>
-        <MessageGroup messages={messages} topic={topic} />
-      </div>
-    )
-
-    const outerWrapper = container.querySelector('#message-msg-1') as HTMLElement
-    const horizontalGroup = outerWrapper.parentElement as HTMLElement
-    const contentContainers = container.querySelectorAll('.message-content-container')
-
-    expect(horizontalGroup).not.toBeNull()
-    expect(contentContainers).toHaveLength(2)
-
-    contentContainers.forEach((contentContainer) => {
-      setElementSize(contentContainer, {
-        clientHeight: 300,
-        scrollHeight: 600
-      })
-    })
-
-    const wheelEvent = createEvent.wheel(horizontalGroup, { deltaY: 120 })
-    fireEvent(horizontalGroup, wheelEvent)
-
-    expect(parentWheel).not.toHaveBeenCalled()
-  })
-
-  it('supports horizontal wheel scrolling on non-content areas in horizontal layout', () => {
+  it('supports drag scrolling on non-content areas in horizontal layout', () => {
     const messages = [createMessage('msg-1', 0, 'horizontal'), createMessage('msg-2', 1, 'horizontal')]
     const topic = { id: 'topic-1' } as Topic
 
@@ -270,15 +239,14 @@ describe('MessageGroup', () => {
     const outerWrapper = container.querySelector('#message-msg-1') as HTMLElement
     const horizontalGroup = outerWrapper.parentElement as HTMLElement
     expect(horizontalGroup).not.toBeNull()
-
     setElementSize(horizontalGroup, {
       clientWidth: 500,
       scrollLeft: 0,
       scrollWidth: 1000
     })
 
-    const wheelEvent = createEvent.wheel(horizontalGroup, { deltaX: 160 })
-    fireEvent(horizontalGroup, wheelEvent)
+    fireEvent.mouseDown(horizontalGroup, { clientX: 300 })
+    fireEvent.mouseMove(horizontalGroup, { clientX: 140 })
 
     expect(horizontalGroup.scrollLeft).toBe(160)
   })

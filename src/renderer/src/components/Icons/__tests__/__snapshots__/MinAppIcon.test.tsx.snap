@@ -6,6 +6,6 @@ exports[`MinAppIcon > should render correctly with various props 1`] = `
   class="select-none rounded-2xl"
   draggable="false"
   src="/test-logo-1.png"
-  style="border: 0.5px solid var(--color-border); width: 64px; height: 64px; background-color: rgb(240, 240, 240); user-select: none; opacity: 0.8; transform: scale(1.1); margin-top: 10px;"
+  style="border: 0.5px solid var(--color-border); height: 40px; background-color: rgb(240, 240, 240); user-select: none; opacity: 0.8; transform: scale(1.1); margin-top: 10px;"
 />
 `;

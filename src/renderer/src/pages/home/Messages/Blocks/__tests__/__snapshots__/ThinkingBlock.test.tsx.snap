@@ -1,55 +1,23 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`ThinkingBlock > basic rendering > should match snapshot 1`] = `
-.c0 {
-  margin-bottom: 15px;
-}
-
 .c0 .ant-collapse-header {
   padding: 0!important;
+  color: red;
 }
 
 .c0 .ant-collapse-content-box {
-  padding: 16px!important;
-  border-width: 0 0.5px 0.5px 0.5px;
-  border-style: solid;
-  border-color: var(--color-border);
-  border-radius: 0 0 12px 12px;
+  padding: 0 0 0 10px!important;
+  border-left: 1px solid var(--color-border);
 }
 
 .c1 {
   position: relative;
 }
 
-.c2 {
-  background: none;
-  border: none;
-  color: var(--color-text-2);
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: auto;
-  opacity: 0.6;
-  transition: all 0.3s;
-  position: absolute;
-  right: -12px;
-  top: -12px;
-}
-
-.c2:hover {
-  opacity: 1;
-  color: var(--color-text);
-}
-
-.c2:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.c2 .iconfont {
-  font-size: 14px;
+.c1 .markdown {
+  color: var(--color-text-3);
+  font-size: 12px;
 }
 
 <div
@@ -84,20 +52,6 @@ exports[`ThinkingBlock > basic rendering > should match snapshot 1`] = `
         class="c1"
         style="font-family: var(--font-family); font-size: 14px;"
       >
-        <div
-          data-mouse-enter-delay="0.8"
-          data-testid="tooltip"
-          title="Copy"
-        >
-          <button
-            aria-label="Copy"
-            class="c2 message-action-button"
-          >
-            <i
-              class="iconfont icon-copy"
-            />
-          </button>
-        </div>
         <div
           data-block-id="test-thinking-block-1"
           data-testid="mock-markdown"

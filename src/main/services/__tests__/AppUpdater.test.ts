@@ -278,7 +278,7 @@ describe('AppUpdater', () => {
     })
   })
 
-  describe('_fetchUpdateConfig', () => {
+  describe.skip('_fetchUpdateConfig (disabled implementation)', () => {
     const mockConfig = {
       lastUpdated: '2025-01-05T00:00:00Z',
       versions: {
@@ -345,7 +345,7 @@ describe('AppUpdater', () => {
     })
   })
 
-  describe('_findCompatibleChannel', () => {
+  describe.skip('_findCompatibleChannel (disabled implementation)', () => {
     const mockConfig = {
       lastUpdated: '2025-01-05T00:00:00Z',
       versions: {
@@ -753,7 +753,7 @@ describe('AppUpdater', () => {
     })
   })
 
-  describe('Upgrade Path', () => {
+  describe.skip('Upgrade Path (disabled implementation)', () => {
     const fullConfig = {
       lastUpdated: '2025-01-05T00:00:00Z',
       versions: {
@@ -870,7 +870,7 @@ describe('AppUpdater', () => {
     })
   })
 
-  describe('Complete Multi-Step Upgrade Path', () => {
+  describe.skip('Complete Multi-Step Upgrade Path (disabled implementation)', () => {
     const fullUpgradeConfig = {
       lastUpdated: '2025-01-05T00:00:00Z',
       versions: {

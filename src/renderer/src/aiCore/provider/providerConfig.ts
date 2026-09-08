@@ -22,8 +22,8 @@ import {
 import {
   isAnthropicProvider,
   isAzureOpenAIProvider,
-  isMarketAPIProvider,
   isGeminiProvider,
+  isMarketAPIProvider,
   isOllamaProvider,
   isPerplexityProvider,
   isSupportStreamOptionsProvider,

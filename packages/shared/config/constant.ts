@@ -205,10 +205,10 @@ export enum FeedUrl {
   GITHUB_LATEST = 'https://aionly.com/releases/latest/download'
 }
 
-export enum UpdateConfigUrl {
-  GITHUB = 'https://aionly.com/app-upgrade-config/app-upgrade-config.json',
-  GITCODE = 'https://aionly.com/app-upgrade-config/app-upgrade-config.json'
-}
+export const UpdateConfigUrl = {
+  GITHUB: 'https://aionly.com/app-upgrade-config/app-upgrade-config.json',
+  GITCODE: 'https://aionly.com/app-upgrade-config/app-upgrade-config.json'
+} as const
 
 export enum UpgradeChannel {
   LATEST = 'latest', // 最新稳定版本

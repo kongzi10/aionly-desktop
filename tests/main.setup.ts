@@ -13,6 +13,7 @@ vi.mock('@logger', async () => {
 vi.mock('electron', () => {
   const mock = {
     app: {
+      setPath: vi.fn(),
       getPath: vi.fn((key: string) => {
         switch (key) {
           case 'userData':

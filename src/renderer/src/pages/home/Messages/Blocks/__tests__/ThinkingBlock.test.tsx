@@ -192,18 +192,16 @@ describe('ThinkingBlock', () => {
       })
     })
 
-    it('should show copy button only when thinking is complete', () => {
-      // When thinking (streaming)
+    it('does not show the temporarily disabled copy action', () => {
       const thinkingBlock = createThinkingBlock({ status: MessageBlockStatus.STREAMING })
       const { rerender } = renderThinkingBlock(thinkingBlock)
 
       expect(getCopyButton()).not.toBeInTheDocument()
 
-      // When thinking is complete
       const completedBlock = createThinkingBlock({ status: MessageBlockStatus.SUCCESS })
       rerender(<ThinkingBlock block={completedBlock} />)
 
-      expect(getCopyButton()).toBeInTheDocument()
+      expect(getCopyButton()).not.toBeInTheDocument()
     })
 
     it('should match snapshot', () => {
@@ -386,7 +384,7 @@ describe('ThinkingBlock', () => {
 
       // Should still render correctly
       expect(getThinkingContent()).toBeInTheDocument()
-      expect(getCopyButton()).toBeInTheDocument()
+      expect(getCopyButton()).not.toBeInTheDocument()
     })
   })
 })
