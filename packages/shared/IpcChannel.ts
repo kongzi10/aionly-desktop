@@ -1,4 +1,6 @@
 export enum IpcChannel {
+  VeryClaw_Open = 'veryclaw:open',
+  VeryClaw_Download = 'veryclaw:download',
   App_GetCacheSize = 'app:get-cache-size',
   App_ClearCache = 'app:clear-cache',
   App_SetLaunchOnBoot = 'app:set-launch-on-boot',

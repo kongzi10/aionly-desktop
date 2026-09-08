@@ -2907,7 +2907,18 @@
         "title": "Benutzerdefinierte App entfernen"
       }
     },
-    "title": "Werkzeugkasten"
+    "title": "Werkzeugkasten",
+    "veryclaw": {
+      "download": "Herunterladen und installieren",
+      "download_failed": "Der Download-Link konnte nicht abgerufen oder geöffnet werden. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
+      "download_unavailable": "Für dieses Betriebssystem und diesen Prozessor wurde noch kein Installationspaket veröffentlicht. Bitte versuchen Sie es später erneut.",
+      "install_content": "VeryClaw wurde nicht gefunden. Klicken Sie auf „Herunterladen und installieren“, um das neueste Installationspaket herunterzuladen. Klicken Sie nach der Installation erneut auf diesen Eintrag, um VeryClaw zu öffnen.",
+      "install_title": "VeryClaw installieren",
+      "name": "VeryClaw",
+      "open_failed": "VeryClaw konnte nicht geöffnet werden. Prüfen Sie die Installation und versuchen Sie es erneut.",
+      "restart_required": "Beenden Sie AiOnly vollständig und starten Sie es neu, um die Startfunktion für VeryClaw zu laden.",
+      "unsupported": "VeryClaw kann unter Windows und macOS geöffnet werden."
+    }
   },
   "minapps": {
     "ant-ling": "Ant Ling",

@@ -2907,7 +2907,18 @@
         "title": "删除自定义应用"
       }
     },
-    "title": "工具箱"
+    "title": "工具箱",
+    "veryclaw": {
+      "download": "下载安装",
+      "download_failed": "获取或打开安装包下载链接失败，请检查网络后重试。",
+      "download_unavailable": "当前系统和芯片对应的安装包尚未发布，请稍后重试。",
+      "install_content": "未检测到VeryClaw。点击“下载安装”下载最新安装包。安装完成后再次点击此入口打开。",
+      "install_title": "安装 VeryClaw",
+      "name": "VeryClaw",
+      "open_failed": "无法打开 VeryClaw，请检查安装情况后重试。",
+      "restart_required": "请完全退出并重新启动 AiOnly，以加载 VeryClaw 唤起功能。",
+      "unsupported": "目前支持在 Windows 和 macOS 上打开 VeryClaw。"
+    }
   },
   "minapps": {
     "ant-ling": "蚂蚁百灵",

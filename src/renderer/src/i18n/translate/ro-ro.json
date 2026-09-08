@@ -2907,7 +2907,18 @@
         "title": "Șterge aplicația personalizată"
       }
     },
-    "title": "Trusă de unelte"
+    "title": "Trusă de unelte",
+    "veryclaw": {
+      "download": "Descarcă și instalează",
+      "download_failed": "Linkul de descărcare nu a putut fi obținut sau deschis. Verifică conexiunea și încearcă din nou.",
+      "download_unavailable": "Nu a fost publicat încă un program de instalare pentru acest sistem de operare și procesor. Încearcă din nou mai târziu.",
+      "install_content": "VeryClaw nu a fost detectat. Apasă pe „Descarcă și instalează” pentru a descărca cel mai recent program de instalare. După instalare, apasă din nou pe această intrare pentru a-l deschide.",
+      "install_title": "Instalează VeryClaw",
+      "name": "VeryClaw",
+      "open_failed": "VeryClaw nu a putut fi deschis. Verifică instalarea și încearcă din nou.",
+      "restart_required": "Închide complet AiOnly și repornește-l pentru a încărca funcția de lansare VeryClaw.",
+      "unsupported": "Deschiderea VeryClaw este acceptată pe Windows și macOS."
+    }
   },
   "minapps": {
     "ant-ling": "Ant Ling",

@@ -2907,7 +2907,18 @@
         "title": "Xóa Ứng dụng Tùy chỉnh"
       }
     },
-    "title": "Hộp công cụ"
+    "title": "Hộp công cụ",
+    "veryclaw": {
+      "download": "Tải xuống và cài đặt",
+      "download_failed": "Không thể lấy hoặc mở liên kết tải xuống. Hãy kiểm tra kết nối mạng và thử lại.",
+      "download_unavailable": "Chưa có bộ cài đặt cho hệ điều hành và bộ xử lý này. Vui lòng thử lại sau.",
+      "install_content": "Không tìm thấy VeryClaw. Nhấn “Tải xuống và cài đặt” để tải bộ cài đặt mới nhất. Sau khi cài đặt, nhấn lại vào mục này để mở ứng dụng.",
+      "install_title": "Cài đặt VeryClaw",
+      "name": "VeryClaw",
+      "open_failed": "Không thể mở VeryClaw. Hãy kiểm tra bản cài đặt và thử lại.",
+      "restart_required": "Hãy thoát hoàn toàn rồi khởi động lại AiOnly để tải chức năng khởi chạy VeryClaw.",
+      "unsupported": "Có thể mở VeryClaw trên Windows và macOS."
+    }
   },
   "minapps": {
     "ant-ling": "Kiến Ling",
