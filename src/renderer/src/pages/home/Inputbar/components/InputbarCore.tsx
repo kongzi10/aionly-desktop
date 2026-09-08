@@ -69,11 +69,15 @@ export interface InputbarCoreProps {
   // Preview sections (attachments, mentions, etc.)
   topContent?: React.ReactNode
 
+  // Content rendered above the bordered input area
+  beforeInputContent?: React.ReactNode
+
   // Pinned content that floats above the inputbar (uses absolute positioning)
   pinnedContent?: React.ReactNode
 
   // Override the user preference for quick panel triggers
   forceEnableQuickPanelTriggers?: boolean
+  fullWidth?: boolean
 }
 
 const TextareaStyle: CSSProperties = {
@@ -122,8 +126,10 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
   leftToolbar,
   rightToolbar,
   topContent,
+  beforeInputContent,
   pinnedContent,
-  forceEnableQuickPanelTriggers
+  forceEnableQuickPanelTriggers,
+  fullWidth = false
 }) => {
   const config = useMemo(() => getInputbarConfig(scope), [scope])
   const { files, isExpanded } = useInputbarToolsState()
@@ -644,7 +650,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
   }, [aiOnlyModels])
 
   return (
-    <NarrowLayout style={{ width: '100%' }}>
+    <NarrowLayout fullWidth={fullWidth} style={{ width: '100%' }}>
       <Container
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -653,6 +659,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
         className={classNames('inputbar')}>
         {pinnedContent}
         {quickPanelElement}
+        {beforeInputContent}
         <InputBarContainer
           id="inputbar"
           className={classNames('inputbar-container', isDragging && 'file-dragging', isExpanded && 'expanded')}>

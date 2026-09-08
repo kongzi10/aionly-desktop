@@ -263,7 +263,7 @@ export function getAssistantById(id: string) {
   return assistants.find((a) => a.id === id)
 }
 
-export async function createAssistantFromAgent(agent: AssistantPreset) {
+export async function createAssistantFromAgent(agent: AssistantPreset, workspace: Assistant['workspace'] = 'chat') {
   const assistantId = uuid()
   const topic = getDefaultTopic(assistantId)
 
@@ -275,6 +275,7 @@ export async function createAssistantFromAgent(agent: AssistantPreset) {
     topics: [topic],
     model: agent.defaultModel,
     type: 'assistant',
+    workspace,
     regularPhrases: agent.regularPhrases || [], // Ensured regularPhrases
     settings: agent.settings || DEFAULT_ASSISTANT_SETTINGS
   }

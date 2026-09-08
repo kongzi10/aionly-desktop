@@ -31,6 +31,8 @@ export * from './skill'
 
 export type McpMode = 'disabled' | 'auto' | 'manual'
 
+export type AssistantWorkspace = 'chat' | 'roundtable'
+
 export type Assistant = {
   id: string
   name: string
@@ -38,6 +40,8 @@ export type Assistant = {
   knowledge_bases?: KnowledgeBase[]
   topics: Topic[]
   type: string
+  /** Legacy assistants without this field belong to the normal chat workspace. */
+  workspace?: AssistantWorkspace
   emoji?: string
   description?: string
   model?: Model

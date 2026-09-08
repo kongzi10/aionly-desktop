@@ -1,13 +1,15 @@
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
-import { useAssistants } from '@renderer/hooks/useAssistant'
+import { useAssistants, useDefaultAssistant } from '@renderer/hooks/useAssistant'
 import { useNavbarPosition, useSettings } from '@renderer/hooks/useSettings'
 import { useShortcut } from '@renderer/hooks/useShortcuts'
 import { useShowAssistants, useShowTopics } from '@renderer/hooks/useStore'
 import { useActiveTopic } from '@renderer/hooks/useTopic'
+import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import NavigationService from '@renderer/services/NavigationService'
 import { newMessagesActions } from '@renderer/store/newMessage'
-import type { Assistant, Topic } from '@renderer/types'
+import type { Assistant, AssistantWorkspace, Topic } from '@renderer/types'
+import { uuid } from '@renderer/utils'
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, SECOND_MIN_WINDOW_WIDTH } from '@shared/config/constant'
 import { AnimatePresence, motion } from 'motion/react'
 import type { FC } from 'react'
@@ -16,31 +18,52 @@ import { useDispatch } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
+import RoundtableChat from '../roundtable/RoundtableChat'
+import { filterAssistantsByWorkspace, getAssistantWorkspace } from '../roundtable/roundtableWorkspace'
 import Chat from './Chat'
 import Navbar from './Navbar'
 // import HomeTabs from './Tabs'
 import HomePanel from './Panel'
 
-let _activeAssistant: Assistant
+const activeAssistants: Partial<Record<AssistantWorkspace, Assistant>> = {}
 
-const HomePage: FC = () => {
-  const { assistants } = useAssistants()
+interface Props {
+  mode?: 'chat' | 'roundtable'
+}
+
+const HomePage: FC<Props> = ({ mode = 'chat' }) => {
+  const workspace: AssistantWorkspace = mode
+  const { assistants, addAssistant } = useAssistants()
+  const { defaultAssistant } = useDefaultAssistant()
+  const workspaceAssistants = filterAssistantsByWorkspace(assistants, workspace)
   const navigate = useNavigate()
   const { isLeftNavbar } = useNavbarPosition()
 
   const location = useLocation()
   const state = location.state
 
-  const [activeAssistant, _setActiveAssistant] = useState<Assistant>(
-    state?.assistant || _activeAssistant || assistants[0]
-  )
+  const [workspaceDefault] = useState<Assistant>(() => {
+    const id = uuid()
+    return { ...defaultAssistant, id, workspace, topics: [getDefaultTopic(id)] }
+  })
+  const [activeAssistant, _setActiveAssistant] = useState<Assistant>(() => {
+    const stateAssistant = state?.assistant as Assistant | undefined
+    if (stateAssistant && getAssistantWorkspace(stateAssistant) === workspace) return stateAssistant
+    return activeAssistants[workspace] || workspaceAssistants[0] || workspaceDefault
+  })
   const { activeTopic, setActiveTopic: _setActiveTopic } = useActiveTopic(activeAssistant?.id ?? '', state?.topic)
   const { showAssistants, showTopics, topicPosition } = useSettings()
   const { setShowAssistants, toggleShowAssistants } = useShowAssistants()
   const { toggleShowTopics } = useShowTopics()
   const dispatch = useDispatch()
 
-  _activeAssistant = activeAssistant
+  activeAssistants[workspace] = activeAssistant
+
+  useEffect(() => {
+    if (workspaceAssistants.length === 0) {
+      addAssistant(workspaceDefault)
+    }
+  }, [addAssistant, workspaceAssistants.length, workspaceDefault])
 
   useShortcut('toggle_show_assistants', () => {
     if (topicPosition === 'right') {
@@ -104,10 +127,13 @@ const HomePage: FC = () => {
   }, [navigate])
 
   useEffect(() => {
-    state?.assistant && setActiveAssistant(state?.assistant)
-    state?.topic && setActiveTopic(state?.topic)
+    const stateAssistant = state?.assistant as Assistant | undefined
+    if (stateAssistant && getAssistantWorkspace(stateAssistant) === workspace) {
+      setActiveAssistant(stateAssistant)
+      state?.topic && setActiveTopic(state.topic)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state])
+  }, [state, workspace])
 
   useEffect(() => {
     const canMinimize = topicPosition == 'left' ? !showAssistants : !showAssistants && !showTopics
@@ -119,7 +145,7 @@ const HomePage: FC = () => {
   }, [showAssistants, showTopics, topicPosition])
 
   return (
-    <Container id="home-page" className="page-container">
+    <Container id={mode === 'roundtable' ? 'roundtable-page' : 'home-page'} className="page-container">
       {isLeftNavbar && (
         <Navbar
           activeAssistant={activeAssistant}
@@ -127,6 +153,7 @@ const HomePage: FC = () => {
           setActiveTopic={setActiveTopic}
           setActiveAssistant={setActiveAssistant}
           position="left"
+          titleKey={mode === 'roundtable' ? 'roundtable.title' : 'assistants.title'}
         />
       )}
       <ContentContainer id={isLeftNavbar ? 'content-container' : undefined}>
@@ -148,6 +175,7 @@ const HomePage: FC = () => {
                 />*/}
 
                 <HomePanel
+                  workspace={workspace}
                   activeAssistant={activeAssistant}
                   activeTopic={activeTopic}
                   setActiveAssistant={setActiveAssistant}
@@ -159,12 +187,16 @@ const HomePage: FC = () => {
           )}
         </AnimatePresence>
         <ErrorBoundary>
-          <Chat
-            assistant={activeAssistant}
-            activeTopic={activeTopic}
-            setActiveTopic={setActiveTopic}
-            setActiveAssistant={setActiveAssistant}
-          />
+          {mode === 'roundtable' ? (
+            <RoundtableChat assistant={activeAssistant} activeTopic={activeTopic} setActiveTopic={setActiveTopic} />
+          ) : (
+            <Chat
+              assistant={activeAssistant}
+              activeTopic={activeTopic}
+              setActiveTopic={setActiveTopic}
+              setActiveAssistant={setActiveAssistant}
+            />
+          )}
         </ErrorBoundary>
       </ContentContainer>
     </Container>

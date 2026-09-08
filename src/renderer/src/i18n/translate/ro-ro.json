@@ -4037,6 +4037,12 @@
       "undo": "Anulează"
     }
   },
+  "roundtable": {
+    "add_model": "Adaugă model",
+    "minimum_models": "Selectați cel puțin două modele pentru o conversație la masa rotundă",
+    "title": "Masă rotundă",
+    "welcome": "Sunteți gata să începeți?"
+  },
   "selection": {
     "action": {
       "builtin": {

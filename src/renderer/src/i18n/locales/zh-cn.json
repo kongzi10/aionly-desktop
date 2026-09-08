@@ -4037,6 +4037,12 @@
       "undo": "撤销"
     }
   },
+  "roundtable": {
+    "add_model": "添加模型",
+    "minimum_models": "圆桌对话至少需要选择两个模型",
+    "title": "圆桌",
+    "welcome": "准备好开始了吗？"
+  },
   "selection": {
     "action": {
       "builtin": {

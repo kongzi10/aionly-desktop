@@ -5,8 +5,9 @@ import { useAssistants, useDefaultAssistant } from '@renderer/hooks/useAssistant
 import { /*useNavbarPosition,*/ useSettings } from '@renderer/hooks/useSettings'
 import { useShowTopics } from '@renderer/hooks/useStore'
 import AssistantPresetsPage from '@renderer/pages/store/assistants/presets/AssistantPresetsPage'
+import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
-import type { Assistant, Topic } from '@renderer/types'
+import type { Assistant, AssistantWorkspace, Topic } from '@renderer/types'
 import type { Tab } from '@renderer/types/chat'
 import { classNames, uuid } from '@renderer/utils'
 import { Button } from 'antd'
@@ -29,6 +30,7 @@ interface Props {
   position: 'left' | 'right'
   forceToSeeAllTab?: boolean
   style?: React.CSSProperties
+  workspace?: AssistantWorkspace
 }
 
 let _tab: Tab | null = null
@@ -40,7 +42,8 @@ const HomePanel: FC<Props> = ({
   setActiveTopic,
   position,
   forceToSeeAllTab,
-  style
+  style,
+  workspace = 'chat'
 }) => {
   const { addAssistant } = useAssistants()
   const { topicPosition } = useSettings()
@@ -66,14 +69,15 @@ const HomePanel: FC<Props> = ({
   const showTab = position === 'left' && topicPosition === 'left'
 
   const onCreateAssistant = async () => {
-    const assistant = await AddAssistantPopup.show()
+    const assistant = await AddAssistantPopup.show(workspace)
     if (assistant) {
       setActiveAssistant(assistant)
     }
   }
 
   const onCreateDefaultAssistant = () => {
-    const assistant = { ...defaultAssistant, id: uuid() }
+    const id = uuid()
+    const assistant = { ...defaultAssistant, id, workspace, topics: [getDefaultTopic(id)] }
     addAssistant(assistant)
     setActiveAssistant(assistant)
   }
@@ -99,7 +103,7 @@ const HomePanel: FC<Props> = ({
         // height: 'calc(100vh - 100px)',
         // overflowY: 'auto'
       },
-      content: <AssistantPresetsPage showNavbar={false} />
+      content: <AssistantPresetsPage showNavbar={false} workspace={workspace} />
     })
   }
 
@@ -152,6 +156,7 @@ const HomePanel: FC<Props> = ({
         </div>
         <div className="content">
           <Assistants
+            workspace={workspace}
             activeAssistant={activeAssistant}
             setActiveAssistant={setActiveAssistant}
             onCreateAssistant={onCreateAssistant}

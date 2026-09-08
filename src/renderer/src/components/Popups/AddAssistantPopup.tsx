@@ -5,7 +5,7 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import { useSystemAssistantPresets } from '@renderer/pages/store/assistants/presets'
 import { createAssistantFromAgent } from '@renderer/services/AssistantService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
-import type { Assistant, AssistantPreset } from '@renderer/types'
+import type { Assistant, AssistantPreset, AssistantWorkspace } from '@renderer/types'
 import { uuid } from '@renderer/utils'
 import type { InputRef } from 'antd'
 import { Input, Modal, Tag } from 'antd'
@@ -21,9 +21,10 @@ import Scrollbar from '../Scrollbar'
 
 interface Props {
   resolve: (value: Assistant | undefined) => void
+  workspace: AssistantWorkspace
 }
 
-const PopupContainer: React.FC<Props> = ({ resolve }) => {
+const PopupContainer: React.FC<Props> = ({ resolve, workspace }) => {
   const [open, setOpen] = useState(true)
   const { t } = useTranslation()
   const { presets: userPresets } = useAssistantPresets()
@@ -77,17 +78,17 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
       let assistant: Assistant
 
       if (preset.id === 'default') {
-        assistant = { ...preset, id: uuid() }
+        assistant = { ...preset, id: uuid(), workspace }
         addAssistant(assistant)
       } else {
-        assistant = await createAssistantFromAgent(preset)
+        assistant = await createAssistantFromAgent(preset, workspace)
       }
 
       setTimeoutTimer('onCreateAssistant', () => EventEmitter.emit(EVENT_NAMES.SHOW_ASSISTANTS), 0)
       resolve(assistant)
       setOpen(false)
     },
-    [setTimeoutTimer, resolve, addAssistant]
+    [setTimeoutTimer, resolve, addAssistant, workspace]
   ) // 添加函数内使用的依赖项
   // 键盘导航处理
   useEffect(() => {
@@ -299,9 +300,9 @@ export default class AddAssistantPopup {
   static hide() {
     TopView.hide('AddAssistantPopup')
   }
-  static show() {
+  static show(workspace: AssistantWorkspace = 'chat') {
     return new Promise<Assistant | undefined>((resolve) => {
-      TopView.show(<PopupContainer resolve={resolve} />, 'AddAssistantPopup')
+      TopView.show(<PopupContainer resolve={resolve} workspace={workspace} />, 'AddAssistantPopup')
     })
   }
 }

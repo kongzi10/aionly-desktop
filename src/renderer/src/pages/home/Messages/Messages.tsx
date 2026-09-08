@@ -50,11 +50,19 @@ interface MessagesProps {
   setActiveTopic: (topic: Topic) => void
   onComponentUpdate?(): void
   onFirstUpdate?(): void
+  mode?: 'chat' | 'roundtable'
 }
 
 const logger = loggerService.withContext('Messages')
 
-const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, onComponentUpdate, onFirstUpdate }) => {
+const Messages: React.FC<MessagesProps> = ({
+  assistant,
+  topic,
+  setActiveTopic,
+  onComponentUpdate,
+  onFirstUpdate,
+  mode = 'chat'
+}) => {
   const { containerRef: scrollContainerRef, handleScroll: handleScrollPosition } = useScrollPosition(
     `topic-${topic.id}`
   )
@@ -308,7 +316,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
       ref={scrollContainerRef}
       key={assistant.id}
       onScroll={handleScrollPosition}>
-      <NarrowLayout style={{ display: 'flex', flexDirection: 'column-reverse' }}>
+      <NarrowLayout fullWidth={mode === 'roundtable'} style={{ display: 'flex', flexDirection: 'column-reverse' }}>
         <InfiniteScroll
           dataLength={displayMessages.length}
           next={loadMoreMessages}
@@ -324,6 +332,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
                   key={key}
                   messages={groupMessages}
                   topic={topic}
+                  mode={mode}
                   registerMessageElement={registerMessageElement}
                 />
               ))}
@@ -338,7 +347,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
 
         {/*{showPrompt && <Prompt assistant={assistant} key={assistant.prompt} topic={topic} />}*/}
       </NarrowLayout>
-      {displayMessages.length === 0 && <Welcome />}
+      {displayMessages.length === 0 && <Welcome mode={mode} />}
       {messageNavigation === 'anchor' && <MessageAnchorLine messages={displayMessages} />}
       <SelectionBox
         isMultiSelectMode={isMultiSelectMode}

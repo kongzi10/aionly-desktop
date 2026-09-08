@@ -37,6 +37,7 @@ export interface InputbarToolsNewProps {
   assistant: Assistant
   model: Model
   session?: ToolContext['session']
+  mode?: 'chat' | 'roundtable'
 }
 
 interface ToolConfig {
@@ -50,7 +51,7 @@ const DraggablePortal = ({ children, isDragging }: { children: React.ReactNode; 
   return isDragging ? createPortal(children, document.body) : children
 }
 
-const InputbarTools = ({ scope, assistant, model, session }: InputbarToolsNewProps) => {
+const InputbarTools = ({ scope, assistant, model, session, mode = 'chat' }: InputbarToolsNewProps) => {
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const toolsContext = useInputbarTools()
@@ -202,8 +203,9 @@ const InputbarTools = ({ scope, assistant, model, session }: InputbarToolsNewPro
       }))
 
     // 3. Merge: explicit order + new tools at end
-    return [...explicitlyVisible, ...newTools]
-  }, [toolMetadata, toolOrder.visible, toolOrder.hidden])
+    const tools = [...explicitlyVisible, ...newTools]
+    return mode === 'roundtable' ? tools.filter((tool) => tool.key !== 'mention_models') : tools
+  }, [mode, toolMetadata, toolOrder.visible, toolOrder.hidden])
 
   const hiddenTools = useMemo(() => {
     return toolOrder.hidden

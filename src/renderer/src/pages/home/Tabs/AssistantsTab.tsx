@@ -6,13 +6,14 @@ import { useAssistantsTabSortType } from '@renderer/hooks/useStore'
 import { useTags } from '@renderer/hooks/useTags'
 import type { RootState } from '@renderer/store'
 import { useAppSelector } from '@renderer/store'
-import type { Assistant, AssistantsSortType } from '@renderer/types'
+import type { Assistant, AssistantsSortType, AssistantWorkspace } from '@renderer/types'
 import type { FC } from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 import * as tinyPinyin from 'tiny-pinyin'
 
+import { filterAssistantsByWorkspace, replaceWorkspaceAssistants } from '../../roundtable/roundtableWorkspace'
 // import AssistantAddButton from './components/AssistantAddButton'
 import { AssistantList } from './components/AssistantList'
 import { AssistantTagGroups } from './components/AssistantTagGroups'
@@ -22,6 +23,7 @@ interface AssistantsTabProps {
   setActiveAssistant: (assistant: Assistant) => void
   onCreateAssistant: () => void
   onCreateDefaultAssistant: () => void
+  workspace?: AssistantWorkspace
 }
 
 const selectTagsOrder = createSelector(
@@ -31,6 +33,7 @@ const selectTagsOrder = createSelector(
 
 const AssistantsTab: FC<AssistantsTabProps> = (props) => {
   const { activeAssistant, setActiveAssistant, /*onCreateAssistant, */ onCreateDefaultAssistant } = props
+  const workspace = props.workspace ?? 'chat'
   const containerRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation()
 
@@ -41,18 +44,24 @@ const AssistantsTab: FC<AssistantsTabProps> = (props) => {
   const { assistantsTabSortType = 'list', setAssistantsTabSortType } = useAssistantsTabSortType()
   const [dragging, setDragging] = useState(false)
   const savedTagsOrder = useAppSelector(selectTagsOrder)
+  const workspaceAssistants = useMemo(() => filterAssistantsByWorkspace(assistants, workspace), [assistants, workspace])
+
+  const updateWorkspaceAssistants = useCallback(
+    (updated: Assistant[]) => updateAssistants(replaceWorkspaceAssistants(assistants, updated, workspace)),
+    [assistants, updateAssistants, workspace]
+  )
 
   // Sorting
   const sortByPinyin = useCallback(
     (isAscending: boolean) => {
-      const sorted = [...assistants].sort((a, b) => {
+      const sorted = [...workspaceAssistants].sort((a, b) => {
         const pinyinA = tinyPinyin.convertToPinyin(a.name, '', true)
         const pinyinB = tinyPinyin.convertToPinyin(b.name, '', true)
         return isAscending ? pinyinA.localeCompare(pinyinB) : pinyinB.localeCompare(pinyinA)
       })
-      updateAssistants(sorted)
+      updateWorkspaceAssistants(sorted)
     },
-    [assistants, updateAssistants]
+    [updateWorkspaceAssistants, workspaceAssistants]
   )
 
   const sortByPinyinAsc = useCallback(() => sortByPinyin(true), [sortByPinyin])
@@ -62,7 +71,7 @@ const AssistantsTab: FC<AssistantsTabProps> = (props) => {
   const groupedAssistantItems = useMemo(() => {
     const groups = new Map<string, Assistant[]>()
 
-    assistants.forEach((assistant) => {
+    workspaceAssistants.forEach((assistant) => {
       const tags = assistant.tags?.length ? assistant.tags : [t('assistants.tags.untagged')]
       tags.forEach((tag) => {
         if (!groups.has(tag)) {
@@ -89,12 +98,12 @@ const AssistantsTab: FC<AssistantsTabProps> = (props) => {
     })
 
     return sortedGroups.map(([tag, items]) => ({ tag, items }))
-  }, [assistants, t, savedTagsOrder])
+  }, [workspaceAssistants, t, savedTagsOrder])
 
   const handleAssistantGroupReorder = useCallback(
     (tag: string, newGroupList: Assistant[]) => {
       let insertIndex = 0
-      const updatedAssistants = assistants.map((a) => {
+      const updatedAssistants = workspaceAssistants.map((a) => {
         const tags = a.tags?.length ? a.tags : [t('assistants.tags.untagged')]
         if (tags.includes(tag)) {
           const replaced = newGroupList[insertIndex]
@@ -103,14 +112,14 @@ const AssistantsTab: FC<AssistantsTabProps> = (props) => {
         }
         return a
       })
-      updateAssistants(updatedAssistants)
+      updateWorkspaceAssistants(updatedAssistants)
     },
-    [assistants, t, updateAssistants]
+    [t, updateWorkspaceAssistants, workspaceAssistants]
   )
 
   const onDeleteAssistant = useCallback(
     (assistant: Assistant) => {
-      const remaining = assistants.filter((a) => a.id !== assistant.id)
+      const remaining = workspaceAssistants.filter((a) => a.id !== assistant.id)
       if (remaining.length === 0) {
         window.toast.error(t('assistants.delete.error.remain_one'))
         return
@@ -122,7 +131,7 @@ const AssistantsTab: FC<AssistantsTabProps> = (props) => {
       }
       removeAssistant(assistant.id)
     },
-    [assistants, activeAssistant?.id, removeAssistant, t, setActiveAssistant]
+    [workspaceAssistants, activeAssistant?.id, removeAssistant, t, setActiveAssistant]
   )
 
   const handleSortByChange = useCallback(
@@ -157,10 +166,10 @@ const AssistantsTab: FC<AssistantsTabProps> = (props) => {
         />
       ) : (
         <AssistantList
-          items={assistants}
+          items={workspaceAssistants}
           activeAssistantId={activeAssistant.id}
           sortBy={assistantsTabSortType}
-          onReorder={updateAssistants}
+          onReorder={updateWorkspaceAssistants}
           onDragStart={() => setDragging(true)}
           onDragEnd={() => setDragging(false)}
           onAssistantSwitch={setActiveAssistant}

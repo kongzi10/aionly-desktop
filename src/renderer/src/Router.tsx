@@ -26,6 +26,7 @@ import NotesPage from './pages/notes/NotesPage'
 // import { OnboardingPage } from './pages/onboarding'
 import OpenClawPage from './pages/openclaw/OpenClawPage'
 import PaintingsRoutePage from './pages/paintings/PaintingsRoutePage'
+import RoundtablePage from './pages/roundtable/RoundtablePage'
 import SettingsPage from './pages/settings/SettingsPage'
 import AssistantPresetsPage from './pages/store/assistants/presets/AssistantPresetsPage'
 import TokenPlanPage from './pages/tokenPlan/TokenPlanPage'
@@ -42,6 +43,7 @@ const Router: FC = () => {
         <AuthRoute>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/roundtable" element={<RoundtablePage />} />
             <Route path="/agents" element={<AgentPage />} />
             <Route path="/agent-router" element={<AgentRouterPage />} />
             <Route path="/store" element={<AssistantPresetsPage />} />

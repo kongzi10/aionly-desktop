@@ -44,11 +44,14 @@ import type { MessageInputBaseParams } from '@renderer/types/newMessage'
 import { delay } from '@renderer/utils'
 import { getSendMessageShortcutLabel } from '@renderer/utils/input'
 import { documentExts, imageExts, textExts } from '@shared/config/constant'
+import { message } from 'antd'
 import { debounce } from 'lodash'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import RoundtableModelBar from '../../roundtable/RoundtableModelBar'
+import { canSendRoundtableMessage } from '../../roundtable/roundtablePolicy'
 import { InputbarCore } from './components/InputbarCore'
 import InputbarTools from './InputbarTools'
 import KnowledgeBaseInput from './KnowledgeBaseInput'
@@ -73,6 +76,7 @@ interface Props {
   assistant: Assistant
   setActiveTopic: (topic: Topic) => void
   topic: Topic
+  mode?: 'chat' | 'roundtable'
 }
 
 type ProviderActionHandlers = {
@@ -88,7 +92,7 @@ interface InputbarInnerProps extends Props {
   actionsRef: React.RefObject<ProviderActionHandlers>
 }
 
-const Inputbar: FC<Props> = ({ assistant: initialAssistant, setActiveTopic, topic }) => {
+const Inputbar: FC<Props> = ({ assistant: initialAssistant, setActiveTopic, topic, mode = 'chat' }) => {
   const actionsRef = useRef<ProviderActionHandlers>({
     resizeTextArea: () => {},
     addNewTopic: () => {},
@@ -127,13 +131,20 @@ const Inputbar: FC<Props> = ({ assistant: initialAssistant, setActiveTopic, topi
         assistant={initialAssistant}
         setActiveTopic={setActiveTopic}
         topic={topic}
+        mode={mode}
         actionsRef={actionsRef}
       />
     </InputbarToolsProvider>
   )
 }
 
-const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, setActiveTopic, topic, actionsRef }) => {
+const InputbarInner: FC<InputbarInnerProps> = ({
+  assistant: initialAssistant,
+  setActiveTopic,
+  topic,
+  mode = 'chat',
+  actionsRef
+}) => {
   const scope = topic.type ?? TopicType.Chat
   const config = getInputbarConfig(scope)
 
@@ -233,6 +244,11 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
       })
 
   const sendMessage = useCallback(async () => {
+    if (mode === 'roundtable' && !canSendRoundtableMessage(mentionedModels)) {
+      message.warning(t('roundtable.minimum_models'))
+      return
+    }
+
     if (checkRateLimit(assistant)) {
       return
     }
@@ -284,7 +300,9 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     setFiles,
     setTimeoutTimer,
     resizeTextArea,
-    focusTextarea
+    focusTextarea,
+    mode,
+    t
   ])
 
   const tokenCountProps = useMemo(() => {
@@ -471,14 +489,16 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
         />
       )}
 
-      {mentionedModels.length > 0 && (
+      {mode !== 'roundtable' && mentionedModels.length > 0 && (
         <MentionModelsInput selectedModels={mentionedModels} onRemoveModel={handleRemoveModel} />
       )}
     </>
   )
 
   // leftToolbar: 左侧工具栏
-  const leftToolbar = config.showTools ? <InputbarTools scope={scope} assistant={assistant} model={model} /> : null
+  const leftToolbar = config.showTools ? (
+    <InputbarTools scope={scope} assistant={assistant} model={model} mode={mode} />
+  ) : null
 
   // rightToolbar: 右侧工具栏
   const rightToolbar = (
@@ -512,6 +532,8 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
       leftToolbar={leftToolbar}
       rightToolbar={rightToolbar}
       topContent={topContent}
+      beforeInputContent={mode === 'roundtable' ? <RoundtableModelBar /> : undefined}
+      fullWidth={mode === 'roundtable'}
     />
   )
 }

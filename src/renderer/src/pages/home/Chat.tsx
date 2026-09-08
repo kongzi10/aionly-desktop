@@ -38,6 +38,7 @@ interface Props {
   activeTopic: Topic
   setActiveTopic: (topic: Topic) => void
   setActiveAssistant: (assistant: Assistant) => void
+  mode?: 'chat' | 'roundtable'
 }
 
 const Chat: FC<Props> = (props) => {
@@ -194,7 +195,12 @@ const Chat: FC<Props> = (props) => {
                     setActiveAssistant={props.setActiveAssistant}
                     position="left"
                   />
-                  <Inputbar assistant={assistant} setActiveTopic={props.setActiveTopic} topic={props.activeTopic} />
+                  <Inputbar
+                    assistant={assistant}
+                    setActiveTopic={props.setActiveTopic}
+                    topic={props.activeTopic}
+                    mode={props.mode}
+                  />
                 </BottomFixedArea>
                 {isMultiSelectMode && <MultiSelectActionPopup topic={props.activeTopic} />}
               </div>

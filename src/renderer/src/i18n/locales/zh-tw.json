@@ -4037,6 +4037,12 @@
       "undo": "復原"
     }
   },
+  "roundtable": {
+    "add_model": "添加模型",
+    "minimum_models": "圓桌對話至少需要選擇兩個模型",
+    "title": "圓桌",
+    "welcome": "準備好開始了嗎？"
+  },
   "selection": {
     "action": {
       "builtin": {

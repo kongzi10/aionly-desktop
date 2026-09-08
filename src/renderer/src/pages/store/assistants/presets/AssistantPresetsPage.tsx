@@ -6,7 +6,7 @@ import Scrollbar from '@renderer/components/Scrollbar'
 import { useAssistantPresets } from '@renderer/hooks/useAssistantPresets'
 // import { useNavbarPosition } from '@renderer/hooks/useSettings'
 import { createAssistantFromAgent } from '@renderer/services/AssistantService'
-import type { AssistantPreset } from '@renderer/types'
+import type { AssistantPreset, AssistantWorkspace } from '@renderer/types'
 import { uuid } from '@renderer/utils'
 import { cn } from '@renderer/utils/style'
 import { Button, Divider, Empty, Flex, Input } from 'antd'
@@ -28,9 +28,10 @@ import ManageAssistantPresetsPopup from './components/ManageAssistantPresetsPopu
 
 interface Props {
   showNavbar?: boolean
+  workspace?: AssistantWorkspace
 }
 
-const AssistantPresetsPage: FC<Props> = ({ showNavbar = true }) => {
+const AssistantPresetsPage: FC<Props> = ({ showNavbar = true, workspace = 'chat' }) => {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   // const [activeGroup, setActiveGroup] = useState('我的') // 原逻辑：默认选中「我的」
@@ -116,10 +117,10 @@ const AssistantPresetsPage: FC<Props> = ({ showNavbar = true }) => {
         centered: true,
         okButtonProps: { type: 'primary' },
         okText: t('assistants.presets.add.button'),
-        onOk: () => createAssistantFromAgent(preset)
+        onOk: () => createAssistantFromAgent(preset, workspace)
       })
     },
-    [t]
+    [t, workspace]
   )
 
   const getPresetFromSystemPreset = useCallback((preset: (typeof systemPresets)[number]) => {
@@ -397,8 +398,9 @@ const AssistantPresetsPage: FC<Props> = ({ showNavbar = true }) => {
                 <AssistantPresetCard
                   key={agent.id || index}
                   onClick={() => onAddPresetConfirm(getPresetFromSystemPreset(agent))}
-                  onAddAssistant={() => createAssistantFromAgent(getPresetFromSystemPreset(agent))}
+                  onAddAssistant={() => createAssistantFromAgent(getPresetFromSystemPreset(agent), workspace)}
                   preset={agent}
+                  workspace={workspace}
                   activegroup={activeGroup}
                   getLocalizedGroupName={getLocalizedGroupName}
                 />

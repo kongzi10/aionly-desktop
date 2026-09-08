@@ -4037,6 +4037,12 @@
       "undo": "annuler"
     }
   },
+  "roundtable": {
+    "add_model": "Ajouter un modèle",
+    "minimum_models": "Sélectionnez au moins deux modèles pour une conversation en table ronde",
+    "title": "Table ronde",
+    "welcome": "Prêt à commencer ?"
+  },
   "selection": {
     "action": {
       "builtin": {

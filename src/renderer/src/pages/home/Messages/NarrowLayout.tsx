@@ -4,13 +4,14 @@ import styled from 'styled-components'
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
+  fullWidth?: boolean
 }
 
-const NarrowLayout: FC<Props> = ({ children, ...props }) => {
+const NarrowLayout: FC<Props> = ({ children, fullWidth = false, ...props }) => {
   const { narrowMode } = useSettings()
 
   return (
-    <Container className={`narrow-mode ${narrowMode ? 'active' : ''}`} {...props}>
+    <Container className={`narrow-mode ${narrowMode && !fullWidth ? 'active' : ''}`} {...props}>
       {children}
     </Container>
   )

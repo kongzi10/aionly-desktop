@@ -4037,6 +4037,12 @@
       "undo": "Undo"
     }
   },
+  "roundtable": {
+    "add_model": "Add model",
+    "minimum_models": "Select at least two models for a roundtable conversation",
+    "title": "Roundtable",
+    "welcome": "Ready to get started?"
+  },
   "selection": {
     "action": {
       "builtin": {

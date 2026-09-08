@@ -4037,6 +4037,12 @@
       "undo": "取り消す"
     }
   },
+  "roundtable": {
+    "add_model": "モデルを追加",
+    "minimum_models": "ラウンドテーブルでの会話には2つ以上のモデルを選択してください",
+    "title": "ラウンドテーブル",
+    "welcome": "始める準備はできましたか？"
+  },
   "selection": {
     "action": {
       "builtin": {

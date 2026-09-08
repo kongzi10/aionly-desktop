@@ -1,4 +1,4 @@
-import { Navbar, NavbarCenter, NavbarLeft, NavbarRight } from '@renderer/components/app/Navbar'
+import { Navbar, NavbarCenter, NavbarRight } from '@renderer/components/app/Navbar'
 // import { HStack } from '@renderer/components/Layout'
 import SearchPopup from '@renderer/components/Popups/SearchPopup'
 // import { modelGenerating } from '@renderer/hooks/useRuntime'
@@ -10,13 +10,10 @@ import { useShowAssistants /*useShowTopics*/ } from '@renderer/hooks/useStore'
 import type { Assistant, Topic } from '@renderer/types'
 import { Tooltip } from 'antd'
 import { t } from 'i18next'
-import { Menu, /*PanelLeftClose,*/ PanelRightClose /*Search*/ } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
 import type { FC } from 'react'
 
 // import styled from 'styled-components'
 import NavbarIcon from '../../components/NavbarIcon'
-import AssistantsDrawer from './components/AssistantsDrawer'
 import UpdateAppButton from './components/UpdateAppButton'
 
 interface Props {
@@ -25,9 +22,10 @@ interface Props {
   setActiveTopic: (topic: Topic) => void
   setActiveAssistant: (assistant: Assistant) => void
   position: 'left' | 'right'
+  titleKey?: string
 }
 
-const HeaderNavbar: FC<Props> = ({ activeAssistant, setActiveAssistant, activeTopic, setActiveTopic }) => {
+const HeaderNavbar: FC<Props> = ({ titleKey = 'assistants.title' }) => {
   const { showAssistants, toggleShowAssistants } = useShowAssistants()
   // const { topicPosition, narrowMode } = useSettings()
   // const { showTopics, toggleShowTopics } = useShowTopics()
@@ -42,17 +40,21 @@ const HeaderNavbar: FC<Props> = ({ activeAssistant, setActiveAssistant, activeTo
     dispatch(setNarrowMode(!narrowMode))
   }*/
 
-  const onShowAssistantsDrawer = () => {
-    void AssistantsDrawer.show({
-      activeAssistant,
-      setActiveAssistant,
-      activeTopic,
-      setActiveTopic
-    })
-  }
-
   return (
-    <Navbar className="home-navbar">
+    <Navbar className="home-navbar" style={{ position: 'relative' }}>
+      {showAssistants && (
+        <Tooltip title={t('navbar.hide_sidebar')} mouseEnterDelay={0.8}>
+          <NavbarIcon
+            onClick={toggleShowAssistants}
+            style={{
+              position: 'absolute',
+              left: 'calc(var(--sidebar-width) + var(--assistants-width) - 18px)',
+              zIndex: 1
+            }}>
+            <i className="iconfont icon-choutishouqi" style={{ fontSize: 18 }} />
+          </NavbarIcon>
+        </Tooltip>
+      )}
       {/*<AnimatePresence initial={false}>
         {showAssistants && (
           <motion.div
@@ -71,35 +73,16 @@ const HeaderNavbar: FC<Props> = ({ activeAssistant, setActiveAssistant, activeTo
           </motion.div>
         )}
       </AnimatePresence>*/}
-      {!showAssistants && (
-        <NavbarLeft
-          style={{
-            justifyContent: 'flex-start',
-            borderRight: 'none',
-            paddingLeft: 0,
-            paddingRight: 0,
-            minWidth: 'auto'
-          }}>
-          <Tooltip title={t('navbar.show_sidebar')} mouseEnterDelay={0.8} placement="right">
-            <NavbarIcon onClick={() => toggleShowAssistants()}>
-              <PanelRightClose size={18} />
+      <NavbarCenter>
+        {t(titleKey)}
+        {!showAssistants && (
+          <Tooltip title={t('navbar.show_sidebar')} mouseEnterDelay={0.8}>
+            <NavbarIcon onClick={toggleShowAssistants} style={{ marginLeft: 6 }}>
+              <i className="iconfont icon-choutizhankai" style={{ fontSize: 18 }} />
             </NavbarIcon>
           </Tooltip>
-          <AnimatePresence initial={false}>
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 'auto', opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              style={{ overflow: 'hidden' }}>
-              <NavbarIcon onClick={onShowAssistantsDrawer} style={{ marginLeft: 8 }}>
-                <Menu size={18} />
-              </NavbarIcon>
-            </motion.div>
-          </AnimatePresence>
-        </NavbarLeft>
-      )}
-      <NavbarCenter>{t('assistants.title')}</NavbarCenter>
+        )}
+      </NavbarCenter>
       <NavbarRight
         style={{
           justifyContent: 'flex-end',

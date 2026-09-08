@@ -8,6 +8,8 @@ import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
 import { modelGenerating, useRuntime } from '@renderer/hooks/useRuntime'
 import { getSidebarIconLabel /*getThemeModeLabel*/ } from '@renderer/i18n/label'
+import { getPrimarySidebarMenus, hasTokenPlanAccess } from '@renderer/pages/roundtable/roundtableNavigation'
+import RoundtableSidebarIcon from '@renderer/pages/roundtable/RoundtableSidebarIcon'
 import { useAppSelector } from '@renderer/store'
 import { selectServiceInfo } from '@renderer/store/user'
 // import { ThemeMode } from '@renderer/types'
@@ -29,7 +31,6 @@ import { Avatar /*Tooltip*/ } from 'antd'
   // Sun
 } from 'lucide-react'*/
 import type { FC } from 'react'
-import { useMemo } from 'react'
 // import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
@@ -156,48 +157,7 @@ const MainMenus: FC = () => {
   }*/
 
   // 显示在左侧的菜单
-  const showInLeftMenus = useMemo(() => {
-    const base = [
-      {
-        path: '/',
-        name: 'assistants',
-        icon: 'icon-duihuamoren',
-        iconActive: 'icon-duihuaxuanzhong'
-      },
-      {
-        path: '/agents',
-        name: 'agents',
-        icon: 'icon-zhinengtimoren',
-        iconActive: 'icon-zhinengtixuanzhong'
-      },
-      {
-        // 工具箱(原小程序),绘画/翻译已收纳至工具箱页面
-        path: '/apps',
-        name: 'minapp',
-        icon: 'icon-gongjuxiang',
-        iconActive: 'icon-gongjuxiang'
-      }
-    ]
-    const agentRouterMenu = {
-      path: '/agent-router',
-      name: 'agent_router',
-      icon: 'icon-lianjie',
-      iconActive: 'icon-lianjie'
-    }
-    if (serviceInfo?.planStatus == 1) {
-      return [
-        ...base,
-        {
-          path: '/tokenPlan',
-          name: 'token plan',
-          icon: 'icon-ziyuan1',
-          iconActive: 'icon-ziyuan2'
-        },
-        agentRouterMenu
-      ]
-    }
-    return [...base, agentRouterMenu]
-  }, [serviceInfo?.planStatus])
+  const showInLeftMenus = getPrimarySidebarMenus(hasTokenPlanAccess(serviceInfo?.planStatus))
 
   // console.log('sidebarIcons', sidebarIcons)
 
@@ -222,7 +182,11 @@ const MainMenus: FC = () => {
         }}>
         <Icon theme={theme} className={isActive}>
           {/*{iconMap[menu.name]}*/}
-          <i className={`iconfont icon ${isActive ? menu.iconActive : menu.icon}`}></i>
+          {menu.icon === 'roundtable' ? (
+            <RoundtableSidebarIcon active={isActive === 'active'} className="icon roundtable-icon" />
+          ) : (
+            <i className={`iconfont icon ${isActive ? menu.iconActive : menu.icon}`}></i>
+          )}
           <div className="name">{getSidebarIconLabel(menu.name)}</div>
         </Icon>
       </StyledLink>
@@ -286,6 +250,10 @@ const Icon = styled.div<{ theme: string }>`
   border: 0.5px solid transparent;
   .icon {
     color: var(--color-icon);
+  }
+  .roundtable-icon {
+    width: 18px;
+    height: 18px;
   }
   .name{
     font-size: 10px;

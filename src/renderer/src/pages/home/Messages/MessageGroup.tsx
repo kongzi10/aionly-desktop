@@ -16,6 +16,7 @@ import type { ComponentProps } from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components'
 
+import { getRoundtableMessageStyle } from '../../roundtable/roundtableView'
 import MessageItem from './Message'
 import MessageGroupMenuBar from './MessageGroupMenuBar'
 
@@ -24,9 +25,10 @@ interface Props {
   messages: (Message & { index: number })[]
   topic: Topic
   registerMessageElement?: (id: string, element: HTMLElement | null) => void
+  mode?: 'chat' | 'roundtable'
 }
 
-const MessageGroup = ({ messages, topic, registerMessageElement }: Props) => {
+const MessageGroup = ({ messages, topic, registerMessageElement, mode = 'chat' }: Props) => {
   const messageLength = messages.length
 
   // Hooks
@@ -42,11 +44,19 @@ const MessageGroup = ({ messages, topic, registerMessageElement }: Props) => {
     messages[0].multiModelMessageStyle || multiModelMessageStyleSetting
   )
   const [selectedIndex, setSelectedIndex] = useState(messageLength - 1)
+  const [hasRoundtableLayoutOverride, setHasRoundtableLayoutOverride] = useState(
+    mode === 'roundtable' && Boolean(messages[0].multiModelMessageStyle)
+  )
 
   // 对于单模型消息，采用简单的样式，避免 overflow 影响内部的 sticky 效果
   const multiModelMessageStyle = useMemo(
-    () => (messageLength < 2 ? 'fold' : _multiModelMessageStyle),
-    [_multiModelMessageStyle, messageLength]
+    () =>
+      mode === 'roundtable' && !hasRoundtableLayoutOverride
+        ? getRoundtableMessageStyle(_multiModelMessageStyle, messageLength)
+        : messageLength < 2
+          ? 'fold'
+          : _multiModelMessageStyle,
+    [_multiModelMessageStyle, hasRoundtableLayoutOverride, messageLength, mode]
   )
 
   const isGrid = multiModelMessageStyle === 'grid'
@@ -273,7 +283,8 @@ const MessageGroup = ({ messages, topic, registerMessageElement }: Props) => {
           className={classNames([
             {
               [multiModelMessageStyle]: message.role === 'assistant' && messages.length > 1,
-              selected: message.id === selectedMessageId
+              selected: message.id === selectedMessageId,
+              'context-selected': isGrouped && message.id === groupContextMessageId
             }
           ])}>
           <MessageItem
@@ -345,6 +356,7 @@ const MessageGroup = ({ messages, topic, registerMessageElement }: Props) => {
           <MessageGroupMenuBar
             multiModelMessageStyle={multiModelMessageStyle}
             setMultiModelMessageStyle={(style) => {
+              setHasRoundtableLayoutOverride(true)
               setMultiModelMessageStyle(style)
               messages.forEach((message) => {
                 void editMessage(message.id, { multiModelMessageStyle: style })
@@ -430,6 +442,28 @@ interface MessageWrapperProps {
 }
 
 const MessageWrapper = styled.div<MessageWrapperProps>`
+  &.horizontal,
+  &.vertical,
+  &.grid,
+  &.fold {
+    .message-header {
+      left: 10px;
+      right: 10px;
+    }
+    .group-context-marker {
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+  }
+
+  &.vertical.context-selected .message,
+  &.fold.context-selected .message {
+    border: 0.5px solid var(--color-primary);
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 0.5px var(--color-primary);
+  }
+
   &.horizontal {
     padding: 1px;
     overflow-y: visible;
@@ -449,6 +483,10 @@ const MessageWrapper = styled.div<MessageWrapperProps>`
       margin-left: 0;
       margin-top: 2px;
       margin-bottom: 2px;
+    }
+    &.context-selected .message {
+      border-color: var(--color-primary);
+      box-shadow: inset 0 0 0 0.5px var(--color-primary);
     }
   }
   &.grid {
@@ -472,6 +510,10 @@ const MessageWrapper = styled.div<MessageWrapperProps>`
       margin-left: 0;
       margin-top: 2px;
       margin-bottom: 2px;
+    }
+    &.context-selected {
+      border-color: var(--color-primary);
+      box-shadow: inset 0 0 0 0.5px var(--color-primary);
     }
   }
   &.in-popover {

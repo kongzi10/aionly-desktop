@@ -4037,6 +4037,12 @@
       "undo": "Revocar"
     }
   },
+  "roundtable": {
+    "add_model": "Añadir modelo",
+    "minimum_models": "Selecciona al menos dos modelos para una conversación de mesa redonda",
+    "title": "Mesa redonda",
+    "welcome": "¿Listo para empezar?"
+  },
   "selection": {
     "action": {
       "builtin": {

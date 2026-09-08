@@ -3,7 +3,7 @@ import CustomTag from '@renderer/components/Tags/CustomTag'
 import { useAssistantPresets } from '@renderer/hooks/useAssistantPresets'
 import AssistantSettingsPopup from '@renderer/pages/settings/AssistantSettings'
 import { createAssistantFromAgent } from '@renderer/services/AssistantService'
-import type { AssistantPreset } from '@renderer/types'
+import type { AssistantPreset, AssistantWorkspace } from '@renderer/types'
 // import { getLeadingEmoji } from '@renderer/utils'
 import { Button, Dropdown } from 'antd'
 import { t } from 'i18next'
@@ -20,9 +20,17 @@ interface Props {
   onClick: () => void
   onAddAssistant?: () => void
   getLocalizedGroupName: (group: string) => string
+  workspace?: AssistantWorkspace
 }
 
-const AssistantPresetCard: FC<Props> = ({ preset, onClick, onAddAssistant, activegroup, getLocalizedGroupName }) => {
+const AssistantPresetCard: FC<Props> = ({
+  preset,
+  onClick,
+  onAddAssistant,
+  activegroup,
+  getLocalizedGroupName,
+  workspace = 'chat'
+}) => {
   const { removeAssistantPreset } = useAssistantPresets()
   const [isVisible, setIsVisible] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -74,7 +82,7 @@ const AssistantPresetCard: FC<Props> = ({ preset, onClick, onAddAssistant, activ
       icon: <PlusIcon size={14} />,
       onClick: (e: any) => {
         e.domEvent.stopPropagation()
-        void createAssistantFromAgent(preset)
+        void createAssistantFromAgent(preset, workspace)
       }
     },
     {

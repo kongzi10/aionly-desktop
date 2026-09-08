@@ -4037,6 +4037,12 @@
       "undo": "Hoàn tác"
     }
   },
+  "roundtable": {
+    "add_model": "Thêm mô hình",
+    "minimum_models": "Chọn ít nhất hai mô hình cho cuộc trò chuyện bàn tròn",
+    "title": "Bàn tròn",
+    "welcome": "Bạn đã sẵn sàng bắt đầu chưa?"
+  },
   "selection": {
     "action": {
       "builtin": {
