@@ -2907,7 +2907,18 @@
         "title": "Delete Custom App"
       }
     },
-    "title": "Toolbox"
+    "title": "Toolbox",
+    "veryclaw": {
+      "download": "Download and install",
+      "download_failed": "Unable to retrieve or open the installer download link. Check your connection and retry.",
+      "download_unavailable": "An installer for this operating system and processor has not been published yet. Please try again later.",
+      "install_content": "VeryClaw was not found. Click “Download and install” to download the latest installer. After installation, click this entry again to open it.",
+      "install_title": "Install VeryClaw",
+      "name": "VeryClaw",
+      "open_failed": "Unable to open VeryClaw. Please check the installation and try again.",
+      "restart_required": "Please fully quit and restart AiOnly to load the VeryClaw launcher.",
+      "unsupported": "Opening VeryClaw is supported on Windows and macOS."
+    }
   },
   "minapps": {
     "ant-ling": "Ant Ling",

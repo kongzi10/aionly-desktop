@@ -2907,7 +2907,18 @@
         "title": "Eliminar aplicación personalizada"
       }
     },
-    "title": "Caja de herramientas"
+    "title": "Caja de herramientas",
+    "veryclaw": {
+      "download": "Descargar e instalar",
+      "download_failed": "No se pudo obtener o abrir el enlace de descarga. Comprueba tu conexión e inténtalo de nuevo.",
+      "download_unavailable": "Todavía no se ha publicado un instalador para este sistema operativo y procesador. Inténtalo más tarde.",
+      "install_content": "No se ha detectado VeryClaw. Haz clic en «Descargar e instalar» para descargar el instalador más reciente. Una vez instalado, vuelve a hacer clic en esta entrada para abrirlo.",
+      "install_title": "Instalar VeryClaw",
+      "name": "VeryClaw",
+      "open_failed": "No se pudo abrir VeryClaw. Comprueba la instalación e inténtalo de nuevo.",
+      "restart_required": "Cierra AiOnly por completo y reinícialo para cargar la función de inicio de VeryClaw.",
+      "unsupported": "Se puede abrir VeryClaw en Windows y macOS."
+    }
   },
   "minapps": {
     "ant-ling": "Ant Ling",

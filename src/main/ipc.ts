@@ -102,6 +102,8 @@ import {
 import storeSyncService from './services/StoreSyncService'
 import { themeService } from './services/ThemeService'
 import VertexAIService from './services/VertexAIService'
+import { downloadVeryClaw } from './services/VeryClawDownloadService'
+import { openVeryClaw } from './services/VeryClawService'
 import { setOpenLinkExternal } from './services/WebviewService'
 import { windowService } from './services/WindowService'
 import { calculateDirectorySize, getDataPath, getResourcePath } from './utils'
@@ -1137,6 +1139,8 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
 
   // ExternalApps
   ipcMain.handle(IpcChannel.ExternalApps_DetectInstalled, () => externalAppsService.detectInstalledApps())
+  ipcMain.handle(IpcChannel.VeryClaw_Open, () => openVeryClaw())
+  ipcMain.handle(IpcChannel.VeryClaw_Download, () => downloadVeryClaw())
 
   // CodeTools
   ipcMain.handle(IpcChannel.CodeTools_Run, codeToolsService.run)

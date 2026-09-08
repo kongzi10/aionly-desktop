@@ -2907,7 +2907,18 @@
         "title": "Excluir aplicativo personalizado"
       }
     },
-    "title": "Caixa de ferramentas"
+    "title": "Caixa de ferramentas",
+    "veryclaw": {
+      "download": "Transferir e instalar",
+      "download_failed": "Não foi possível obter ou abrir a ligação de transferência. Verifique a ligação à Internet e tente novamente.",
+      "download_unavailable": "Ainda não foi publicado um instalador para este sistema operativo e processador. Tente novamente mais tarde.",
+      "install_content": "O VeryClaw não foi detetado. Clique em «Transferir e instalar» para transferir o instalador mais recente. Após a instalação, clique novamente nesta entrada para o abrir.",
+      "install_title": "Instalar o VeryClaw",
+      "name": "VeryClaw",
+      "open_failed": "Não foi possível abrir o VeryClaw. Verifique a instalação e tente novamente.",
+      "restart_required": "Feche completamente o AiOnly e reinicie-o para carregar a função de arranque do VeryClaw.",
+      "unsupported": "A abertura do VeryClaw é suportada no Windows e no macOS."
+    }
   },
   "minapps": {
     "ant-ling": "Ant Ling",

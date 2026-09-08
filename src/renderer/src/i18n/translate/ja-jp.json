@@ -2907,7 +2907,18 @@
         "title": "カスタムアプリを削除"
       }
     },
-    "title": "ツールボックス"
+    "title": "ツールボックス",
+    "veryclaw": {
+      "download": "ダウンロードしてインストール",
+      "download_failed": "ダウンロードリンクを取得または開けませんでした。ネットワーク接続を確認して再試行してください。",
+      "download_unavailable": "このOSとプロセッサに対応するインストーラーはまだ公開されていません。しばらくしてから再試行してください。",
+      "install_content": "VeryClawが見つかりません。「ダウンロードしてインストール」をクリックして最新のインストーラーをダウンロードしてください。インストール後、この項目をもう一度クリックすると起動できます。",
+      "install_title": "VeryClawをインストール",
+      "name": "VeryClaw",
+      "open_failed": "VeryClawを起動できませんでした。インストール状況を確認して再試行してください。",
+      "restart_required": "VeryClawの起動機能を読み込むには、AiOnlyを完全に終了してから再起動してください。",
+      "unsupported": "VeryClawの起動はWindowsとmacOSに対応しています。"
+    }
   },
   "minapps": {
     "ant-ling": "Ant Ling",

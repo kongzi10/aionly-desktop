@@ -534,6 +534,10 @@ const api = {
       }
     }
   },
+  veryclaw: {
+    open: (): Promise<VeryClawOpenResult> => ipcRenderer.invoke(IpcChannel.VeryClaw_Open),
+    download: (): Promise<VeryClawDownloadResult> => ipcRenderer.invoke(IpcChannel.VeryClaw_Download)
+  },
   externalApps: {
     detectInstalled: (): Promise<ExternalAppInfo[]> => ipcRenderer.invoke(IpcChannel.ExternalApps_DetectInstalled)
   },
@@ -949,3 +953,4 @@ ipcRenderer.on('app-config', (_event, config) => {
 })
 
 export type WindowApiType = typeof api
+import type { VeryClawDownloadResult, VeryClawOpenResult } from '@shared/veryclaw'

@@ -17,6 +17,7 @@ import styled from 'styled-components'
 
 import DeepSeekHarnessButton from './components/DeepSeekHarnessButton'
 import ToolboxEntryButton from './components/ToolboxEntryButton'
+import VeryClawButton from './components/VeryClawButton'
 import MinappSettingsPopup from './MiniappSettings/MinappSettingsPopup'
 // import {WEB_UI_HOST} from "@shared/config/constant";
 // import AiOnlyLogo from "@renderer/assets/images/providers/aiOnly.png";
@@ -46,7 +47,7 @@ const AppsPage: FC = () => {
 
   // Calculate the required number of lines
   const itemsPerRow = Math.floor(930 / 115) // Maximum width divided by the width of each item (including spacing)
-  const rowCount = Math.ceil((apiApps.length + 3) / itemsPerRow) // +2 for the fixed module entries, +1 for the fixed DeepSeek Harness entry
+  const rowCount = Math.ceil((apiApps.length + 4) / itemsPerRow) // Paintings, Translate, VeryClaw and DeepSeek Harness
   // Each line height is 85px (60px icon + 5px margin + 12px text + spacing)
   // DeepSeek Harness 名称换行占两行，其所在行需额外 ~16px
   const containerHeight = rowCount * 85 + (rowCount - 1) * 25 + 16 // 25px is the line spacing.
@@ -143,6 +144,7 @@ const AppsPage: FC = () => {
                   label={t('title.translate')}
                   onClick={() => navigate('/translate')}
                 />
+                <VeryClawButton />
                 <DeepSeekHarnessButton />
                 {apiApps.map((app: any) => (
                   <App key={app.id} app={app} />
