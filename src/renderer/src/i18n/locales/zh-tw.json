@@ -570,7 +570,7 @@
       }
     },
     "sidebar_agent": {
-      "add": "创建智能体"
+      "add": "創建智能體"
     },
     "sidebar_title": "Agents",
     "todo": {
@@ -1621,8 +1621,8 @@
       },
       "move_to": "移動到",
       "new": "開始新對話",
-      "no_model": "当前账号暂无可用模型",
-      "open_model_text": "去开通",
+      "no_model": "當前帳號暫無可用模型",
+      "open_model_text": "去開通",
       "pin": "固定話題",
       "prompt": {
         "edit": {
@@ -1644,7 +1644,7 @@
         "openai": "GPT-5 模型的最小推理力度不支援網路搜尋。"
       }
     },
-    "welcome": "准备好开始了吗？"
+    "welcome": "準備好開始了嗎？"
   },
   "code": {
     "auto_update_to_latest": "檢查更新並安裝最新版本",
@@ -1787,7 +1787,7 @@
     "image_preview": "圖片預覽",
     "image_url": "圖片網址",
     "image_url_or_upload": "輸入圖片網址或上傳檔案",
-    "input": "输入",
+    "input": "輸入",
     "inspect": "檢查",
     "invalid_value": "無效值",
     "knowledge_base": "知識庫",
@@ -1798,16 +1798,16 @@
     "more": "更多",
     "name": "名稱",
     "next_match": "下一場比賽",
-    "no_more": "没有更多了",
+    "no_more": "沒有更多了",
     "no_results": "沒有結果",
     "none": "無",
     "off": "關閉",
     "on": "開啟",
     "open": "開啟",
     "open_in": "在 {{name}} 中開啟",
-    "output": "输出",
+    "output": "輸出",
     "pagination": {
-      "total": "共{{total}}条"
+      "total": "共{{total}}條"
     },
     "paste": "貼上",
     "placeholders": {
@@ -2099,10 +2099,10 @@
   },
   "identity": {
     "cancel": "取消",
-    "confirm": "确定要切换身份吗？",
-    "ok": "确定",
-    "tip": "温馨提示",
-    "title": "切换身份"
+    "confirm": "確定要切換身份嗎？",
+    "ok": "確定",
+    "tip": "溫馨提示",
+    "title": "切換身份"
   },
   "import": {
     "chatgpt": {
@@ -2295,123 +2295,123 @@
   },
   "login": {
     "account_login": {
-      "password_invalid": "请输入6-20位英文字母、数字或者符号（除空格），且字母、数字和标点符号至少包含两种",
-      "password_required": "请输入密码",
-      "username_invalid": "手机号或邮箱格式错误",
-      "username_required": "请输入手机号或邮箱"
+      "password_invalid": "請輸入6-20位英文字母、數字或者符號（除空格），且字母、數字和標點符號至少包含兩種",
+      "password_required": "請輸入密碼",
+      "username_invalid": "手機號或郵箱格式錯誤",
+      "username_required": "請輸入手機號/郵箱/帳號ID"
     },
     "agreements": {
-      "accept_text": "请勾选同意相关协议",
-      "agree": "我已阅读并同意",
-      "disclaimer": "《免责协议》",
-      "privacy": "《隐私政策》",
-      "user": "《用户协议》",
-      "yu": "与"
+      "accept_text": "請勾選同意相關協議",
+      "agree": "我已閱讀並同意",
+      "disclaimer": "《免責協議》",
+      "privacy": "《隱私政策》",
+      "user": "《用戶協議》",
+      "yu": "與"
     },
-    "back_login": "返回登录",
-    "back_main_login": "返回主账号登录",
+    "back_login": "返回登錄",
+    "back_main_login": "返回主帳號登錄",
     "email_login": {
-      "code_required": "请输入验证码",
-      "email_invalid": "邮箱格式错误",
-      "email_required": "请输入邮箱",
-      "send_code": "获取验证码"
+      "code_required": "請輸入驗證碼",
+      "email_invalid": "郵箱格式錯誤",
+      "email_required": "請輸入郵箱",
+      "send_code": "獲取驗證碼"
     },
-    "forget_password": "忘记密码",
+    "forget_password": "忘記密碼",
     "forgot_password": {
       "email": {
-        "code_label": "验证码",
-        "code_required": "请输入验证码",
-        "email_invalid": "邮箱格式错误",
-        "email_label": "邮箱",
-        "email_required": "请输入邮箱",
-        "title": "邮箱"
+        "code_label": "驗證碼",
+        "code_required": "請輸入驗證碼",
+        "email_invalid": "郵箱格式錯誤",
+        "email_label": "郵箱",
+        "email_required": "請輸入郵箱",
+        "title": "郵箱"
       },
       "next": "下一步",
       "phone": {
-        "code_label": "验证码",
-        "code_required": "请输入验证码",
-        "phone_invalid": "手机号格式错误",
-        "phone_label": "手机号",
-        "phone_required": "请输入手机号",
-        "title": "手机号"
+        "code_label": "驗證碼",
+        "code_required": "請輸入驗證碼",
+        "phone_invalid": "手機號格式錯誤",
+        "phone_label": "手機號",
+        "phone_required": "請輸入手機號",
+        "title": "手機號"
       },
       "stepOne": {
-        "title": "身份验证"
+        "title": "身份驗證"
       },
       "stepThree": {
-        "auto_back_text": "秒后自动返回登录页",
-        "successful": "密码修改成功"
+        "auto_back_text": "秒後自動返回登錄頁",
+        "successful": "密碼修改成功"
       },
       "stepTwo": {
-        "confirm_password_label": "确认新密码",
-        "confirm_password_required": "请输入确认密码",
-        "new_password_invalid": "请输入6-20位英文字母、数字或者符号（除空格），且字母、数字和标点符号至少包含两种",
-        "new_password_label": "新密码",
-        "new_password_required": "请输入新密码",
-        "password_not_match": "两次密码输入不一致",
-        "sub_title": "请输入新密码",
-        "title": "重置密码"
+        "confirm_password_label": "確認新密碼",
+        "confirm_password_required": "請輸入確認密碼",
+        "new_password_invalid": "請輸入6-20位英文字母、數字或者符號（除空格），且字母、數字和標點符號至少包含兩種",
+        "new_password_label": "新密碼",
+        "new_password_required": "請輸入新密碼",
+        "password_not_match": "兩次密碼輸入不一致",
+        "sub_title": "請輸入新密碼",
+        "title": "重置密碼"
       },
-      "sub_title": "请输入验证的信息"
+      "sub_title": "請輸入驗證的信息"
     },
-    "login_btn_text": "登录/注册",
-    "new_user_gift": "新用户首次注册即送新人礼>>",
-    "send_code": "获取验证码",
+    "login_btn_text": "登錄/註冊",
+    "new_user_gift": "新用戶首次註冊即送新人禮>>",
+    "send_code": "獲取驗證碼",
     "sms_login": {
-      "code_required": "请输入验证码",
-      "phone_invalid": "手机号格式错误",
-      "phone_required": "请输入手机号",
-      "send_code": "获取验证码"
+      "code_required": "請輸入驗證碼",
+      "phone_invalid": "手機號格式錯誤",
+      "phone_required": "請輸入手機號",
+      "send_code": "獲取驗證碼"
     },
     "sub_account": {
-      "back_main_login": "返回主账号登录",
+      "back_main_login": "返回主帳號登錄",
       "bind_phone_email": {
-        "bind_btn_text": "绑定",
-        "bind_success": "绑定成功",
+        "bind_btn_text": "綁定",
+        "bind_success": "綁定成功",
         "email": {
-          "code_label": "验证码",
-          "code_required": "请输入验证码",
-          "duplicate_email_message": "邮箱已被其他账号绑定，请重新输入",
-          "email_label": "邮箱",
-          "fail": "校验邮箱失败，请重试",
-          "invalid": "邮箱格式错误",
-          "required": "请输入邮箱",
-          "send_code": "获取验证码",
-          "title": "绑定邮箱"
+          "code_label": "驗證碼",
+          "code_required": "請輸入驗證碼",
+          "duplicate_email_message": "郵箱已被其他帳號綁定，請重新輸入",
+          "email_label": "郵箱",
+          "fail": "校驗郵箱失敗，請重試",
+          "invalid": "郵箱格式錯誤",
+          "required": "請輸入郵箱",
+          "send_code": "獲取驗證碼",
+          "title": "綁定郵箱"
         },
         "phone": {
-          "code_label": "验证码",
-          "code_required": "请输入验证码",
-          "duplicate_phone_message": "手机号已被其他账号绑定，请重新输入",
-          "fail": "校验手机号失败，请重试",
-          "invalid": "手机号格式错误",
-          "phone_label": "手机号",
-          "required": "请输入手机号",
-          "send_code": "获取验证码",
-          "title": "绑定手机号"
+          "code_label": "驗證碼",
+          "code_required": "請輸入驗證碼",
+          "duplicate_phone_message": "手機號已被其他帳號綁定，請重新輸入",
+          "fail": "校驗手機號失敗，請重試",
+          "invalid": "手機號格式錯誤",
+          "phone_label": "手機號",
+          "required": "請輸入手機號",
+          "send_code": "獲取驗證碼",
+          "title": "綁定手機號"
         },
-        "title": "绑定手机号/邮箱"
+        "title": "綁定手機號/郵箱"
       },
-      "btn_text": "子账户登录",
-      "login": "登录",
-      "password_invalid": "请输入6-20位英文字母、数字或者符号（除空格），且字母、数字和标点符号至少包含两种",
-      "password_label": "子账号密码",
-      "password_required": "请输入子账号密码",
-      "phone_email_invalid": "手机号、邮箱或账号ID格式错误",
-      "phone_email_label": "主账号手机号/邮箱/账号ID",
-      "phone_email_required": "请输入主账号手机号/邮箱/账号ID",
-      "title": "子账户登录",
-      "username_label": "子账号",
-      "username_required": "请输入子账号"
+      "btn_text": "子帳戶登錄",
+      "login": "登錄",
+      "password_invalid": "請輸入6-20位英文字母、數字或者符號（除空格），且字母、數字和標點符號至少包含兩種",
+      "password_label": "子帳號密碼",
+      "password_required": "請輸入子帳號密碼",
+      "phone_email_invalid": "手機號、郵箱或帳號ID格式錯誤",
+      "phone_email_label": "主帳號手機號/郵箱/帳號ID",
+      "phone_email_required": "請輸入主帳號手機號/郵箱/帳號ID",
+      "title": "子帳戶登錄",
+      "username_label": "子帳號",
+      "username_required": "請輸入子帳號"
     },
-    "title": "HELLO! 欢迎注册登录"
+    "title": "HELLO! 歡迎註冊登錄"
   },
   "logout": {
     "cancel": "取消",
-    "confirm": "确定要退出登录吗？",
-    "ok": "确定",
-    "tip": "温馨提示",
-    "title": "退出登录"
+    "confirm": "確定要退出登錄嗎？",
+    "ok": "確定",
+    "tip": "溫馨提示",
+    "title": "退出登錄"
   },
   "memory": {
     "actions": "操作",
@@ -3034,26 +3034,26 @@
       "free": "免費",
       "function_calling": "工具",
       "price": {
-        "cache_price": "缓存价格",
-        "cache_think_price": "缓存价格/思考价格",
-        "charge_type_label": "收费方式",
-        "duration": "按时长收费",
-        "gold_coin": "金币",
-        "interactive_num": "金币/张",
-        "million_tokens": "金币/百万tokens",
-        "output_price": "输出价格",
-        "per_character": "按字符收费",
-        "per_count": "按次收费",
-        "per_image": "按张收费",
+        "cache_price": "緩存價格",
+        "cache_think_price": "緩存價格/思考價格",
+        "charge_type_label": "收費方式",
+        "duration": "按時長收費",
+        "gold_coin": "金幣",
+        "interactive_num": "金幣/張",
+        "million_tokens": "金幣/百萬tokens",
+        "output_price": "輸出價格",
+        "per_character": "按字符收費",
+        "per_count": "按次收費",
+        "per_image": "按張收費",
         "per_time": "次",
-        "per_tokens": "按tokens收费",
+        "per_tokens": "按tokens收費",
         "second": "秒",
-        "standard": "收费标准",
-        "ten_thousand_chars": "万字符",
-        "text_tokens": "金币/次",
-        "title": "收费",
-        "token_price": "金币/M tokens",
-        "video_input_price": "视频输入价格"
+        "standard": "收費標準",
+        "ten_thousand_chars": "萬字符",
+        "text_tokens": "金幣/次",
+        "title": "收費",
+        "token_price": "金幣/M tokens",
+        "video_input_price": "視頻輸入價格"
       },
       "reasoning": "推理",
       "rerank": "重排",
@@ -3605,7 +3605,7 @@
     "seed_tip": "相同的種子和提示詞可以產生相似的圖片",
     "select_model": "選擇模型",
     "settings": {
-      "title": "功能设置"
+      "title": "功能設置"
     },
     "style_type": "風格",
     "style_types": {
@@ -5359,7 +5359,7 @@
         "title": "快捷工具"
       },
       "system": {
-        "title": "系统设置"
+        "title": "系統設置"
       }
     },
     "messages": {
@@ -5457,8 +5457,8 @@
     "model": "預設模型",
     "models": {
       "add": {
-        "activate_desc": "使用模型调用等服务前需要进行模型的开通，开通模式为先用后付，使用则按照模型的刊例价服务计费，不使用则不产生费用。",
-        "activate_model": "开通",
+        "activate_desc": "使用模型調用等服務前需要進行模型的開通，開通模式為先用後付，使用則按照模型的刊例價服務計費，不使用則不產生費用。",
+        "activate_model": "開通",
         "add_model": "新增模型",
         "batch_add_models": "批次新增模型",
         "endpoint_type": {
@@ -5485,12 +5485,12 @@
           "placeholder": "選填，例如 GPT-4",
           "tooltip": "例如 GPT-4"
         },
-        "search_placeholder": "输入模型名称或服务商名称",
+        "search_placeholder": "輸入模型名稱或服務商名稱",
         "supported_text_delta": {
           "label": "支援增量文字輸出",
           "tooltip": "模型每次回傳文字增量，而不是一次性回傳所有文字，預設開啟，如果模型不支援，請關閉"
         },
-        "tips": "开通前请先确保账户金币余额大于0，否则无法开通。"
+        "tips": "開通前請先確保帳戶金幣餘額大於0，否則無法開通。"
       },
       "api_key": "API 金鑰",
       "base_url": "基礎 URL",
@@ -5521,7 +5521,7 @@
       "default_assistant_model": "預設助手模型",
       "default_assistant_model_description": "建立新助手時使用的模型，如果助手未設定模型，則使用此模型",
       "empty": "找不到模型",
-      "image_model": "图片生成",
+      "image_model": "圖片生成",
       "manage": {
         "add_listed": {
           "confirm": "確定要新增所有模型到列表嗎？",
@@ -5670,10 +5670,10 @@
           },
           "new_key": {
             "cancel": "取消",
-            "confirm": "确定",
-            "editing_tip": "请先完成当前编辑",
-            "limit_over_tip": "密钥最多可创建200个，请删除部分密钥",
-            "name_placeholder": "请输入密钥名称",
+            "confirm": "確定",
+            "editing_tip": "請先完成當前編輯",
+            "limit_over_tip": "密鑰最多可創建200個，請刪除部分密鑰",
+            "name_placeholder": "請輸入密鑰名稱",
             "placeholder": "輸入一個或多個金鑰"
           }
         },
@@ -5711,7 +5711,7 @@
             "help": "提供者是否支援詳細程度參數",
             "label": "支援詳細資訊"
           },
-          "website": "访问官网"
+          "website": "訪問官網"
         },
         "url": {
           "preview": "預覽：{{url}}",
@@ -5725,24 +5725,24 @@
       "api_host_tooltip": "僅在供應商需要自訂的 OpenAI 相容端點時才覆蓋。",
       "api_key": {
         "label": "API 金鑰",
-        "max_tip": "最多可创建200个",
+        "max_tip": "最多可創建200個",
         "tip": "多個金鑰使用逗號分隔",
         "token_plan": {
           "columns": {
-            "action": "启用/停用",
+            "action": "啟用/停用",
             "creditsRest": "用量(credits)",
             "effective": "有效期",
-            "planName": "套餐名称/分类",
-            "status": "状态",
-            "totalAmount": "定价"
+            "planName": "套餐名稱/分類",
+            "status": "狀態",
+            "totalAmount": "定價"
           },
-          "confirm_disable_content": "是否停用TokenPlan套餐？停用后将自动切换回平台默认sk-key",
+          "confirm_disable_content": "是否停用TokenPlan套餐？停用後將自動切換回平台默認sk-key",
           "confirm_disable_title": "TokenPlan停用",
-          "confirm_enable_content": "是否启用TokenPlan套餐？启用后将切换至该套餐的tk-key并切换为该套餐中的模型",
-          "confirm_enable_title": "TokenPlan启用",
-          "credits": "剩余用量(Credits)",
+          "confirm_enable_content": "是否啟用TokenPlan套餐？啟用後將切換至該套餐的tk-key並切換為該套餐中的模型",
+          "confirm_enable_title": "TokenPlan啟用",
+          "credits": "剩餘用量(Credits)",
           "cur_plan": {
-            "name": "套餐名称："
+            "name": "套餐名稱："
           },
           "custom": "天",
           "effective": "有效期",
@@ -5750,21 +5750,21 @@
           "effective_s": "起",
           "model_title": "使用token plan",
           "month": "月度",
-          "price": "定价",
+          "price": "定價",
           "price_type": "￥",
           "quarter": "季度",
           "remaining": "剩",
           "search": {
-            "planName": "请输入套餐名称",
-            "status_placeholder": "请选择状态"
+            "planName": "請輸入套餐名稱",
+            "status_placeholder": "請選擇狀態"
           },
           "status": {
             "disabled": "已失效",
             "enabled": "生效中",
             "wait_pay": "待付款"
           },
-          "subscribe_label": "选择套餐",
-          "subscribe_placeholder": "请选择套餐",
+          "subscribe_label": "選擇套餐",
+          "subscribe_placeholder": "請選擇套餐",
           "title": "TokenPlan",
           "total": "共",
           "year": "年度"
@@ -5902,7 +5902,7 @@
       },
       "remove_duplicate_keys": "移除重複金鑰",
       "remove_invalid_keys": "刪除無效金鑰",
-      "search": "搜尋模型平臺...",
+      "search": "搜尋模型平台...",
       "search_placeholder": "搜尋模型 ID 或名稱",
       "title": "模型提供者",
       "vertex_ai": {
@@ -6462,10 +6462,10 @@
   },
   "user": {
     "limit": {
-      "limit_day": "每日额度",
+      "limit_day": "每日額度",
       "limit_month": "每月額度",
-      "rest": "剩余额度",
-      "title": "额度",
+      "rest": "剩餘額度",
+      "title": "額度",
       "unlimited": "不限額"
     }
   },

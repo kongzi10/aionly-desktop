@@ -2298,7 +2298,7 @@
       "password_invalid": "Please enter 6–20 characters using English letters, digits, or symbols (excluding spaces), and include at least two of the following: letters, digits, and punctuation.",
       "password_required": "Please enter the password.",
       "username_invalid": "Invalid mobile number or email format.",
-      "username_required": "Please enter your mobile number or email address"
+      "username_required": "Please enter your phone number/email/account ID"
     },
     "agreements": {
       "accept_text": "Please check the box to agree to the relevant agreements.",
