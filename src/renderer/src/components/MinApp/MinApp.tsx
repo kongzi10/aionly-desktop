@@ -7,6 +7,7 @@ import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useMinapps } from '@renderer/hooks/useMinapps'
 import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useNavbarPosition } from '@renderer/hooks/useSettings'
+import ToolboxCard from '@renderer/pages/minapps/components/ToolboxCard'
 import { setOpenedKeepAliveMinapps } from '@renderer/store/runtime'
 import type { MinAppType } from '@renderer/types'
 import type { MenuProps } from 'antd'
@@ -22,11 +23,12 @@ interface Props {
   onClick?: () => void
   size?: number
   isLast?: boolean
+  variant?: 'icon' | 'toolbox'
 }
 
 const logger = loggerService.withContext('App')
 
-const MinApp: FC<Props> = ({ app, onClick, size = 60, isLast }) => {
+const MinApp: FC<Props> = ({ app, onClick, size = 60, isLast, variant = 'icon' }) => {
   const { openMinappKeepAlive } = useMinappPopup()
   const { t } = useTranslation()
   const { minapps, pinned, disabled, updateMinapps, updateDisabledMinapps, updatePinnedMinapps } = useMinapps()
@@ -117,21 +119,29 @@ const MinApp: FC<Props> = ({ app, onClick, size = 60, isLast }) => {
     return null
   }
 
+  const appIcon = (
+    <IconContainer>
+      <MinAppIcon size={variant === 'toolbox' ? 56 : size} app={app} />
+      {isOpened && (
+        <StyledIndicator>
+          <IndicatorLight color="#22c55e" size={6} animation={!isActive} />
+        </StyledIndicator>
+      )}
+    </IconContainer>
+  )
+
   return (
     <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']}>
-      <Container onClick={handleClick}>
-        <IconContainer>
-          <MinAppIcon size={size} app={app} />
-          {isOpened && (
-            <StyledIndicator>
-              <IndicatorLight color="#22c55e" size={6} animation={!isActive} />
-            </StyledIndicator>
-          )}
-        </IconContainer>
-        <AppTitle>
-          <MarqueeText>{displayName}</MarqueeText>
-        </AppTitle>
-      </Container>
+      {variant === 'toolbox' ? (
+        <ToolboxCard icon={appIcon} title={displayName} onClick={handleClick} />
+      ) : (
+        <Container onClick={handleClick}>
+          {appIcon}
+          <AppTitle>
+            <MarqueeText>{displayName}</MarqueeText>
+          </AppTitle>
+        </Container>
+      )}
     </Dropdown>
   )
 }

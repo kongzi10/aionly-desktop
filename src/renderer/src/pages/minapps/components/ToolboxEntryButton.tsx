@@ -1,6 +1,8 @@
 import type { FC, MouseEventHandler } from 'react'
 import styled from 'styled-components'
 
+import ToolboxCard from './ToolboxCard'
+
 interface Props {
   icon: React.ReactNode
   tone: 'blue' | 'cyan'
@@ -12,31 +14,16 @@ interface Props {
  * 工具箱页固定模块入口卡片(绘画、翻译等),样式与小程序卡片对齐
  */
 const ToolboxEntryButton: FC<Props> = ({ icon, tone, label, onClick }) => {
-  return (
-    <Container onClick={onClick}>
-      <IconContainer $tone={tone}>{icon}</IconContainer>
-      <AppTitle>{label}</AppTitle>
-    </Container>
-  )
+  return <ToolboxCard icon={<IconContainer $tone={tone}>{icon}</IconContainer>} title={label} onClick={onClick} />
 }
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  overflow: hidden;
-  min-height: 85px;
-`
 
 const IconContainer = styled.div<{ $tone: Props['tone'] }>`
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 60px;
-  height: 60px;
-  border-radius: 15px;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
   position: relative;
   background: ${({ $tone }) =>
     $tone === 'blue'
@@ -49,22 +36,10 @@ const IconContainer = styled.div<{ $tone: Props['tone'] }>`
     content: '';
     position: absolute;
     inset: 1px;
-    border-radius: 14px;
+    border-radius: 13px;
     border-top: 1px solid #ffffff55;
     pointer-events: none;
   }
-`
-
-const AppTitle = styled.div`
-  font-size: 12px;
-  margin-top: 5px;
-  color: var(--color-text-soft);
-  text-align: center;
-  user-select: none;
-  width: 100%;
-  line-height: 1.3;
-  word-break: break-word;
-  overflow-wrap: break-word;
 `
 
 export default ToolboxEntryButton

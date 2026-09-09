@@ -4,11 +4,11 @@ import MinAppIcon from '@renderer/components/Icons/MinAppIcon'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import type { MinAppType } from '@renderer/types'
 import { codeTools, DSH_WEB_DEFAULTS } from '@shared/config/constant'
-import { Spin } from 'antd'
 import type { FC } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import styled from 'styled-components'
+
+import ToolboxCard from './ToolboxCard'
 
 const logger = loggerService.withContext('DeepSeekHarnessButton')
 const INSTALL_STATUS_KEY = 'deepseek_harness_installing'
@@ -132,58 +132,13 @@ const DeepSeekHarnessButton: FC = () => {
   }, [busy, t, openSmartMinapp])
 
   return (
-    <Container onClick={handleClick}>
-      <IconContainer>
-        <MinAppIcon size={60} app={DEEPSEEK_HARNESS_APP} />
-        {busy && (
-          <SpinOverlay>
-            <Spin size="small" />
-          </SpinOverlay>
-        )}
-      </IconContainer>
-      <AppTitle>DeepSeek Harness</AppTitle>
-    </Container>
+    <ToolboxCard
+      icon={<MinAppIcon size={56} app={DEEPSEEK_HARNESS_APP} />}
+      title="DeepSeek Harness"
+      onClick={handleClick}
+      busy={busy}
+    />
   )
 }
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  overflow: hidden;
-  min-height: 85px;
-`
-
-const IconContainer = styled.div`
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: var(--base-border-radius);
-`
-
-const SpinOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: inherit;
-  background-color: var(--color-background-mute, rgba(0, 0, 0, 0.4));
-`
-
-const AppTitle = styled.div`
-  font-size: 12px;
-  margin-top: 5px;
-  color: var(--color-text-soft);
-  text-align: center;
-  user-select: none;
-  width: 100%;
-  line-height: 1.3;
-  word-break: break-word;
-  overflow-wrap: break-word;
-`
 
 export default DeepSeekHarnessButton

@@ -17,6 +17,7 @@ import styled from 'styled-components'
 
 import DeepSeekHarnessButton from './components/DeepSeekHarnessButton'
 import ToolboxEntryButton from './components/ToolboxEntryButton'
+import ToolboxSection from './components/ToolboxSection'
 import VeryClawButton from './components/VeryClawButton'
 import MinappSettingsPopup from './MiniappSettings/MinappSettingsPopup'
 // import {WEB_UI_HOST} from "@shared/config/constant";
@@ -44,13 +45,6 @@ const AppsPage: FC = () => {
         (app) => app.name.toLowerCase().includes(search.toLowerCase()) || app.url.includes(search.toLowerCase())
       )
     : minapps*/
-
-  // Calculate the required number of lines
-  const itemsPerRow = Math.floor(930 / 115) // Maximum width divided by the width of each item (including spacing)
-  const rowCount = Math.ceil((apiApps.length + 4) / itemsPerRow) // Paintings, Translate, VeryClaw and DeepSeek Harness
-  // Each line height is 85px (60px icon + 5px margin + 12px text + spacing)
-  // DeepSeek Harness 名称换行占两行，其所在行需额外 ~16px
-  const containerHeight = rowCount * 85 + (rowCount - 1) * 25 + 16 // 25px is the line spacing.
 
   // Disable right-click menu in blank area
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -131,25 +125,31 @@ const AppsPage: FC = () => {
               </HeaderContainer>
             )}
             <AppsContainerWrapper>
-              <AppsContainer style={{ height: containerHeight }}>
-                <ToolboxEntryButton
-                  icon={<Image size={36} strokeWidth={2} className="lucide-custom" aria-hidden="true" />}
-                  tone="blue"
-                  label={t('title.paintings')}
-                  onClick={() => navigate(`/paintings/${defaultPaintingProvider}`)}
-                />
-                <ToolboxEntryButton
-                  icon={<Languages size={36} strokeWidth={2} className="lucide-custom" aria-hidden="true" />}
-                  tone="cyan"
-                  label={t('title.translate')}
-                  onClick={() => navigate('/translate')}
-                />
-                <VeryClawButton />
-                <DeepSeekHarnessButton />
-                {apiApps.map((app: any) => (
-                  <App key={app.id} app={app} />
-                ))}
-                {/*<NewAppButton />*/}
+              <AppsContainer>
+                <ToolboxSection title={t('minapp.toolbox.built_in')}>
+                  <ToolboxEntryButton
+                    icon={<Image size={32} strokeWidth={2} className="lucide-custom" aria-hidden="true" />}
+                    tone="blue"
+                    label={t('title.paintings')}
+                    onClick={() => navigate(`/paintings/${defaultPaintingProvider}`)}
+                  />
+                  <ToolboxEntryButton
+                    icon={<Languages size={32} strokeWidth={2} className="lucide-custom" aria-hidden="true" />}
+                    tone="cyan"
+                    label={t('title.translate')}
+                    onClick={() => navigate('/translate')}
+                  />
+                </ToolboxSection>
+                <ToolboxSection title={t('minapp.toolbox.extensions')}>
+                  <VeryClawButton />
+                  <DeepSeekHarnessButton />
+                </ToolboxSection>
+                <ToolboxSection title={t('minapp.toolbox.mini_app')}>
+                  {apiApps.map((app: any) => (
+                    <App key={app.id} app={app} variant="toolbox" />
+                  ))}
+                  {/*<NewAppButton />*/}
+                </ToolboxSection>
               </AppsContainer>
             </AppsContainerWrapper>
           </RightContainer>
@@ -208,28 +208,22 @@ const AppsContainerWrapper = styled(Scrollbar)`
   display: flex;
   flex: 1;
   flex-direction: row;
-  justify-content: center;
-  padding: 50px 0;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding: 32px 28px 48px;
   width: 100%;
   margin-bottom: 20px;
   [navbar-position='top'] & {
-    padding: 20px 0;
+    padding: 20px 28px 40px;
   }
 `
 
 const AppsContainer = styled.div`
-  display: grid;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  max-width: 930px;
-  margin: 0 20px;
   width: 100%;
-  grid-template-columns: repeat(auto-fill, 90px);
-  gap: 25px;
-  justify-content: center;
-
-  > div {
-    justify-content: flex-start;
-  }
+  gap: 32px;
 `
 
 export default AppsPage

@@ -2908,6 +2908,11 @@
       }
     },
     "title": "工具箱",
+    "toolbox": {
+      "built_in": "内置工具",
+      "extensions": "扩展应用",
+      "mini_app": "小程序"
+    },
     "veryclaw": {
       "download": "下载安装",
       "download_failed": "获取或打开安装包下载链接失败，请检查网络后重试。",

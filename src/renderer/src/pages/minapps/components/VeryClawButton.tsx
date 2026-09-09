@@ -2,7 +2,8 @@ import { loggerService } from '@logger'
 import veryclawLogo from '@renderer/assets/images/veryclaw.png'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import styled from 'styled-components'
+
+import ToolboxCard from './ToolboxCard'
 
 const logger = loggerService.withContext('VeryClawButton')
 
@@ -63,45 +64,11 @@ export default function VeryClawButton() {
   }
 
   return (
-    <Container
-      type="button"
+    <ToolboxCard
+      icon={<img src={veryclawLogo} alt={t('minapp.veryclaw.name')} draggable={false} />}
+      title={t('minapp.veryclaw.name')}
       onClick={handleClick}
-      disabled={busy}
-      aria-busy={busy}
-      aria-label={t('minapp.veryclaw.name')}>
-      <IconContainer>
-        <img src={veryclawLogo} alt={t('minapp.veryclaw.name')} width={60} height={60} draggable={false} />
-      </IconContainer>
-      <AppTitle>{t('minapp.veryclaw.name')}</AppTitle>
-    </Container>
+      busy={busy}
+    />
   )
 }
-
-const Container = styled.button`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  min-height: 85px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-  &:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; border-radius: 12px; }
-`
-
-const IconContainer = styled.div`
-  position: relative;
-  width: 60px;
-  height: 60px;
-  img { border-radius: 15px; object-fit: contain; }
-`
-
-const AppTitle = styled.span`
-  font-size: 12px;
-  margin-top: 5px;
-  color: var(--color-text-soft);
-  text-align: center;
-  line-height: 1.3;
-`

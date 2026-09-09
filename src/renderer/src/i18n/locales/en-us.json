@@ -2908,6 +2908,11 @@
       }
     },
     "title": "Toolbox",
+    "toolbox": {
+      "built_in": "Built-in tools",
+      "extensions": "Extensions",
+      "mini_app": "Mini app"
+    },
     "veryclaw": {
       "download": "Download and install",
       "download_failed": "Unable to retrieve or open the installer download link. Check your connection and retry.",
