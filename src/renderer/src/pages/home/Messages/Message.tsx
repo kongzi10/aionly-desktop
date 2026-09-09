@@ -12,9 +12,10 @@ import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { getMessageModelId } from '@renderer/services/MessagesService'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import { estimateMessageUsage } from '@renderer/services/TokenService'
+import type { MultiModelMessageStyle } from '@renderer/store/settings'
 import type { Assistant, Topic } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
-import { classNames, cn } from '@renderer/utils'
+import { cn } from '@renderer/utils'
 import { scrollIntoView } from '@renderer/utils/dom'
 import { isMessageProcessing } from '@renderer/utils/messageUtils/is'
 import { Divider } from 'antd'
@@ -23,6 +24,7 @@ import React, { memo, useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import { getRoundtableCardClassName } from '../../roundtable/roundtableView'
 import MessageContent from './MessageContent'
 import MessageEditor from './MessageEditor'
 import MessageErrorBoundary from './MessageErrorBoundary'
@@ -44,6 +46,7 @@ interface Props {
   onUpdateUseful?: (msgId: string) => void
   isGroupContextMessage?: boolean
   isHorizontalMultiModelLayout?: boolean
+  multiModelMessageStyle?: MultiModelMessageStyle
 }
 
 const logger = loggerService.withContext('MessageItem')
@@ -67,7 +70,8 @@ const MessageItem: FC<Props> = ({
   isGrouped,
   onUpdateUseful,
   isGroupContextMessage,
-  isHorizontalMultiModelLayout = false
+  isHorizontalMultiModelLayout = false,
+  multiModelMessageStyle = 'fold'
 }) => {
   const { t } = useTranslation()
   const { assistant, setModel } = useAssistant(message.assistantId)
@@ -195,11 +199,14 @@ const MessageItem: FC<Props> = ({
     <WrapperContainer isMultiSelectMode={isMultiSelectMode}>
       <MessageContainer
         key={message.id}
-        className={classNames({
-          message: true,
-          'message-assistant': isAssistantMessage,
-          'message-user': !isAssistantMessage
-        })}
+        className={cn(
+          'message',
+          {
+            'message-assistant': isAssistantMessage,
+            'message-user': !isAssistantMessage
+          },
+          isAssistantMessage ? getRoundtableCardClassName(multiModelMessageStyle, isGrouped ? 2 : 1) : undefined
+        )}
         ref={messageContainerRef}>
         {isEditing ? (
           <>
@@ -228,6 +235,7 @@ const MessageItem: FC<Props> = ({
               key={getModelUniqId(model)}
               topic={topic}
               isGroupContextMessage={isGroupContextMessage}
+              onSelectContext={isGrouped ? () => onUpdateUseful?.(message.id) : undefined}
             />
             <div className={cn('main', { 'is-grouped': isGrouped })}>
               {!isMultiSelectMode && message.role === 'assistant' && showMessageOutline && (
@@ -293,6 +301,81 @@ const MessageContainer = styled.div`
   will-change: transform;
   padding: 10px;
   border-radius: 10px;
+
+  &.roundtable-response-card {
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--color-border-soft);
+    border-radius: 14px;
+    background: var(--color-background);
+    box-shadow:
+      0 1px 2px var(--color-border-soft),
+      0 8px 24px color-mix(in srgb, var(--color-text) 5%, transparent);
+    transition: transform 0.2s ease;
+
+    &::before {
+      position: absolute;
+      z-index: 1;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 3px;
+      content: '';
+      background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 35%, transparent));
+    }
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow:
+        0 2px 4px var(--color-border-soft),
+        0 14px 32px color-mix(in srgb, var(--color-text) 8%, transparent);
+    }
+
+    .message-info-wrapper {
+      height: 100%;
+    }
+
+    .message-header {
+      top: 15px;
+      left: 16px;
+      right: 16px;
+      z-index: 1;
+      margin: 0;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      margin-left: 0;
+    }
+
+    .model-name {
+      display: flex;
+      min-height: 58px;
+      align-items: center;
+      padding: 9px 44px 8px 60px;
+      border-bottom: 1px solid var(--color-border-soft);
+      background: linear-gradient(180deg, var(--color-background-soft), var(--color-background));
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 18px;
+    }
+
+    .message-inner-wrapper {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      padding: 18px 18px 12px;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .MessageFooter {
+      padding-top: 10px;
+      border-top: 1px solid var(--color-border-soft);
+    }
+  }
   .menubar {
     opacity: 0;
     transition: opacity 0.2s ease;

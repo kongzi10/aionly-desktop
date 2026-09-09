@@ -36,7 +36,11 @@ const mocks = vi.hoisted(() => ({
   MessageContent: vi.fn(() => <div style={{ minHeight: 600 }}>Long message content</div>),
   MessageEditor: vi.fn(() => <div>editor</div>),
   MessageErrorBoundary: vi.fn(({ children }: { children: ReactNode }) => <>{children}</>),
-  MessageHeader: vi.fn(() => <div className="message-header">header</div>),
+  MessageHeader: vi.fn(({ onSelectContext }: { onSelectContext?: () => void }) => (
+    <button className="message-header" type="button" onClick={onSelectContext}>
+      header
+    </button>
+  )),
   MessageMenubar: vi.fn(() => <div className="message-menubar">menubar</div>),
   MessageOutline: vi.fn(() => null)
 }))
@@ -249,6 +253,17 @@ describe('MessageGroup', () => {
     fireEvent.mouseMove(horizontalGroup, { clientX: 140 })
 
     expect(horizontalGroup.scrollLeft).toBe(160)
+  })
+
+  it('selects a grouped response as context from its header', () => {
+    const messages = [createMessage('msg-1', 0, 'horizontal'), createMessage('msg-2', 1, 'horizontal')]
+    const topic = { id: 'topic-1' } as Topic
+
+    const { container } = render(<MessageGroup messages={messages} topic={topic} />)
+
+    fireEvent.click(container.querySelector('#message-msg-2 .message-header')!)
+
+    expect(mocks.editMessage).toHaveBeenCalledWith('msg-2', { useful: true })
   })
 
   it('preserves visible content overflow for non-horizontal layouts', () => {

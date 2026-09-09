@@ -271,6 +271,7 @@ const MessageGroup = ({ messages, topic, registerMessageElement, mode = 'chat' }
       const messageProps = {
         isGrouped,
         isHorizontalMultiModelLayout: multiModelMessageStyle === 'horizontal',
+        multiModelMessageStyle,
         message,
         topic,
         index: message.index
@@ -344,6 +345,7 @@ const MessageGroup = ({ messages, topic, registerMessageElement, mode = 'chat' }
         className={classNames([multiModelMessageStyle, { 'multi-select-mode': isMultiSelectMode }])}>
         <GridContainer
           ref={gridContainerRef}
+          autoHide={multiModelMessageStyle !== 'horizontal'}
           $count={messageLength}
           $gridColumns={gridColumns}
           className={classNames([multiModelMessageStyle, { 'multi-select-mode': isMultiSelectMode }])}
@@ -447,8 +449,8 @@ const MessageWrapper = styled.div<MessageWrapperProps>`
   &.grid,
   &.fold {
     .message-header {
-      left: 10px;
-      right: 10px;
+      left: 16px;
+      right: 16px;
     }
     .group-context-marker {
       position: absolute;
@@ -459,34 +461,39 @@ const MessageWrapper = styled.div<MessageWrapperProps>`
 
   &.vertical.context-selected .message,
   &.fold.context-selected .message {
-    border: 0.5px solid var(--color-primary);
-    border-radius: 10px;
-    box-shadow: inset 0 0 0 0.5px var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: 14px;
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent),
+      0 12px 30px color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
 
   &.horizontal {
-    padding: 1px;
+    padding: 2px 2px 10px;
     overflow-y: visible;
     .message {
       height: 100%;
-      border: 0.5px solid var(--color-border);
-      border-radius: 10px;
+      border: 1px solid var(--color-border-soft);
+      border-radius: 14px;
     }
     .message-content-container {
       flex: 1;
       padding-left: 0;
       max-height: calc(100vh - 350px);
       overflow-y: auto !important;
-      margin-right: -10px;
+      margin-right: -6px;
+      padding-right: 6px;
     }
     .MessageFooter {
       margin-left: 0;
-      margin-top: 2px;
-      margin-bottom: 2px;
+      margin-top: 12px;
+      margin-bottom: 0;
     }
     &.context-selected .message {
       border-color: var(--color-primary);
-      box-shadow: inset 0 0 0 0.5px var(--color-primary);
+      box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent),
+        0 12px 30px color-mix(in srgb, var(--color-primary) 12%, transparent);
     }
   }
   &.grid {
@@ -494,8 +501,7 @@ const MessageWrapper = styled.div<MessageWrapperProps>`
     height: 300px;
     //overflow-y: hidden;
     overflow-y: auto;
-    border: 0.5px solid var(--color-border);
-    border-radius: 10px;
+    border-radius: 14px;
     cursor: pointer;
     .message {
       height: 100%;
@@ -512,8 +518,12 @@ const MessageWrapper = styled.div<MessageWrapperProps>`
       margin-bottom: 2px;
     }
     &.context-selected {
-      border-color: var(--color-primary);
-      box-shadow: inset 0 0 0 0.5px var(--color-primary);
+      .message {
+        border-color: var(--color-primary);
+        box-shadow:
+          0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent),
+          0 12px 30px color-mix(in srgb, var(--color-primary) 12%, transparent);
+      }
     }
   }
   &.in-popover {

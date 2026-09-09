@@ -6,3 +6,6 @@ export const getRoundtableMessageStyle = (
 ): MultiModelMessageStyle => (messageCount > 1 ? 'horizontal' : 'fold')
 
 export const getRoundtableWelcomeKey = () => 'roundtable.welcome' as const
+
+export const getRoundtableCardClassName = (_style: MultiModelMessageStyle, messageCount: number) =>
+  messageCount > 1 ? 'roundtable-response-card' : undefined

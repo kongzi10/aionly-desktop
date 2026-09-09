@@ -28,7 +28,7 @@ const Container = styled.div<{ $roundtable: boolean }>`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: ${({ $roundtable }) => ($roundtable ? '24px' : '20px')};
+  gap: 20px;
 
   .image-welcome {
     width: ${({ $roundtable }) => ($roundtable ? '200px' : '130px')};
