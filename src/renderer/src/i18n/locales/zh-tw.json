@@ -2299,7 +2299,7 @@
     "account_login": {
       "password_invalid": "請輸入6-20位英文字母、數字或者符號（除空格），且字母、數字和標點符號至少包含兩種",
       "password_required": "請輸入密碼",
-      "username_invalid": "手機號或郵箱格式錯誤",
+      "username_invalid": "手機號、郵箱或帳號ID格式錯誤",
       "username_required": "請輸入手機號/郵箱/帳號ID"
     },
     "agreements": {

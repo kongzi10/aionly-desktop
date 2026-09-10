@@ -2299,7 +2299,7 @@
     "account_login": {
       "password_invalid": "请输入6-20位英文字母、数字或者符号（除空格），且字母、数字和标点符号至少包含两种",
       "password_required": "请输入密码",
-      "username_invalid": "手机号或邮箱格式错误",
+      "username_invalid": "手机号、邮箱或账号ID格式错误",
       "username_required": "请输入手机号/邮箱/账号ID"
     },
     "agreements": {
