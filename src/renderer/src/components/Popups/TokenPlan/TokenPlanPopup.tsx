@@ -142,7 +142,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
       render: (text, record) => {
         return (
           <div className="total-amount">
-            <b className="price-type" style={{ color: '#ec3a41' }}>
+            <b className="price-type" style={{ color: 'var(--color-error)' }}>
               {t('settings.provider.api_key.token_plan.price_type')}
               {text}
             </b>
@@ -180,7 +180,13 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
       width: 120,
       render: (_, record) => (
         <ColumCreditsRestCell>
-          <Progress percent={getUsagePercent(record)} status="normal" size="small" showInfo={false} />
+          <Progress
+            percent={getUsagePercent(record)}
+            status="normal"
+            size="small"
+            showInfo={false}
+            style={{ width: '100%', maxWidth: 160 }}
+          />
           <div className="usage-text">
             {t('settings.provider.api_key.token_plan.remaining')}
             {record.paymentStatus == '1' ? 0 : record.creditsRest || 0}/
@@ -268,7 +274,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
   }
 
   return (
-    <Modal
+    <StyledModal
       title={t('settings.provider.api_key.token_plan.model_title')}
       open={open}
       onCancel={onCancel}
@@ -283,7 +289,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
           placeholder={t('settings.provider.api_key.token_plan.search.planName')}
           allowClear={true}
           onChange={changePlanName}
-          style={{ width: '50%' }}
+          className="popup-input"
         />
         <Select
           value={queryParams.status}
@@ -295,7 +301,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
           placeholder={t('settings.provider.api_key.token_plan.search.status_placeholder')}
           allowClear={true}
           onChange={changeStatus}
-          style={{ width: '120px' }}
+          className="popup-select"
         />
       </SearchContainer>
       <Table
@@ -307,7 +313,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
         rowKey="id"
         scroll={{ y: `calc(100vh - 310px)` }}
       />
-    </Modal>
+    </StyledModal>
   )
 }
 
@@ -336,13 +342,17 @@ export default class TokenPlanPopup {
 }
 
 const ColumNameCell = styled.div`
+  .name {
+    font-weight: 500;
+  }
   .tag-classify{
     width: fit-content;
-    padding: 0 4px;
-    background-color: var(--color-list-item);
+    padding: 0 6px;
+    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
     color: var(--color-primary);
     border-radius: var(--base-border-radius);
     font-size: 12px;
+    line-height: 18px;
   }
 `
 const ColumStatusCell = styled.div`
@@ -372,10 +382,10 @@ const ColumStatusCell = styled.div`
       }
     }
     &.wait-pay{
-      color: var(--color-text-3);
+      color: var(--color-status-warning);
       font-size: 12px;
       &::before{
-        background-color: var(--color-orange-400);
+        background-color: var(--color-status-warning);
       }
     }
   }
@@ -389,29 +399,90 @@ const ColumEffectiveCell = styled.div`
   font-size: 12px;
   color: var(--color-text-2);
   .date-tag{
-    padding: 2px;
+    display: inline-block;
+    padding: 1px 6px;
     text-align: center;
-    font-size: 12px;
-    transform: scale(0.8);
-    margin-right: 2px;
+    font-size: 11px;
+    line-height: 16px;
+    border-radius: 4px;
+    margin-right: 4px;
     &.start{
       color: var(--color-primary);
-      background-color: var(--color-list-item);
+      background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
     }
     &.end{
-      color: var(--color-pink-500);
-      background-color: var(--color-pink-50);
+      color: var(--color-status-warning);
+      background-color: color-mix(in srgb, var(--color-status-warning) 14%, transparent);
     }
   }
 `
 const SearchContainer = styled.div`
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   padding-bottom: 16px;
+  .popup-input {
+    width: 360px;
+  }
+  .popup-select {
+    width: 140px;
+  }
 `
 
 const TipText = styled.strong`
     font-size: 14px;
-    color: var(--color-red-500);
+    color: var(--color-error);
+`
+
+/**
+ * 弹窗容器：风格对齐 agent 路由弹窗（RouteFormModal）
+ * 12px 圆角 / 24px 内容内边距 / 16px·650 标题 / footer 顶部边框分隔线
+ */
+const StyledModal = styled(Modal)`
+  &&& .ant-modal-content {
+    padding: 24px;
+    border-radius: 12px;
+  }
+  &&& .ant-modal-content .ant-modal-header {
+    padding: 0;
+    margin: 0 0 24px;
+  }
+  &&& .ant-modal-content .ant-modal-body {
+    padding: 0;
+  }
+  .ant-modal-title {
+    font-size: 16px;
+    font-weight: 650;
+  }
+  &&& .ant-modal-content .ant-modal-footer {
+    margin: 24px 0 0;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--color-border);
+  }
+  /* 表单控件：36px 高、8px 圆角、soft 底色（对齐 RouteFormModal / StyledEditModal） */
+  .ant-input {
+    height: 36px;
+    border-radius: 8px;
+    background: var(--color-background-soft);
+  }
+  .ant-select-single {
+    height: 36px;
+  }
+  .ant-select-selector {
+    border-radius: 8px !important;
+    background: var(--color-background-soft) !important;
+  }
+  /* 表格：行 hover 背景与表头对齐 agent 路由列表 */
+  .ant-table-wrapper .ant-table {
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    overflow: hidden;
+  }
+  .ant-table-wrapper .ant-table-thead > tr > th {
+    background: var(--color-background-soft);
+    font-weight: 600;
+  }
+  .ant-table-wrapper .ant-table-tbody > tr:hover > td {
+    background: color-mix(in srgb, var(--color-primary) 6%, var(--color-background));
+  }
 `
