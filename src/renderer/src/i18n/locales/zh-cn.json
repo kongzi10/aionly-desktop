@@ -5770,7 +5770,10 @@
           "title": "TokenPlan",
           "total": "共",
           "year": "年度"
-        }
+        },
+        "use_api_key": "使用 API 密钥",
+        "use_api_key_confirm_content": "是否并切换回 API 密钥模式？切换后使用平台默认 sk-key。",
+        "use_api_key_confirm_title": "切换回 API 密钥"
       },
       "api_version": "API 版本",
       "aws-bedrock": {

@@ -5770,7 +5770,10 @@
           "title": "TokenPlan",
           "total": "Total",
           "year": "year"
-        }
+        },
+        "use_api_key": "Use API Key",
+        "use_api_key_confirm_content": "Do you want to switch back to API Key mode? After switching, the platform default sk-key will be used.",
+        "use_api_key_confirm_title": "Switch back to API Key"
       },
       "api_version": "API Version",
       "aws-bedrock": {

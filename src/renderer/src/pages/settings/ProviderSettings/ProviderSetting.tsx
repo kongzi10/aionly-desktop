@@ -121,7 +121,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
   const dispatch = useAppDispatch()
   const serviceInfo = useAppSelector(selectServiceInfo)
   const userInfo: any = useAppSelector(selectUserInfo)
-  const { getUserEnabledPlan } = useUserTokenPlan(userInfo?.userId)
+  const { getUserEnabledPlan, clearUserEnabledPlan } = useUserTokenPlan(userInfo?.userId)
 
   // console.log('getUserEnabledPlan', getUserEnabledPlan())
 
@@ -617,6 +617,32 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
     }
   }, [handleScrollInnerThrottled])
 
+  // 停用 TokenPlan：清空启用套餐缓存并回退到用户基础 apiKey（与登录流程 saveUserInfo 的逻辑保持一致）
+  const disableTokenPlan = () => {
+    clearUserEnabledPlan()
+    const userSecretKey = localStorage.getItem(LOCAL_USER_SECRET_KEY) ?? ''
+    setLocalApiKey(userSecretKey)
+    setActiveHostField('apiHost')
+    setApiHost(provider.apiHost)
+    setUserSelectedTokenPlan(null)
+    setHasUserTokenPlanData(false)
+    updateProvider({
+      apiKey: formatApiKeys(userSecretKey),
+      apiHost: provider.apiHost
+    })
+  }
+
+  /** 停用 TokenPlan 并切换回 API 密钥模式 */
+  const handleUseApiKey = async () => {
+    const confirmed = await window.modal.confirm({
+      title: t('settings.provider.api_key.use_api_key_confirm_title'),
+      content: t('settings.provider.api_key.use_api_key_confirm_content'),
+      centered: true
+    })
+    if (!confirmed) return
+    disableTokenPlan()
+  }
+
   /** 打开 TokenPlanModal */
   const handleOpenTokenPlanModal = async () => {
     const res = await TokenPlanPopup.show()
@@ -637,15 +663,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
           })
         }
       } else {
-        const userSecretKey = localStorage.getItem(LOCAL_USER_SECRET_KEY) ?? ''
-        setLocalApiKey(userSecretKey)
-        setActiveHostField('apiHost')
-        setApiHost(provider.apiHost)
-        setUserSelectedTokenPlan(null)
-        updateProvider({
-          apiKey: formatApiKeys(userSecretKey),
-          apiHost: provider.apiHost
-        })
+        disableTokenPlan()
       }
     }
   }
@@ -756,6 +774,14 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
                         onClick={openApiKeyList}
                         style={{ padding: '3px 12px', height: 'auto', fontSize: 12 }}>
                         {t('settings.provider.api.key.list.title')}
+                      </Button>
+                    )}
+                    {hasUserTokenPlanData && (
+                      <Button
+                        type="primary"
+                        onClick={handleUseApiKey}
+                        style={{ padding: '3px 12px', height: 'auto', fontSize: 12 }}>
+                        {t('settings.provider.api_key.use_api_key')}
                       </Button>
                     )}
                   </Flex>
