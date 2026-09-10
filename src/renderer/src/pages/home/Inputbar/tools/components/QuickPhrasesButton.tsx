@@ -11,7 +11,7 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import type { ToolQuickPanelApi } from '@renderer/pages/home/Inputbar/types'
 import QuickPhraseService from '@renderer/services/QuickPhraseService'
 import type { QuickPhrase } from '@renderer/types'
-import { Input, Modal, Radio, Space, Tooltip } from 'antd'
+import { Form, Input, Modal, Radio, Tooltip } from 'antd'
 import { BotMessageSquare, Plus, Zap } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +27,8 @@ interface Props {
 const QuickPhrasesButton = ({ quickPanel, setInputValue, resizeTextArea, assistantId }: Props) => {
   const [quickPhrasesList, setQuickPhrasesList] = useState<QuickPhrase[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [formData, setFormData] = useState({ title: '', content: '', location: 'global' })
+  const [location, setLocation] = useState<'global' | 'assistant'>('global')
+  const [form] = Form.useForm<{ title: string; content: string }>()
   const { t } = useTranslation()
   const quickPanelHook = useQuickPanel()
   const { assistant, updateAssistant } = useAssistant(assistantId)
@@ -122,35 +123,33 @@ const QuickPhrasesButton = ({ quickPanel, setInputValue, resizeTextArea, assista
     [setTimeoutTimer, setInputValue, resizeTextArea]
   )
 
-  const handleModalOk = async () => {
-    if (!formData.title.trim() || !formData.content.trim()) {
-      return
-    }
+  const handleModalCancel = () => {
+    setIsModalOpen(false)
+    setLocation('global')
+    form.resetFields()
+  }
 
-    const updatedPrompts = [
-      ...(assistant.regularPhrases || []),
-      {
-        id: crypto.randomUUID(),
-        title: formData.title,
-        content: formData.content,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      }
-    ]
-    if (formData.location === 'assistant') {
+  const handleModalOk = async (values: { title: string; content: string }) => {
+    if (location === 'assistant') {
       // 添加到助手的 regularPhrases
+      const updatedPrompts = [
+        ...(assistant.regularPhrases || []),
+        {
+          id: crypto.randomUUID(),
+          title: values.title,
+          content: values.content,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+      ]
       updateAssistant({ ...assistant, regularPhrases: updatedPrompts })
+      await loadQuickListPhrases(updatedPrompts)
     } else {
       // 添加到全局 Quick Phrases
-      await QuickPhraseService.add(formData)
+      await QuickPhraseService.add(values)
+      await loadQuickListPhrases()
     }
-    setIsModalOpen(false)
-    setFormData({ title: '', content: '', location: 'global' })
-    if (formData.location === 'assistant') {
-      await loadQuickListPhrases(updatedPrompts)
-      return
-    }
-    await loadQuickListPhrases()
+    handleModalCancel()
   }
 
   const phraseItems = useMemo(() => {
@@ -259,53 +258,53 @@ const QuickPhrasesButton = ({ quickPanel, setInputValue, resizeTextArea, assista
       <Modal
         title={t('settings.quickPhrase.add')}
         open={isModalOpen}
-        onOk={handleModalOk}
+        onOk={() => form.submit()}
         maskClosable={false}
-        onCancel={() => {
-          setIsModalOpen(false)
-          setFormData({ title: '', content: '', location: 'global' })
-        }}
+        onCancel={handleModalCancel}
         width={520}
         transitionName="animation-move-down"
         centered>
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <div>
-            <Label>{t('settings.quickPhrase.titleLabel')}</Label>
-            <Input
-              placeholder={t('settings.quickPhrase.titlePlaceholder')}
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>{t('settings.quickPhrase.contentLabel')}</Label>
+        <Form
+          form={form}
+          layout="vertical"
+          requiredMark
+          colon={false}
+          validateTrigger={['onChange']}
+          style={{ marginBottom: 16 }}
+          onFinish={handleModalOk}>
+          <Form.Item
+            name="title"
+            label={t('settings.quickPhrase.titleLabel')}
+            rules={[{ required: true, message: t('settings.quickPhrase.titleRequired') }]}>
+            <Input placeholder={t('settings.quickPhrase.titlePlaceholder')} spellCheck={false} allowClear />
+          </Form.Item>
+          <Form.Item
+            name="content"
+            label={t('settings.quickPhrase.contentLabel')}
+            rules={[{ required: true, message: t('settings.quickPhrase.contentRequired') }]}>
             <Input.TextArea
               placeholder={t('settings.quickPhrase.contentPlaceholder')}
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              rows={6}
-              style={{ resize: 'none' }}
+              spellCheck={false}
+              autoSize={{ minRows: 6, maxRows: 10 }}
             />
-          </div>
-          <div>
-            <Label>{t('settings.quickPhrase.locationLabel', '添加位置')}</Label>
-            <Radio.Group
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}>
-              <Radio value="global">
-                <Zap size={20} style={{ paddingRight: '4px', verticalAlign: 'middle', paddingBottom: '3px' }} />
-                {t('settings.quickPhrase.global', '全局快速短语')}
-              </Radio>
-              <Radio value="assistant">
-                <BotMessageSquare
-                  size={20}
-                  style={{ paddingRight: '4px', verticalAlign: 'middle', paddingBottom: '3px' }}
-                />
-                {t('settings.quickPhrase.assistant', '助手提示词')}
-              </Radio>
-            </Radio.Group>
-          </div>
-        </Space>
+          </Form.Item>
+        </Form>
+        <div>
+          <Label>{t('settings.quickPhrase.locationLabel', '添加位置')}</Label>
+          <Radio.Group value={location} onChange={(e) => setLocation(e.target.value)}>
+            <Radio value="global">
+              <Zap size={20} style={{ paddingRight: '4px', verticalAlign: 'middle', paddingBottom: '3px' }} />
+              {t('settings.quickPhrase.global', '全局快速短语')}
+            </Radio>
+            <Radio value="assistant">
+              <BotMessageSquare
+                size={20}
+                style={{ paddingRight: '4px', verticalAlign: 'middle', paddingBottom: '3px' }}
+              />
+              {t('settings.quickPhrase.assistant', '助手提示词')}
+            </Radio>
+          </Radio.Group>
+        </div>
       </Modal>
     </>
   )

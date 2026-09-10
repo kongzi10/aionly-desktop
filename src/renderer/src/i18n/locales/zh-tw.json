@@ -1100,12 +1100,14 @@
         "add": "新增短語",
         "contentLabel": "內容",
         "contentPlaceholder": "請輸入短語內容，支援使用變數，然後按 Tab 鍵可以快速定位到變數進行修改。例如：\n幫我規劃從 ${from} 到 ${to} 的行程，然後傳送到 ${email}",
+        "contentRequired": "內容不能為空",
         "delete": "刪除短語",
         "deleteConfirm": "確定要刪除這個短語嗎？",
         "edit": "編輯短語",
         "title": "常用短語",
         "titleLabel": "標題",
-        "titlePlaceholder": "輸入標題"
+        "titlePlaceholder": "輸入標題",
+        "titleRequired": "標題不能為空"
       },
       "title": "助手設定",
       "tool_use_mode": {
@@ -5968,6 +5970,7 @@
       "assistant": "助手提示詞",
       "contentLabel": "內容",
       "contentPlaceholder": "請輸入短語內容，支援使用變數，然後按 Tab 鍵可以快速定位到變數進行修改。例如：\n幫我規劃從 ${from} 到 ${to} 的行程，然後傳送到 ${email}",
+      "contentRequired": "內容不能為空",
       "delete": "刪除短語",
       "deleteConfirm": "刪除後無法復原，是否繼續？",
       "edit": "編輯短語",
@@ -5975,7 +5978,8 @@
       "locationLabel": "新增位置",
       "title": "快捷短語",
       "titleLabel": "標題",
-      "titlePlaceholder": "請輸入短語標題"
+      "titlePlaceholder": "請輸入短語標題",
+      "titleRequired": "標題不能為空"
     },
     "scheduledTasks": {
       "description": "管理所有代理的排程任務。任務將依設定好的排程自動執行。",

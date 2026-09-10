@@ -5,7 +5,7 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import FileItem from '@renderer/pages/files/FileItem'
 import QuickPhraseService from '@renderer/services/QuickPhraseService'
 import type { QuickPhrase } from '@renderer/types'
-import { Button, Flex, Input, Modal, Popconfirm, Space } from 'antd'
+import { Button, Flex, Form, Input, Modal, Popconfirm } from 'antd'
 import { PlusIcon } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
@@ -21,8 +21,8 @@ const QuickPhraseSettings: FC = () => {
   const [phrasesList, setPhrasesList] = useState<QuickPhrase[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPhrase, setEditingPhrase] = useState<QuickPhrase | null>(null)
-  const [formData, setFormData] = useState({ title: '', content: '' })
   const [dragging, setDragging] = useState(false)
+  const [form] = Form.useForm<{ title: string; content: string }>()
   const { theme } = useTheme()
 
   const loadPhrases = async () => {
@@ -36,13 +36,13 @@ const QuickPhraseSettings: FC = () => {
 
   const handleAdd = () => {
     setEditingPhrase(null)
-    setFormData({ title: '', content: '' })
+    form.resetFields()
     setIsModalOpen(true)
   }
 
   const handleEdit = (phrase: QuickPhrase) => {
     setEditingPhrase(phrase)
-    setFormData({ title: phrase.title, content: phrase.content })
+    form.setFieldsValue({ title: phrase.title, content: phrase.content })
     setIsModalOpen(true)
   }
 
@@ -51,17 +51,14 @@ const QuickPhraseSettings: FC = () => {
     await loadPhrases()
   }
 
-  const handleModalOk = async () => {
-    if (!formData.title.trim() || !formData.content.trim()) {
-      return
-    }
-
+  const handleModalOk = async (values: { title: string; content: string }) => {
     if (editingPhrase) {
-      await QuickPhraseService.update(editingPhrase.id, formData)
+      await QuickPhraseService.update(editingPhrase.id, values)
     } else {
-      await QuickPhraseService.add(formData)
+      await QuickPhraseService.add(values)
     }
     setIsModalOpen(false)
+    form.resetFields()
     await loadPhrases()
   }
 
@@ -130,42 +127,44 @@ const QuickPhraseSettings: FC = () => {
       <Modal
         title={editingPhrase ? t('settings.quickPhrase.edit') : t('settings.quickPhrase.add')}
         open={isModalOpen}
-        onOk={handleModalOk}
-        onCancel={() => setIsModalOpen(false)}
+        onOk={() => form.submit()}
+        onCancel={() => {
+          setIsModalOpen(false)
+          form.resetFields()
+        }}
         width={520}
         transitionName="animation-move-down"
         centered
         maskClosable={false}>
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <div>
-            <Label>{t('settings.quickPhrase.titleLabel')}</Label>
-            <Input
-              placeholder={t('settings.quickPhrase.titlePlaceholder')}
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>{t('settings.quickPhrase.contentLabel')}</Label>
+        <Form
+          form={form}
+          layout="vertical"
+          requiredMark
+          colon={false}
+          validateTrigger={['onChange']}
+          style={{ marginBottom: 16 }}
+          onFinish={handleModalOk}>
+          <Form.Item
+            name="title"
+            label={t('settings.quickPhrase.titleLabel')}
+            rules={[{ required: true, message: t('settings.quickPhrase.titleRequired') }]}>
+            <Input placeholder={t('settings.quickPhrase.titlePlaceholder')} spellCheck={false} allowClear />
+          </Form.Item>
+          <Form.Item
+            name="content"
+            label={t('settings.quickPhrase.contentLabel')}
+            rules={[{ required: true, message: t('settings.quickPhrase.contentRequired') }]}>
             <TextArea
               placeholder={t('settings.quickPhrase.contentPlaceholder')}
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              rows={6}
-              style={{ resize: 'none' }}
+              spellCheck={false}
+              autoSize={{ minRows: 6, maxRows: 10 }}
             />
-          </div>
-        </Space>
+          </Form.Item>
+        </Form>
       </Modal>
     </SettingContainer>
   )
 }
-
-const Label = styled.div`
-  font-size: 14px;
-  color: var(--color-text);
-  margin-bottom: 8px;
-`
 
 const QuickPhraseList = styled.div`
   width: 100%;

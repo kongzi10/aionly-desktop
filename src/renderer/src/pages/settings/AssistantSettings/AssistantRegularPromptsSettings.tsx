@@ -3,7 +3,7 @@ import { DraggableList } from '@renderer/components/DraggableList'
 import { DeleteIcon, EditIcon } from '@renderer/components/Icons'
 import FileItem from '@renderer/pages/files/FileItem'
 import type { Assistant, QuickPhrase } from '@renderer/types'
-import { Button, Flex, Input, Modal, Popconfirm, Space } from 'antd'
+import { Button, Flex, Form, Input, Modal, Popconfirm } from 'antd'
 import { PlusIcon } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
@@ -25,8 +25,8 @@ const AssistantRegularPromptsSettings: FC<AssistantRegularPromptsSettingsProps> 
   const [promptsList, setPromptsList] = useState<QuickPhrase[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState<QuickPhrase | null>(null)
-  const [formData, setFormData] = useState({ title: '', content: '' })
   const [dragging, setDragging] = useState(false)
+  const [form] = Form.useForm<{ title: string; content: string }>()
 
   useEffect(() => {
     setPromptsList(assistant.regularPhrases || [])
@@ -34,13 +34,13 @@ const AssistantRegularPromptsSettings: FC<AssistantRegularPromptsSettingsProps> 
 
   const handleAdd = () => {
     setEditingPrompt(null)
-    setFormData({ title: '', content: '' })
+    form.resetFields()
     setIsModalOpen(true)
   }
 
   const handleEdit = (prompt: QuickPhrase) => {
     setEditingPrompt(prompt)
-    setFormData({ title: prompt.title, content: prompt.content })
+    form.setFieldsValue({ title: prompt.title, content: prompt.content })
     setIsModalOpen(true)
   }
 
@@ -50,28 +50,23 @@ const AssistantRegularPromptsSettings: FC<AssistantRegularPromptsSettingsProps> 
     updateAssistant({ ...assistant, regularPhrases: updatedPrompts })
   }
 
-  const handleModalOk = async () => {
-    if (!formData.title.trim() || !formData.content.trim()) {
-      return
-    }
-
+  const handleModalOk = async (values: { title: string; content: string }) => {
     let updatedPrompts: QuickPhrase[]
     if (editingPrompt) {
-      updatedPrompts = promptsList.map((prompt) =>
-        prompt.id === editingPrompt.id ? { ...prompt, ...formData } : prompt
-      )
+      updatedPrompts = promptsList.map((prompt) => (prompt.id === editingPrompt.id ? { ...prompt, ...values } : prompt))
     } else {
       const newPrompt: QuickPhrase = {
         id: uuidv4(),
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        ...formData
+        ...values
       }
       updatedPrompts = [...promptsList, newPrompt]
     }
     setPromptsList(updatedPrompts)
     updateAssistant({ ...assistant, regularPhrases: updatedPrompts })
     setIsModalOpen(false)
+    form.resetFields()
   }
 
   const handleUpdateOrder = async (newPrompts: QuickPhrase[]) => {
@@ -139,31 +134,50 @@ const AssistantRegularPromptsSettings: FC<AssistantRegularPromptsSettingsProps> 
             : t('assistants.settings.regular_phrases.add', 'Add Prompt')
         }
         open={isModalOpen}
-        onOk={handleModalOk}
-        onCancel={() => setIsModalOpen(false)}
+        onOk={() => form.submit()}
+        onCancel={() => {
+          setIsModalOpen(false)
+          form.resetFields()
+        }}
         width={520}
         transitionName="animation-move-down"
         centered>
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <div>
-            <Label>{t('assistants.settings.regular_phrases.titleLabel', 'Title')}</Label>
+        <Form
+          form={form}
+          layout="vertical"
+          requiredMark
+          colon={false}
+          validateTrigger={['onChange']}
+          style={{ marginBottom: 16 }}
+          onFinish={handleModalOk}>
+          <Form.Item
+            name="title"
+            label={t('assistants.settings.regular_phrases.titleLabel', 'Title')}
+            rules={[
+              { required: true, message: t('assistants.settings.regular_phrases.titleRequired', 'Title is required') }
+            ]}>
             <Input
               placeholder={t('assistants.settings.regular_phrases.titlePlaceholder', 'Enter title')}
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              spellCheck={false}
+              allowClear
             />
-          </div>
-          <div>
-            <Label>{t('assistants.settings.regular_phrases.contentLabel', 'Content')}</Label>
+          </Form.Item>
+          <Form.Item
+            name="content"
+            label={t('assistants.settings.regular_phrases.contentLabel', 'Content')}
+            rules={[
+              {
+                required: true,
+                message: t('assistants.settings.regular_phrases.contentRequired', 'Content is required')
+              }
+            ]}>
             <TextArea
               placeholder={t('assistants.settings.regular_phrases.contentPlaceholder', 'Enter content')}
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              rows={6}
-              style={{ resize: 'none' }}
+              spellCheck={false}
+              autoSize={{ minRows: 6, maxRows: 10 }}
             />
-          </div>
-        </Space>
+          </Form.Item>
+        </Form>
       </Modal>
     </Container>
   )
@@ -173,12 +187,6 @@ const Container = styled.div`
   display: flex;
   flex: 1;
   flex-direction: column;
-`
-
-const Label = styled.div`
-  font-size: 14px;
-  color: var(--color-text);
-  margin-bottom: 8px;
 `
 
 const StyledPromptList = styled.div`

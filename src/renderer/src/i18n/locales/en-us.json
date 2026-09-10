@@ -1100,12 +1100,14 @@
         "add": "Add Phrase",
         "contentLabel": "Content",
         "contentPlaceholder": "Please enter phrase content, support using variables, and press Tab to quickly locate the variable to modify. For example: \nHelp me plan a route from ${from} to ${to}, and send it to ${email}.",
+        "contentRequired": "Content is required",
         "delete": "Delete Phrase",
         "deleteConfirm": "Are you sure to delete this phrase?",
         "edit": "Edit Phrase",
         "title": "Regular Phrase",
         "titleLabel": "Title",
-        "titlePlaceholder": "Enter title"
+        "titlePlaceholder": "Enter title",
+        "titleRequired": "Title is required"
       },
       "title": "Assistant Settings",
       "tool_use_mode": {
@@ -5968,6 +5970,7 @@
       "assistant": "Assistant Phrases",
       "contentLabel": "Content",
       "contentPlaceholder": "Please enter phrase content, support using variables, and press Tab to quickly locate the variable to modify. For example: \nHelp me plan a route from ${from} to ${to}, and send it to ${email}.",
+      "contentRequired": "Content is required",
       "delete": "Delete Phrase",
       "deleteConfirm": "The phrase cannot be recovered after deletion, continue?",
       "edit": "Edit Phrase",
@@ -5975,7 +5978,8 @@
       "locationLabel": "Add Location",
       "title": "Quick Phrases",
       "titleLabel": "Title",
-      "titlePlaceholder": "Please enter phrase title"
+      "titlePlaceholder": "Please enter phrase title",
+      "titleRequired": "Title is required"
     },
     "scheduledTasks": {
       "description": "Manage scheduled tasks across all agents. Tasks run automatically on the configured schedule.",
