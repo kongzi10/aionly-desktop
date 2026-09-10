@@ -48,7 +48,7 @@ const Container = styled.div`
   height: calc(100vh - var(--navbar-height) - 10px);
   overflow: hidden;
   border-radius: var(--base-border-radius);
-  background-color: rgba(255, 255, 255, 1);
+  background-color: var(--color-background);
 `
 
 const Main = styled(Flex)`
