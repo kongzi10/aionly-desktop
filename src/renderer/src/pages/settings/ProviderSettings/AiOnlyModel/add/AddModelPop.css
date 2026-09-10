@@ -79,7 +79,7 @@
 }
 
 .model-wrapper .list .item.selected {
-  background: linear-gradient(270deg, #ffe8c5 0%, #fff8e8 100%);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-background));
 }
 
 .model-wrapper .list .item.disabled {
