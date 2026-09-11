@@ -7,7 +7,7 @@ import Scrollbar from '@renderer/components/Scrollbar'
 import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useNavbarPosition, useSettings } from '@renderer/hooks/useSettings'
 import { Button, Input } from 'antd'
-import { Image, Languages, Search, SettingsIcon } from 'lucide-react'
+import { Bot, Image, Search, SettingsIcon } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import React, { useState } from 'react'
@@ -134,10 +134,10 @@ const AppsPage: FC = () => {
                     onClick={() => navigate(`/paintings/${defaultPaintingProvider}`)}
                   />
                   <ToolboxEntryButton
-                    icon={<Languages size={32} strokeWidth={2} className="lucide-custom" aria-hidden="true" />}
+                    icon={<Bot size={32} strokeWidth={2} className="lucide-custom" aria-hidden="true" />}
                     tone="cyan"
-                    label={t('title.translate')}
-                    onClick={() => navigate('/translate')}
+                    label={t('agent.sidebar_title')}
+                    onClick={() => navigate('/agents')}
                   />
                 </ToolboxSection>
                 <ToolboxSection title={t('minapp.toolbox.extensions')}>

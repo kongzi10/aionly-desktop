@@ -15,7 +15,7 @@ describe('getPrimarySidebarMenus', () => {
     expect(menus.slice(0, 3).map(({ name, path }) => ({ name, path }))).toEqual([
       { name: 'assistants', path: '/' },
       { name: 'roundtable', path: '/roundtable' },
-      { name: 'agents', path: '/agents' }
+      { name: 'translate', path: '/translate' }
     ])
   })
 

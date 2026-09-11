@@ -1,6 +1,6 @@
 import { Navbar, NavbarCenter, /*NavbarLeft,*/ NavbarRight } from '@renderer/components/app/Navbar'
 import { HStack } from '@renderer/components/Layout'
-// import NavbarIcon from '@renderer/components/NavbarIcon'
+import NavbarIcon from '@renderer/components/NavbarIcon'
 import SearchPopup from '@renderer/components/Popups/SearchPopup'
 // import { modelGenerating } from '@renderer/hooks/useRuntime'
 // import { useSettings } from '@renderer/hooks/useSettings'
@@ -8,7 +8,7 @@ import { useShortcut } from '@renderer/hooks/useShortcuts'
 // import { useShowAssistants, useShowTopics } from '@renderer/hooks/useStore'
 // import { useAppDispatch } from '@renderer/store'
 // import { setNarrowMode } from '@renderer/store/settings'
-// import { Tooltip } from 'antd'
+import { Tooltip } from 'antd'
 import { t } from 'i18next'
 // import { Menu, PanelLeftClose, PanelRightClose, Search } from 'lucide-react'
 // import { AnimatePresence, motion } from 'motion/react'
@@ -16,7 +16,12 @@ import { t } from 'i18next'
 // import UpdateAppButton from '../home/components/UpdateAppButton'
 // import AgentSidePanelDrawer from './components/AgentSidePanelDrawer'
 
-const AgentNavbar = () => {
+interface AgentNavbarProps {
+  showSidebar: boolean
+  toggleSidebar: () => void
+}
+
+const AgentNavbar = ({ showSidebar, toggleSidebar }: AgentNavbarProps) => {
   // const { showAssistants, toggleShowAssistants } = useShowAssistants()
   // const { showTopics, toggleShowTopics } = useShowTopics()
   // const { narrowMode, topicPosition } = useSettings()
@@ -32,7 +37,20 @@ const AgentNavbar = () => {
   }*/
 
   return (
-    <Navbar className="agent-navbar">
+    <Navbar className="agent-navbar" style={{ position: 'relative' }}>
+      {showSidebar && (
+        <Tooltip title={t('navbar.hide_sidebar')} mouseEnterDelay={0.8}>
+          <NavbarIcon
+            onClick={toggleSidebar}
+            style={{
+              position: 'absolute',
+              left: 'calc(var(--sidebar-width) + var(--assistants-width) - 18px)',
+              zIndex: 1
+            }}>
+            <i className="iconfont icon-choutishouqi" style={{ fontSize: 18 }} />
+          </NavbarIcon>
+        </Tooltip>
+      )}
       {/*<AnimatePresence initial={false}>
         {showAssistants && (
           <motion.div
@@ -70,7 +88,16 @@ const AgentNavbar = () => {
           </NavbarIcon>
         </NavbarLeft>
       )}*/}
-      <NavbarCenter>{t('agent.sidebar_title')}</NavbarCenter>
+      <NavbarCenter>
+        {t('agent.sidebar_title')}
+        {!showSidebar && (
+          <Tooltip title={t('navbar.show_sidebar')} mouseEnterDelay={0.8}>
+            <NavbarIcon onClick={toggleSidebar} style={{ marginLeft: 6 }}>
+              <i className="iconfont icon-choutizhankai" style={{ fontSize: 18 }} />
+            </NavbarIcon>
+          </Tooltip>
+        )}
+      </NavbarCenter>
       <NavbarRight
         style={{
           justifyContent: 'flex-end',

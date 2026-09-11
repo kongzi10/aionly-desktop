@@ -19,10 +19,10 @@ const BASE_MENUS: PrimarySidebarMenu[] = [
     iconActive: 'roundtable'
   },
   {
-    path: '/agents',
-    name: 'agents',
-    icon: 'icon-zhinengtimoren',
-    iconActive: 'icon-zhinengtixuanzhong'
+    path: '/translate',
+    name: 'translate',
+    icon: 'icon-fanyimoren',
+    iconActive: 'icon-fanyixuanzhong'
   },
   {
     path: '/apps',

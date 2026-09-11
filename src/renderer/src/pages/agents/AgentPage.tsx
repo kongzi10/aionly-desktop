@@ -6,13 +6,13 @@ import { useApiServer } from '@renderer/hooks/useApiServer'
 import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useNavbarPosition, useSettings } from '@renderer/hooks/useSettings'
 import { useShortcut } from '@renderer/hooks/useShortcuts'
-import { useShowAssistants, useShowTopics } from '@renderer/hooks/useStore'
+import { useShowTopics } from '@renderer/hooks/useStore'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { cn } from '@renderer/utils'
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, SECOND_MIN_WINDOW_WIDTH } from '@shared/config/constant'
 import { AnimatePresence, motion } from 'motion/react'
 import type { PropsWithChildren } from 'react'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import AgentChat from './AgentChat'
@@ -22,7 +22,7 @@ import { AgentEmpty, AgentServerDisabled, AgentServerStopped } from './component
 
 const AgentPage = () => {
   const { isLeftNavbar } = useNavbarPosition()
-  const { showAssistants, toggleShowAssistants } = useShowAssistants()
+  const [showAgentSidebar, setShowAgentSidebar] = useState(true)
   const { showTopics, toggleShowTopics } = useShowTopics()
   const { topicPosition } = useSettings()
   const { chat } = useRuntime()
@@ -32,14 +32,11 @@ const AgentPage = () => {
   const { apiServerConfig, apiServerRunning, apiServerLoading } = useApiServer()
   const { t } = useTranslation()
 
-  useShortcut('toggle_show_assistants', () => {
-    if (topicPosition === 'left') {
-      toggleShowAssistants()
-      return
-    }
+  const toggleAgentSidebar = useCallback(() => {
+    setShowAgentSidebar((visible) => !visible)
+  }, [])
 
-    void EventEmitter.emit(EVENT_NAMES.SHOW_ASSISTANTS)
-  })
+  useShortcut('toggle_show_assistants', toggleAgentSidebar)
 
   useShortcut('toggle_show_topics', () => {
     if (topicPosition === 'right') {
@@ -57,12 +54,12 @@ const AgentPage = () => {
   }, [activeAgentId, agents, setActiveAgentId])
 
   useEffect(() => {
-    const canMinimize = topicPosition === 'left' ? !showAssistants : !showAssistants && !showTopics
+    const canMinimize = topicPosition === 'left' ? !showAgentSidebar : !showAgentSidebar && !showTopics
     void window.api.window.setMinimumSize(canMinimize ? SECOND_MIN_WINDOW_WIDTH : MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
     return () => {
       void window.api.window.resetMinimumSize()
     }
-  }, [showAssistants, showTopics, topicPosition])
+  }, [showAgentSidebar, showTopics, topicPosition])
 
   if (!apiServerConfig.enabled) {
     return (
@@ -99,12 +96,12 @@ const AgentPage = () => {
 
   return (
     <Container>
-      <AgentNavbar />
+      <AgentNavbar showSidebar={showAgentSidebar} toggleSidebar={toggleAgentSidebar} />
       <div
         id={isLeftNavbar ? 'content-container' : undefined}
         className="flex min-w-0 flex-1 shrink flex-row gap-2 overflow-hidden">
         <AnimatePresence initial={false}>
-          {showAssistants && (
+          {showAgentSidebar && (
             <ErrorBoundary>
               <motion.div
                 initial={{ width: 0, opacity: 0 }}
