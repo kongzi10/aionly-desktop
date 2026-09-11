@@ -3620,6 +3620,7 @@
     },
     "text_desc_required": "請先輸入圖片描述",
     "title": "繪圖",
+    "token_plan_mode": "使用繪圖功能請至【設定-模型服務】中切換回API金鑰模式",
     "top_up": "儲值",
     "translating": "翻譯中...",
     "uploaded_input": "已上傳輸入",
@@ -5772,7 +5773,7 @@
           "year": "年度"
         },
         "use_api_key": "使用 API 金鑰",
-        "use_api_key_confirm_content": "是否並切換回 API 金鑰模式？切換後使用平台默認 sk-key。",
+        "use_api_key_confirm_content": "是否切換回 API 金鑰模式？切換後使用平台默認 sk-key。",
         "use_api_key_confirm_title": "切換回 API 金鑰"
       },
       "api_version": "API 版本",

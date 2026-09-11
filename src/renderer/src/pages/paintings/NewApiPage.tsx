@@ -23,7 +23,12 @@ import {
   getPaintingsQualityOptionsLabel
 } from '@renderer/i18n/label'
 import PaintingsList from '@renderer/pages/paintings/components/PaintingsList'
-import { DEFAULT_PAINTING, MODELS, SUPPORTED_MODELS } from '@renderer/pages/paintings/config/NewApiConfig'
+import {
+  DEFAULT_PAINTING,
+  formatSizeForModel,
+  MODELS,
+  SUPPORTED_MODELS
+} from '@renderer/pages/paintings/config/NewApiConfig'
 import AiOnlyAddModelPopup from '@renderer/pages/settings/ProviderSettings/AiOnlyModel/add/AddModelPopup'
 import FileManager from '@renderer/services/FileManager'
 import { translateText } from '@renderer/services/TranslateService'
@@ -313,6 +318,15 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
   }
 
   const onGenerate = async () => {
+    // Token Plan 模式下不支持绘画，提示用户切换回 API 密钥模式
+    if (userTokenPlan) {
+      window.modal.warning({
+        content: t('paintings.token_plan_mode'),
+        centered: true
+      })
+      return
+    }
+
     await checkProviderEnabled(newApiProvider, t)
 
     if (painting.files.length > 0) {
@@ -371,7 +385,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
         const requestData = {
           prompt,
           model: painting.model,
-          size: painting.size === 'auto' ? undefined : painting.size,
+          size: formatSizeForModel(painting.model, painting.size),
           background: painting.background === 'auto' ? undefined : painting.background,
           n: painting.n,
           quality: painting.quality === 'auto' ? undefined : painting.quality,
@@ -425,7 +439,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
             images: await Promise.all(editImages.map((file) => getFileBase64(file)))
           },
           parameters: {
-            size: painting.size === 'auto' ? undefined : painting.size, // 对于有的模型不支持“auto”，必须是width*height
+            size: formatSizeForModel(painting.model, painting.size), // size 格式因模型而异：百炼系 width*height，其余 widthxheight
             quality: painting.quality || 'auto',
             moderation: painting.moderation || 'auto'
           }
