@@ -1,3 +1,5 @@
+import { APP_PROTOCOL } from '@shared/config/constant'
+
 export const DEFAULT_TEMPERATURE = 1.0
 export const DEFAULT_CONTEXTCOUNT = 5
 export const DEFAULT_MAX_TOKENS = 4096
@@ -47,3 +49,12 @@ export const MAX_CONTEXT_COUNT = 100
 export const UNLIMITED_CONTEXT_COUNT = 100000
 
 export const MAX_COLLAPSED_CODE_HEIGHT = 350
+
+// 例：VITE_API_URL=https://www.aionly.com/api -> https://www.aionly.com
+export const SCAN_LOGIN_HOST =
+  String(import.meta.env.VITE_API_URL || '')
+    .replace(/\/+$/, '')
+    .replace(/\/api$/, '') || `https://www.${APP_PROTOCOL}.com`
+
+// 扫码登录二维码内容
+export const getScanLoginUrl = (ticket: string) => `${SCAN_LOGIN_HOST}/scanLogin?ticket=${encodeURIComponent(ticket)}`

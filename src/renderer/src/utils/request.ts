@@ -90,6 +90,13 @@ class RequestHttp {
         // config.loading && tryHideFullScreenLoading();
         // 登录失效
         if (data.code == '401') {
+          // 免登录接口的业务码 401 不是登录态过期，改为 reject 把 msg 交给调用方
+          if (config.headers?.isToken === false) {
+            logger.warn('response biz code 401 (isToken=false)', { url: config.url, code: data.code, msg: data.msg })
+            return Promise.reject(data)
+          }
+          // 该分支随后 return Promise.resolve()，调用方拿到 undefined，故先落日志便于定位
+          logger.warn('response biz code 401', { url: config.url, code: data.code, msg: data.msg })
           localStorage.removeItem('token')
           message.warning('登录过期请重新登录！')
           // 跳转到登录页

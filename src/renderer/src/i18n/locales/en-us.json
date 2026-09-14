@@ -2358,6 +2358,22 @@
     },
     "login_btn_text": "Login/Register",
     "new_user_gift": "New users receive a welcome gift upon first registration >>",
+    "qrcode": {
+      "canceled": "Login was canceled on your phone",
+      "confirm_failed": "QR code login failed, please scan again",
+      "confirmed": "Login successful",
+      "confirmed_hint": "Entering the app, please wait",
+      "disabled_hint": "QR code login is not enabled, please use another login method",
+      "expired": "The QR code has expired",
+      "expired_hint": "Click the QR code to refresh",
+      "generate_failed": "Failed to get the QR code",
+      "loading": "Loading QR code",
+      "retry": "Retry",
+      "scan_hint": "Scan the QR code with your phone and confirm the login on your phone",
+      "scanned": "Scanned successfully",
+      "scanned_hint": "Please confirm the login on your phone",
+      "tab": "QR Code Login"
+    },
     "send_code": "Get verification code",
     "sms_login": {
       "code_required": "Please enter the verification code.",

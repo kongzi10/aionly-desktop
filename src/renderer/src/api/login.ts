@@ -10,7 +10,34 @@ export const loginApi = (params) => {
   if ((gt === 'sms' || gt === 'email') && body.registerProduct == null) {
     body.registerProduct = 'aionly_client'
   }
-  return http.post(`/auth/login`, body, { loading: false, headers: { isToken: false, isEncrypt: true } }) // 正常 post json 请求  ==>  application/json
+  return http.post(`/auth/login`, body, {
+    loading: false,
+    headers: { isToken: false, isEncrypt: true }
+  }) // 正常 post json 请求  ==>  application/json
+}
+
+// 扫码登录（PC 端）：generate 取 ticket（免登录）→ 渲染二维码 → status 轮询（免登录）→ CONFIRMED 后复用 loginApi 换 token
+export const qrcodeGenerateApi = () => {
+  // showError: false：失败提示在二维码区域展示，不弹全局 toast
+  return http.post(
+    `/auth/qrcode/generate`,
+    {},
+    {
+      loading: false,
+      showError: false,
+      headers: { isToken: false }
+    }
+  )
+}
+
+export const qrcodeStatusApi = (params: { ticket: string }) => {
+  // cancel: false：轮询会重复发同一请求，避免被 axiosCanceler 自取消
+  return http.get(`/auth/qrcode/status`, params, {
+    loading: false,
+    cancel: false,
+    showError: false,
+    headers: { isToken: false }
+  })
 }
 
 export const emailCaptchaApi = (params) => {

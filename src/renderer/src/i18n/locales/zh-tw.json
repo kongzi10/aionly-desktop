@@ -2358,6 +2358,22 @@
     },
     "login_btn_text": "登錄/註冊",
     "new_user_gift": "新用戶首次註冊即送新人禮>>",
+    "qrcode": {
+      "canceled": "已於手機上取消登錄",
+      "confirm_failed": "掃碼登錄失敗，請重新掃碼",
+      "confirmed": "登錄成功",
+      "confirmed_hint": "正在進入應用，請稍候",
+      "disabled_hint": "掃碼登錄暫未開啟，請使用其他方式登錄",
+      "expired": "二維碼已失效",
+      "expired_hint": "點擊二維碼刷新",
+      "generate_failed": "二維碼獲取失敗",
+      "loading": "二維碼載入中",
+      "retry": "重試",
+      "scan_hint": "請使用手機掃描二維碼，並在手機上確認登錄",
+      "scanned": "掃碼成功",
+      "scanned_hint": "請在手機上確認登錄",
+      "tab": "掃碼登錄"
+    },
     "send_code": "獲取驗證碼",
     "sms_login": {
       "code_required": "請輸入驗證碼",

@@ -2358,6 +2358,22 @@
     },
     "login_btn_text": "登录/注册",
     "new_user_gift": "新用户首次注册即送新人礼>>",
+    "qrcode": {
+      "canceled": "已在手机上取消登录",
+      "confirm_failed": "扫码登录失败，请重新扫码",
+      "confirmed": "登录成功",
+      "confirmed_hint": "正在进入应用，请稍候",
+      "disabled_hint": "扫码登录暂未开启，请使用其他方式登录",
+      "expired": "二维码已失效",
+      "expired_hint": "点击二维码刷新",
+      "generate_failed": "二维码获取失败",
+      "loading": "二维码加载中",
+      "retry": "重试",
+      "scan_hint": "请使用手机扫描二维码，并在手机上确认登录",
+      "scanned": "扫码成功",
+      "scanned_hint": "请在手机上确认登录",
+      "tab": "扫码登录"
+    },
     "send_code": "获取验证码",
     "sms_login": {
       "code_required": "请输入验证码",

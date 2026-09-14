@@ -18,7 +18,11 @@ import styled from 'styled-components'
 import { LoginSceneType, useLoginContext } from '../contexts/LoginContext'
 import { AccountLogin, type AccountLoginRef } from './AccountLogin'
 import { EmailLogin, type EmailLoginRef } from './EmailLogin'
+import { QrcodeLogin } from './QrcodeLogin'
 import { SMSLogin, type SMSLoginRef } from './SMSLogin'
+
+/** 扫码登录页签（仅 aionly 端提供该能力） */
+const QRCODE_TAB_KEY = '4'
 
 const LoginTitle = styled.div`
   font-family: Alimama ShuHeiTi;
@@ -187,8 +191,17 @@ export const LoginForm = (props: LoginFormProps) => {
         )
       }
     ]
+    // 扫码登录：手机扫码后打开 Web 端 /scanLogin 完成确认
+    const qrcodeTab = {
+      key: QRCODE_TAB_KEY,
+      label: i18n.t('login.qrcode.tab'),
+      children: (
+        <QrcodeLogin active={activeTabKey === QRCODE_TAB_KEY} onSuccess={handleLoginSuccess} setLoading={setLoading} />
+      )
+    }
+
     if ((APP_PROTOCOL as string) === 'aionly') {
-      return base
+      return [...base, qrcodeTab]
     }
     return [
       {
@@ -207,7 +220,7 @@ export const LoginForm = (props: LoginFormProps) => {
       },
       ...base
     ]
-  }, [handleLoginSuccess])
+  }, [activeTabKey, handleLoginSuccess])
 
   const onTabChange = (key: string) => {
     setActiveTabKey(key)
@@ -239,6 +252,8 @@ export const LoginForm = (props: LoginFormProps) => {
   }
 
   const disabledLogin = !isAccept || !formValid
+  // 扫码登录页签：登录由手机端确认自动触发，无表单校验与协议勾选
+  const isQrcodeTab = activeTabKey === QRCODE_TAB_KEY
 
   return (
     <>
@@ -255,26 +270,30 @@ export const LoginForm = (props: LoginFormProps) => {
           onChange={onTabChange}
         />
 
-        <Agreements onChange={onAcceptChange} checked={isAccept} />
+        {!isQrcodeTab && <Agreements onChange={onAcceptChange} checked={isAccept} />}
 
-        <LoginButton
-          type="primary"
-          block={true}
-          disabled={disabledLogin}
-          loading={loading}
-          onClick={handleLoginSubmit}
-          style={{ marginTop: 12 }}>
-          {i18n.t('login.login_btn_text')}
-        </LoginButton>
+        {!isQrcodeTab && (
+          <LoginButton
+            type="primary"
+            block={true}
+            disabled={disabledLogin}
+            loading={loading}
+            onClick={handleLoginSubmit}
+            style={{ marginTop: 12 }}>
+            {i18n.t('login.login_btn_text')}
+          </LoginButton>
+        )}
 
-        <BottomPanel>
-          <Button type="link" onClick={() => setScene(LoginSceneType.SubAccount)}>
-            {i18n.t('login.sub_account.btn_text')}
-          </Button>
-          <Button type="link" onClick={() => setScene(LoginSceneType.ForgotPassword)}>
-            {i18n.t('login.forget_password')}
-          </Button>
-        </BottomPanel>
+        {!isQrcodeTab && (
+          <BottomPanel>
+            <Button type="link" onClick={() => setScene(LoginSceneType.SubAccount)}>
+              {i18n.t('login.sub_account.btn_text')}
+            </Button>
+            <Button type="link" onClick={() => setScene(LoginSceneType.ForgotPassword)}>
+              {i18n.t('login.forget_password')}
+            </Button>
+          </BottomPanel>
+        )}
       </>
 
       <Verify
