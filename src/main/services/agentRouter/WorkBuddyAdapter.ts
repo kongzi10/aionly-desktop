@@ -6,6 +6,8 @@ type WorkBuddyRouteDefinition = {
   modelTypes: readonly AgentRouteModelType[]
 }
 
+import { AIONLY_LOGO_URL } from '@shared/config/constant'
+
 const MAX_CONFIG_BYTES = 2 * 1024 * 1024
 const MAX_ENTRIES = 1000
 const KNOWN_ENTRY_KEYS = new Set([
@@ -17,7 +19,8 @@ const KNOWN_ENTRY_KEYS = new Set([
   'supportsToolCall',
   'supportsImages',
   'supportsReasoning',
-  'useCustomProtocol'
+  'useCustomProtocol',
+  'iconUrl'
 ])
 
 export class AgentRouterError extends Error {
@@ -40,6 +43,7 @@ export interface WorkBuddyEntry {
   supportsImages: boolean
   supportsReasoning: boolean
   useCustomProtocol: boolean
+  iconUrl?: string
   [key: string]: unknown
 }
 
@@ -142,7 +146,8 @@ export class WorkBuddyAdapter {
       supportsToolCall: intent.modelTypes.includes('function_calling'),
       supportsImages: intent.modelTypes.includes('vision'),
       supportsReasoning: intent.modelTypes.includes('reasoning'),
-      useCustomProtocol: false
+      useCustomProtocol: false,
+      iconUrl: AIONLY_LOGO_URL
     }
   }
 

@@ -1,4 +1,5 @@
 import type { AgentRouteModel } from '@shared/agentRouter'
+import { AIONLY_LOGO_URL } from '@shared/config/constant'
 import { describe, expect, it } from 'vitest'
 
 import type { AgentRouterError, WorkBuddyEntry } from '../WorkBuddyAdapter'
@@ -25,6 +26,7 @@ const entry = (url: string, overrides: Partial<WorkBuddyEntry> = {}): WorkBuddyE
   supportsImages: false,
   supportsReasoning: false,
   useCustomProtocol: false,
+  iconUrl: AIONLY_LOGO_URL,
   ...overrides
 })
 
@@ -68,7 +70,8 @@ describe('WorkBuddyAdapter', () => {
       supportsToolCall: true,
       supportsImages: false,
       supportsReasoning: true,
-      useCustomProtocol: false
+      useCustomProtocol: false,
+      iconUrl: AIONLY_LOGO_URL
     })
   })
 

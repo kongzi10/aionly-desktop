@@ -542,3 +542,6 @@ export const UPDATE_CHECK_PATH = '/api/base/clientVersion/latest' // GET {base}/
 
 export const ENABLED_PLAN_STORAGE_KEY = `enabled_plan`
 export const LOCAL_USER_SECRET_KEY = `userSecretKey`
+
+// AiOnly logo地址
+export const AIONLY_LOGO_URL = 'https://file.aionly.com/maas/2026/09/15/eec887f89cc8410298f64c9262464c2c.png'
