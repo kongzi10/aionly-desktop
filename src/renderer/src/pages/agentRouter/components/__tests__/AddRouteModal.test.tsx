@@ -75,6 +75,14 @@ describe('AddRouteModal', () => {
     onCreate: vi.fn().mockResolvedValue(undefined)
   }
 
+  it('shows API and TokenPlan as two access-mode radio options', () => {
+    render(<AddRouteModal {...commonProps} onAdd={vi.fn()} />)
+
+    expect(screen.getByRole('radio', { name: 'API' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'TokenPlan' })).not.toBeChecked()
+    expect(screen.queryByRole('combobox', { name: 'agentRouter.accessMode' })).not.toBeInTheDocument()
+  })
+
   it('selects exact unmatched global templates and submits template ids', () => {
     const onAdd = vi.fn()
     render(<AddRouteModal {...commonProps} onAdd={onAdd} />)
@@ -315,8 +323,7 @@ describe('AddRouteModal', () => {
         ]}
       />
     )
-    fireEvent.mouseDown(screen.getByLabelText('agentRouter.accessMode'))
-    fireEvent.click(await screen.findByText('TokenPlan'))
+    fireEvent.click(screen.getByRole('radio', { name: 'TokenPlan' }))
     fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
     fireEvent.click(await screen.findByText('Plan One'))
     await waitFor(() =>

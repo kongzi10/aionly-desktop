@@ -1,6 +1,6 @@
 import { DownOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
 import type { AgentRouteModel, AgentRouteTemplate, CreateAgentRouteRequest } from '@shared/agentRouter'
-import { Button, Checkbox, Empty, Form, message, Modal, Select, Tabs } from 'antd'
+import { Button, Checkbox, Empty, Form, message, Modal, Radio, Select, Tabs } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -180,7 +180,7 @@ export const AddRouteModal = ({
             wrapperCol={{ flex: 1 }}
             initialValues={{ accessMode: 'api' }}>
             <Form.Item name="accessMode" label={t('agentRouter.accessMode')}>
-              <Select
+              <Radio.Group
                 onChange={() => {
                   form.setFieldsValue({ credentialId: undefined, modelIds: [] } as Partial<FormValues>)
                   setShowKey(false)

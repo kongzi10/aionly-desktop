@@ -149,10 +149,10 @@ export class WorkBuddyAdapter {
     generated: WorkBuddyEntry[],
     managedIds = new Set(current.filter((entry) => this.isAionlyEntry(entry)).map((entry) => entry.id))
   ): WorkBuddyEntry[] {
-    const generatedRoutes = new Set(generated.map((entry) => JSON.stringify([entry.id, entry.url])))
+    const generatedIds = new Set(generated.map((entry) => entry.id))
     const preserved = current.filter(
       (entry) =>
-        !generatedRoutes.has(JSON.stringify([entry.id, entry.url])) &&
+        !(generatedIds.has(entry.id) && entry.vendor === 'Custom') &&
         (!managedIds.has(entry.id) || !this.isAionlyEntry(entry))
     )
     return [...generated, ...preserved]

@@ -200,10 +200,9 @@ describe('WorkBuddyAdapter', () => {
     expect(() => adapter.serialize(merged)).not.toThrow()
   })
 
-  it('replaces an external entry when its model id and URL match a generated entry', () => {
-    const external = entry('https://api.aionly.com/v1', {
+  it('replaces a Custom entry when its model id matches despite a different URL', () => {
+    const external = entry('https://other.example/v1', {
       name: 'External',
-      vendor: 'OpenAI',
       apiKey: 'external-key'
     })
     const generated = entry('https://api.aionly.com/v1', { name: 'AiOnly', apiKey: 'aionly-key' })

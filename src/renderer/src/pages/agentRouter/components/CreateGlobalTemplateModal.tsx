@@ -1,6 +1,6 @@
 import { DownOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
 import type { CreateAgentRouteTemplateRequest } from '@shared/agentRouter'
-import { Form, Select } from 'antd'
+import { Form, Radio, Select } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -96,7 +96,7 @@ export const CreateGlobalTemplateModal = ({
         wrapperCol={{ flex: 1 }}
         initialValues={{ accessMode: 'api' }}>
         <Form.Item name="accessMode" label={t('agentRouter.accessMode')}>
-          <Select
+          <Radio.Group
             onChange={changeMode}
             options={[
               { value: 'api', label: 'API' },

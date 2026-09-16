@@ -19,6 +19,23 @@ beforeEach(() => {
 })
 
 describe('CreateGlobalTemplateModal', () => {
+  it('shows API and TokenPlan as two access-mode radio options', () => {
+    render(
+      <CreateGlobalTemplateModal
+        open
+        apiCredentials={[]}
+        apiModels={[]}
+        tokenPlanCredentials={[]}
+        onCancel={vi.fn()}
+        onCreate={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('radio', { name: 'API' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'TokenPlan' })).not.toBeChecked()
+    expect(screen.queryByRole('combobox', { name: 'agentRouter.accessMode' })).not.toBeInTheDocument()
+  })
+
   it('creates a template from the selected subscription without enabling it in settings', async () => {
     vi.mocked(selectTokenPlanHourlyDayUsageApi).mockResolvedValueOnce({ rows: [{ model: 'plan-model' }] })
     const onCreate = vi.fn().mockResolvedValue(undefined)
@@ -34,8 +51,7 @@ describe('CreateGlobalTemplateModal', () => {
         onCreate={onCreate}
       />
     )
-    fireEvent.mouseDown(screen.getByLabelText('agentRouter.accessMode'))
-    fireEvent.click(await screen.findByText('TokenPlan'))
+    fireEvent.click(screen.getByRole('radio', { name: 'TokenPlan' }))
     fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
     fireEvent.click(await screen.findByText('My Plan'))
     await waitFor(() =>
@@ -71,7 +87,7 @@ describe('CreateGlobalTemplateModal', () => {
     )
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('agentRouter.displayName')).not.toBeInTheDocument()
-    fireEvent.mouseDown(screen.getAllByRole('combobox')[1])
+    fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
     fireEvent.click(await screen.findByText('生图'))
     expect(screen.getByText('••••••••••••••••••••••••')).toBeInTheDocument()
     expect(screen.queryByText('agentRouter.apiKeyStoredLocally')).not.toBeInTheDocument()

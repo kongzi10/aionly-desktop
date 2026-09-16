@@ -150,7 +150,7 @@ describe('AgentRouterService WorkBuddy routes', () => {
     ).toEqual([expect.objectContaining({ label: 'Legacy key name', maskedValue: 'sk-l••••gacy' })])
   })
 
-  it('prepends an AiOnly route while preserving a non-Aionly route with the same model id', async () => {
+  it('replaces a Custom route with the same model id even when its URL differs', async () => {
     await writeFile(
       configPath,
       `${JSON.stringify([{ id: 'gpt-5', name: 'Manual', vendor: 'Custom', url: 'https://other.example/v1', apiKey: 'manual', supportsToolCall: false, supportsImages: false, supportsReasoning: false, useCustomProtocol: false }], null, 2)}\n`,
@@ -172,9 +172,8 @@ describe('AgentRouterService WorkBuddy routes', () => {
     })
 
     const entries = JSON.parse(await readFile(configPath, 'utf8'))
-    expect(entries).toHaveLength(2)
+    expect(entries).toHaveLength(1)
     expect(entries[0]).toMatchObject({ id: 'gpt-5', name: 'AiOnly', url: 'https://api.aionly.com/v1' })
-    expect(entries[1]).toMatchObject({ id: 'gpt-5', url: 'https://other.example/v1' })
   })
 
   it('binds a preview token to its account and revision', async () => {
