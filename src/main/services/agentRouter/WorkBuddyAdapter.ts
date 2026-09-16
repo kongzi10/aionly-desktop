@@ -57,12 +57,9 @@ export interface ParsedWorkBuddyDocument {
   entries: ParsedWorkBuddyEntry[]
 }
 
-const requireString = (entry: Record<string, unknown>, key: string): string => {
+const normalizeString = (entry: Record<string, unknown>, key: string): string => {
   const value = entry[key]
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new AgentRouterError('INVALID_CONFIG', `WorkBuddy entry field "${key}" must be a non-empty string`)
-  }
-  return value
+  return typeof value === 'string' ? value : ''
 }
 
 const normalizeBoolean = (value: unknown): boolean => value === true
@@ -99,27 +96,23 @@ export class WorkBuddyAdapter {
       throw new AgentRouterError('INVALID_CONFIG', 'WorkBuddy configuration contains too many entries')
     }
 
-    const ids = new Set<string>()
     const entries = document.map((candidate) => {
       if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
         throw new AgentRouterError('INVALID_CONFIG', 'Every WorkBuddy model entry must be an object')
       }
 
       const source = candidate as Record<string, unknown>
-      const id = requireString(source, 'id')
-      if (ids.has(id)) {
-        throw new AgentRouterError('INVALID_CONFIG', `Duplicate WorkBuddy model id: ${id}`)
-      }
-      ids.add(id)
+      const id = normalizeString(source, 'id')
+      const vendor = normalizeString(source, 'vendor')
 
       const unknownFields = Object.fromEntries(Object.entries(source).filter(([key]) => !KNOWN_ENTRY_KEYS.has(key)))
       const value: WorkBuddyEntry = {
         ...unknownFields,
         id,
-        name: requireString(source, 'name'),
-        vendor: requireString(source, 'vendor'),
-        url: requireString(source, 'url'),
-        apiKey: requireString(source, 'apiKey'),
+        name: normalizeString(source, 'name'),
+        vendor,
+        url: normalizeString(source, 'url'),
+        apiKey: normalizeString(source, 'apiKey'),
         supportsToolCall: normalizeBoolean(source.supportsToolCall),
         supportsImages: normalizeBoolean(source.supportsImages),
         supportsReasoning: normalizeBoolean(source.supportsReasoning),
@@ -139,7 +132,7 @@ export class WorkBuddyAdapter {
 
     return {
       id: intent.modelId,
-      name: intent.displayName || intent.modelId,
+      name: 'AiOnly',
       vendor: 'Custom',
       url: apiUrl,
       apiKey,
@@ -156,19 +149,13 @@ export class WorkBuddyAdapter {
     generated: WorkBuddyEntry[],
     managedIds = new Set(current.filter((entry) => this.isAionlyEntry(entry)).map((entry) => entry.id))
   ): WorkBuddyEntry[] {
-    const generatedIds = new Set(generated.map((entry) => entry.id))
-
-    for (const entry of current) {
-      if (generatedIds.has(entry.id) && !this.isAionlyEntry(entry)) {
-        throw new AgentRouterError(
-          'ENTRY_OWNERSHIP_CONFLICT',
-          `WorkBuddy model "${entry.id}" exists but is not managed by AiOnly`
-        )
-      }
-    }
-
-    const preserved = current.filter((entry) => !managedIds.has(entry.id) && !generatedIds.has(entry.id))
-    return [...preserved, ...generated]
+    const generatedRoutes = new Set(generated.map((entry) => JSON.stringify([entry.id, entry.url])))
+    const preserved = current.filter(
+      (entry) =>
+        !generatedRoutes.has(JSON.stringify([entry.id, entry.url])) &&
+        (!managedIds.has(entry.id) || !this.isAionlyEntry(entry))
+    )
+    return [...generated, ...preserved]
   }
 
   validate(entries: WorkBuddyEntry[]): void {

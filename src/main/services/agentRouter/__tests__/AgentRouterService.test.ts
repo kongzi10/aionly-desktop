@@ -150,7 +150,7 @@ describe('AgentRouterService WorkBuddy routes', () => {
     ).toEqual([expect.objectContaining({ label: 'Legacy key name', maskedValue: 'sk-l••••gacy' })])
   })
 
-  it('rejects a non-Aionly duplicate model id', async () => {
+  it('prepends an AiOnly route while preserving a non-Aionly route with the same model id', async () => {
     await writeFile(
       configPath,
       `${JSON.stringify([{ id: 'gpt-5', name: 'Manual', vendor: 'Custom', url: 'https://other.example/v1', apiKey: 'manual', supportsToolCall: false, supportsImages: false, supportsReasoning: false, useCustomProtocol: false }], null, 2)}\n`,
@@ -158,15 +158,23 @@ describe('AgentRouterService WorkBuddy routes', () => {
     )
     await service.saveRouteModels('account-a', 'workbuddy', [model])
     const snapshot = await service.inspectTarget('workbuddy', configPath)
-    await expect(
-      service.previewWorkBuddyRoutes(configPath, {
-        accountId: 'account-a',
-        expectedRevision: snapshot.revision!,
-        apiUrl: 'https://api.aionly.com/v1',
-        enabledRoutes: [{ modelId: model.modelId, credentialId: model.credentialId }],
-        resolvedCredentials: [{ credentialId: 'credential-1', value: 'secret' }]
-      })
-    ).rejects.toMatchObject({ code: 'ENTRY_OWNERSHIP_CONFLICT' })
+    const preview = await service.previewWorkBuddyRoutes(configPath, {
+      accountId: 'account-a',
+      expectedRevision: snapshot.revision!,
+      apiUrl: 'https://api.aionly.com/v1',
+      enabledRoutes: [{ modelId: model.modelId, credentialId: model.credentialId }],
+      resolvedCredentials: [{ credentialId: 'credential-1', value: 'secret' }]
+    })
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+
+    const entries = JSON.parse(await readFile(configPath, 'utf8'))
+    expect(entries).toHaveLength(2)
+    expect(entries[0]).toMatchObject({ id: 'gpt-5', name: 'AiOnly', url: 'https://api.aionly.com/v1' })
+    expect(entries[1]).toMatchObject({ id: 'gpt-5', url: 'https://other.example/v1' })
   })
 
   it('binds a preview token to its account and revision', async () => {
