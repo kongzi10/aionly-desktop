@@ -21,7 +21,7 @@ import { EmailLogin, type EmailLoginRef } from './EmailLogin'
 import { QrcodeLogin } from './QrcodeLogin'
 import { SMSLogin, type SMSLoginRef } from './SMSLogin'
 
-/** 扫码登录页签（仅 aionly 端提供该能力） */
+/** 扫码登录页签 */
 const QRCODE_TAB_KEY = '4'
 
 const LoginTitle = styled.div`
@@ -161,6 +161,14 @@ export const LoginForm = (props: LoginFormProps) => {
   }
 
   const tabList: TabsProps['items'] = useMemo(() => {
+    // 扫码登录：手机扫码后打开 Web 端 /scanLogin 完成确认
+    const qrcodeTab = {
+      key: QRCODE_TAB_KEY,
+      label: i18n.t('login.qrcode.tab'),
+      children: (
+        <QrcodeLogin active={activeTabKey === QRCODE_TAB_KEY} onSuccess={handleLoginSuccess} setLoading={setLoading} />
+      )
+    }
     const base = [
       {
         key: '2',
@@ -189,19 +197,12 @@ export const LoginForm = (props: LoginFormProps) => {
             setLoading={setLoading}
           />
         )
-      }
+      },
+      qrcodeTab
     ]
-    // 扫码登录：手机扫码后打开 Web 端 /scanLogin 完成确认
-    const qrcodeTab = {
-      key: QRCODE_TAB_KEY,
-      label: i18n.t('login.qrcode.tab'),
-      children: (
-        <QrcodeLogin active={activeTabKey === QRCODE_TAB_KEY} onSuccess={handleLoginSuccess} setLoading={setLoading} />
-      )
-    }
 
     if ((APP_PROTOCOL as string) === 'aionly') {
-      return [...base, qrcodeTab]
+      return base
     }
     return [
       {
