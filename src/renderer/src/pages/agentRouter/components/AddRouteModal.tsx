@@ -81,7 +81,6 @@ export const AddRouteModal = ({
         await onCreate(
           selectedModels.map((model) => ({
             modelId: model.id,
-            displayName: 'AiOnly',
             credentialName: credential.label,
             accessMode,
             tokenPlanId: accessMode === 'tokenPlan' ? credential.planId : undefined,

@@ -1,5 +1,5 @@
 import type { AgentRouteModel } from '@shared/agentRouter'
-import { AIONLY_LOGO_URL } from '@shared/config/constant'
+import { APP_NAME, LOGO_URL } from '@shared/config/constant'
 import { describe, expect, it } from 'vitest'
 
 import type { WorkBuddyEntry } from '../WorkBuddyAdapter'
@@ -8,7 +8,6 @@ import { WorkBuddyAdapter } from '../WorkBuddyAdapter'
 const adapter = new WorkBuddyAdapter()
 const model: AgentRouteModel = {
   modelId: 'gpt-5',
-  displayName: 'GPT-5',
   accessMode: 'api',
   credentialId: 'credential-a',
   enabled: true,
@@ -26,7 +25,7 @@ const entry = (url: string, overrides: Partial<WorkBuddyEntry> = {}): WorkBuddyE
   supportsImages: false,
   supportsReasoning: false,
   useCustomProtocol: false,
-  iconUrl: AIONLY_LOGO_URL,
+  iconUrl: LOGO_URL,
   ...overrides
 })
 
@@ -162,10 +161,10 @@ describe('WorkBuddyAdapter', () => {
     })
   })
 
-  it('builds an AiOnly-named WorkBuddy entry regardless of the route display name', () => {
+  it('builds a flavor-branded WorkBuddy entry from route data without a display name', () => {
     expect(adapter.buildEntry(model, 'sk-sentinel-secret', 'https://api.aionly.com/v1/chat/completions')).toEqual({
       id: 'gpt-5',
-      name: 'AiOnly',
+      name: APP_NAME,
       vendor: 'Custom',
       url: 'https://api.aionly.com/v1/chat/completions',
       apiKey: 'sk-sentinel-secret',
@@ -173,7 +172,7 @@ describe('WorkBuddyAdapter', () => {
       supportsImages: false,
       supportsReasoning: true,
       useCustomProtocol: false,
-      iconUrl: AIONLY_LOGO_URL
+      iconUrl: LOGO_URL
     })
   })
 

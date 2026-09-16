@@ -118,9 +118,10 @@ describe('AddRouteModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'agentRouter.createRoute' }))
     await waitFor(() =>
       expect(onCreate).toHaveBeenCalledWith([
-        expect.objectContaining({ modelId: 'gpt-5', displayName: 'AiOnly', apiKey: 'sk-secret', credentialName: 'Key' })
+        expect.objectContaining({ modelId: 'gpt-5', apiKey: 'sk-secret', credentialName: 'Key' })
       ])
     )
+    expect(onCreate.mock.calls[0][0][0]).not.toHaveProperty('displayName')
   })
 
   it('submits all selected models with their own capabilities in one batch', async () => {
@@ -189,7 +190,6 @@ describe('AddRouteModal', () => {
         routes={[
           {
             modelId: 'gpt-5',
-            displayName: 'AiOnly',
             accessMode: 'api',
             credentialId: 'old-key',
             enabled: true,
@@ -237,7 +237,6 @@ describe('AddRouteModal', () => {
         routes={['gpt-5', 'claude-sonnet', 'disabled-model', 'unselected-model'].map((modelId) => ({
           modelId,
           credentialId: modelId,
-          displayName: 'AiOnly',
           accessMode: 'api',
           enabled: modelId !== 'disabled-model',
           modelTypes: [],
@@ -277,7 +276,6 @@ describe('AddRouteModal', () => {
         routes={[
           {
             modelId: 'gpt-5',
-            displayName: 'AiOnly',
             accessMode: 'api',
             credentialId: 'same-key',
             enabled: false,
@@ -286,7 +284,6 @@ describe('AddRouteModal', () => {
           },
           {
             modelId: 'gpt-5',
-            displayName: 'AiOnly',
             accessMode: 'api',
             credentialId: 'other-key',
             enabled: true,

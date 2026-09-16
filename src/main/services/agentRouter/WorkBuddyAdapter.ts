@@ -2,11 +2,10 @@ import type { AgentRouteModelType, AgentRouterErrorCode } from '@shared/agentRou
 
 type WorkBuddyRouteDefinition = {
   modelId: string
-  displayName: string
   modelTypes: readonly AgentRouteModelType[]
 }
 
-import { AIONLY_LOGO_URL } from '@shared/config/constant'
+import { APP_NAME, LOGO_URL } from '@shared/config/constant'
 
 const MAX_CONFIG_BYTES = 2 * 1024 * 1024
 const MAX_ENTRIES = 1000
@@ -132,7 +131,7 @@ export class WorkBuddyAdapter {
 
     return {
       id: intent.modelId,
-      name: 'AiOnly',
+      name: APP_NAME,
       vendor: 'Custom',
       url: apiUrl,
       apiKey,
@@ -140,7 +139,7 @@ export class WorkBuddyAdapter {
       supportsImages: intent.modelTypes.includes('vision'),
       supportsReasoning: intent.modelTypes.includes('reasoning'),
       useCustomProtocol: false,
-      iconUrl: AIONLY_LOGO_URL
+      iconUrl: LOGO_URL
     }
   }
 

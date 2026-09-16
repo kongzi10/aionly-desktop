@@ -11,7 +11,6 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 
 const route: AgentRouteModel = {
   modelId: 'gpt-5',
-  displayName: 'GPT-5',
   accessMode: 'api' as const,
   credentialId: 'credential-1',
   enabled: true,
@@ -29,7 +28,7 @@ describe('RouteList', () => {
     })
   })
 
-  it('keeps the name fixed while editing credentials and exposes the enabled switch', async () => {
+  it('shows only the model id while editing credentials and exposes the enabled switch', async () => {
     const onUpdateRoute = vi.fn()
     const onEnabledChange = vi.fn()
     const onRevealCredential = vi.fn().mockResolvedValue('sk-secret')
@@ -44,7 +43,6 @@ describe('RouteList', () => {
         busy={false}
       />
     )
-    expect(screen.getByText('GPT-5')).toBeInTheDocument()
     expect(screen.getByText('gpt-5').tagName).toBe('STRONG')
     expect(screen.getByText('Key')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch'))
@@ -63,9 +61,10 @@ describe('RouteList', () => {
     await waitFor(() =>
       expect(onUpdateRoute).toHaveBeenCalledWith(
         route,
-        expect.objectContaining({ displayName: 'AiOnly', accessMode: 'api', apiKey: undefined })
+        expect.objectContaining({ accessMode: 'api', apiKey: undefined })
       )
     )
+    expect(onUpdateRoute.mock.calls[0][1]).not.toHaveProperty('displayName')
   })
 
   it('fits the route table without forcing horizontal scrolling', () => {
@@ -102,7 +101,7 @@ describe('RouteList', () => {
 
   it('asks before enabling a second route with the same model id', () => {
     const onEnabledChange = vi.fn()
-    const alternate = { ...route, credentialId: 'credential-2', displayName: 'GPT-5 alternate', enabled: false }
+    const alternate = { ...route, credentialId: 'credential-2', enabled: false }
     render(
       <RouteList
         routes={[route, alternate]}

@@ -162,7 +162,6 @@ export class AgentRouterService {
         createdCredentialIds.push(credentialId)
         copied.push({
           modelId: template.modelId,
-          displayName: 'AiOnly',
           credentialName: template.credentialName,
           accessMode: template.accessMode,
           credentialId,
@@ -200,7 +199,6 @@ export class AgentRouterService {
     const credentialId = await this.credentialSnapshots.create(accountId, targetId, request.apiKey)
     const route: AgentRouteModel = {
       modelId: request.modelId,
-      displayName: 'AiOnly',
       credentialName: request.credentialName,
       accessMode: request.accessMode,
       credentialId,
@@ -251,7 +249,6 @@ export class AgentRouterService {
 
     const updated: AgentRouteModel = {
       ...route,
-      displayName: 'AiOnly',
       credentialName: request.apiKey ? request.credentialName : route.credentialName,
       accessMode: request.accessMode,
       credentialId,

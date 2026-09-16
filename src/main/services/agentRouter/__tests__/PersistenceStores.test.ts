@@ -1,5 +1,5 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import type { AgentRouteModel } from '@shared/agentRouter'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -8,7 +8,6 @@ import { RouteRecordStore } from '../RouteRecordStore'
 
 const createModel = (modelId: string): AgentRouteModel => ({
   modelId,
-  displayName: modelId,
   accessMode: 'api',
   credentialId: 'credential-a',
   enabled: true,
@@ -52,16 +51,33 @@ describe('RouteRecordStore', () => {
     await expect(store.getRouteConfig('account-a', 'workbuddy')).resolves.toEqual({ targetId: 'workbuddy', models: [] })
   })
 
+  it('drops the obsolete displayName field from legacy route records', async () => {
+    const store = new RouteRecordStore(root)
+    const filePath = store.getFilePath('account-a', 'workbuddy')
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(
+      filePath,
+      `${JSON.stringify({ targetId: 'workbuddy', models: [{ ...createModel('gpt-5'), displayName: 'AiOnly' }] })}\n`,
+      'utf8'
+    )
+
+    const config = await store.getRouteConfig('account-a', 'workbuddy')
+
+    expect(config.models[0]).not.toHaveProperty('displayName')
+    await store.saveRouteModels('account-a', 'workbuddy', config.models)
+    expect(JSON.parse(await readFile(filePath, 'utf8')).models[0]).not.toHaveProperty('displayName')
+  })
+
   it('stores same-model routes independently by credential id', async () => {
     const store = new RouteRecordStore(root)
     const first = { ...createModel('gpt-5'), credentialId: 'credential-a' }
     const second = { ...createModel('gpt-5'), credentialId: 'credential-b', enabled: false }
     await store.saveRouteModels('account-a', 'workbuddy', [first, second])
-    await store.saveRouteModels('account-a', 'workbuddy', [{ ...second, displayName: 'GPT-5 alternate' }])
+    await store.saveRouteModels('account-a', 'workbuddy', [second])
 
     expect((await store.getRouteConfig('account-a', 'workbuddy')).models).toEqual([
       expect.objectContaining({ modelId: 'gpt-5', credentialId: 'credential-a' }),
-      expect.objectContaining({ modelId: 'gpt-5', credentialId: 'credential-b', displayName: 'GPT-5 alternate' })
+      expect.objectContaining({ modelId: 'gpt-5', credentialId: 'credential-b' })
     ])
     await store.removeRouteModels('account-a', 'workbuddy', [{ modelId: 'gpt-5', credentialId: 'credential-a' }])
     expect((await store.getRouteConfig('account-a', 'workbuddy')).models).toEqual([
@@ -82,7 +98,6 @@ describe('RouteRecordStore', () => {
       models: [
         {
           modelId: 'gpt-5',
-          displayName: 'gpt-5',
           accessMode: 'api',
           credentialId: 'credential-a',
           modelTypes: ['function_calling'],

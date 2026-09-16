@@ -50,7 +50,13 @@ export class RouteRecordStore {
     if (document.targetId !== targetId || !Array.isArray(document.models)) throw new Error('Invalid route document')
     document = {
       ...document,
-      models: document.models.map((model) => ({ ...model, enabled: false }))
+      models: document.models.map((legacyModel) => {
+        const model = { ...legacyModel } as AgentRouteModel & {
+          displayName?: unknown
+        }
+        delete model.displayName
+        return { ...model, enabled: false }
+      })
     }
     assertNoSecretFields(document)
     validateModels(document.models)

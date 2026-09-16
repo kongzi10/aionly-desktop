@@ -85,7 +85,6 @@ describe('useAgentRouter', () => {
       result.current.createAgentRoute([
         {
           modelId: 'gpt-5',
-          displayName: 'GPT-5',
           accessMode: 'api',
           apiKey: 'secret',
           modelTypes: ['function_calling']
@@ -211,7 +210,6 @@ describe('useAgentRouter', () => {
       models: [
         {
           modelId: 'gpt-5',
-          displayName: 'GPT-5',
           accessMode: 'api',
           credentialId: 'credential-1',
           enabled: true,
@@ -260,7 +258,6 @@ describe('useAgentRouter', () => {
 
     await act(() =>
       result.current.updateAgentRoute(result.current.routes[0], {
-        displayName: '',
         accessMode: 'api',
         apiKey: 'new-secret',
         modelTypes: routeFixture.modelTypes
@@ -275,7 +272,6 @@ describe('useAgentRouter', () => {
 
 const routeFixture = {
   modelId: 'gpt-5',
-  displayName: 'GPT-5',
   accessMode: 'api' as const,
   modelTypes: ['function_calling'] as const,
   routedAt: '2026-08-31T00:00:00Z'

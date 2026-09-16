@@ -57,7 +57,6 @@ export type AgentRouteModelType = (typeof AGENT_ROUTE_MODEL_TYPES)[number]
 export interface AgentRouteModel {
   credentialName?: string
   modelId: string
-  displayName: string
   accessMode: AgentRouteAccessMode
   credentialId: string
   tokenPlanId?: string
@@ -86,7 +85,6 @@ export interface AgentRouteTemplate {
 export interface CreateAgentRouteRequest {
   credentialName?: string
   modelId: string
-  displayName?: string
   accessMode: AgentRouteAccessMode
   tokenPlanId?: string
   apiKey: string
@@ -95,7 +93,6 @@ export interface CreateAgentRouteRequest {
 
 export interface UpdateAgentRouteRequest {
   credentialName?: string
-  displayName?: string
   accessMode: AgentRouteAccessMode
   tokenPlanId?: string
   apiKey?: string

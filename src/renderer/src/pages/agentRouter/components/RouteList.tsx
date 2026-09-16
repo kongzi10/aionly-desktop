@@ -81,15 +81,14 @@ export const RouteList = ({
   const columns: TableColumnsType<AgentRouteModel> = [
     {
       title: t('agentRouter.routeName'),
-      dataIndex: 'displayName',
-      key: 'displayName',
+      dataIndex: 'modelId',
+      key: 'modelId',
       render: (_, route) => (
         <RouteIdentity>
           <NameLine>
             <strong>{route.modelId}</strong>
             <RouteModelTypes compact modelTypes={route.modelTypes} />
           </NameLine>
-          <span>{route.displayName}</span>
         </RouteIdentity>
       )
     },
@@ -197,7 +196,6 @@ export const RouteList = ({
           const selectedCredential = editCredentials.find((credential) => credential.id === values.credentialId)
           try {
             await onUpdateRoute(routeToEdit, {
-              displayName: 'AiOnly',
               credentialName: selectedCredential?.label,
               accessMode: values.accessMode,
               tokenPlanId:

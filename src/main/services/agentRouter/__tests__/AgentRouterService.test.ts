@@ -9,7 +9,6 @@ import { RouteRecordStore } from '../RouteRecordStore'
 
 const model: AgentRouteModel = {
   modelId: 'gpt-5',
-  displayName: 'GPT-5',
   accessMode: 'api',
   credentialId: 'credential-1',
   enabled: true,
@@ -226,7 +225,6 @@ describe('AgentRouterService WorkBuddy routes', () => {
   it('skips an exact duplicate and fixes direct and copied names to AiOnly', async () => {
     const request = {
       modelId: 'gpt-5',
-      displayName: 'Custom',
       accessMode: 'api' as const,
       apiKey: 'sk-direct',
       credentialName: 'Production',
@@ -235,7 +233,8 @@ describe('AgentRouterService WorkBuddy routes', () => {
     const created = await service.createAgentRoute('account-a', 'workbuddy', request)
     const duplicate = await service.createAgentRoute('account-a', 'workbuddy', request)
     expect(duplicate.credentialId).toBe(created.credentialId)
-    expect(created).toMatchObject({ displayName: 'AiOnly', enabled: true })
+    expect(created).toMatchObject({ enabled: true })
+    expect(created).not.toHaveProperty('displayName')
     expect((await service.getRouteConfig('account-a', 'workbuddy')).models).toHaveLength(1)
     expect(await service.listAgentCredentialSummaries('account-a', 'workbuddy')).toEqual([
       expect.objectContaining({ label: 'Production' })
@@ -245,7 +244,7 @@ describe('AgentRouterService WorkBuddy routes', () => {
     await service.deleteGlobalTemplate('account-a', template.templateId)
     const routes = (await service.getRouteConfig('account-a', 'workbuddy')).models
     expect(routes).toHaveLength(2)
-    expect(routes.every((route) => route.displayName === 'AiOnly')).toBe(true)
+    expect(routes.every((route) => !Object.hasOwn(route, 'displayName'))).toBe(true)
     expect(await service.listAgentCredentialSummaries('account-a', 'workbuddy')).toEqual([
       expect.objectContaining({ label: 'Production' }),
       expect.objectContaining({ label: 'Production' })
@@ -289,7 +288,6 @@ describe('AgentRouterService WorkBuddy routes', () => {
   it('reveals the plaintext credential only for an existing Agent route', async () => {
     const route = await service.createAgentRoute('account-a', 'workbuddy', {
       modelId: 'gpt-5',
-      displayName: 'GPT-5',
       accessMode: 'api',
       apiKey: 'sk-plaintext-secret',
       modelTypes: ['function_calling']
@@ -326,7 +324,6 @@ describe('AgentRouterService WorkBuddy routes', () => {
     await service.copyTemplatesToAgent('account-a', 'workbuddy', [first.templateId, second.templateId])
     await service.createAgentRoute('account-a', 'workbuddy', {
       modelId: 'claude-sonnet',
-      displayName: 'Claude Sonnet',
       accessMode: 'api',
       apiKey: 'sk-direct',
       modelTypes: ['function_calling']
@@ -377,14 +374,12 @@ describe('AgentRouterService WorkBuddy routes', () => {
   it('synchronizes enabled state from exact model id and key matches in WorkBuddy', async () => {
     const first = await service.createAgentRoute('account-a', 'workbuddy', {
       modelId: 'gpt-5',
-      displayName: 'GPT-5 A',
       accessMode: 'api',
       apiKey: 'sk-key-a',
       modelTypes: ['function_calling']
     })
     const second = await service.createAgentRoute('account-a', 'workbuddy', {
       modelId: 'gpt-5',
-      displayName: 'GPT-5 B',
       accessMode: 'api',
       apiKey: 'sk-key-b',
       modelTypes: ['function_calling']
@@ -407,7 +402,6 @@ describe('AgentRouterService WorkBuddy routes', () => {
   it('updates a route credential and mutable metadata without changing its model id', async () => {
     const route = await service.createAgentRoute('account-a', 'workbuddy', {
       modelId: 'gpt-5',
-      displayName: 'GPT-5',
       accessMode: 'api',
       apiKey: 'sk-old',
       modelTypes: ['function_calling']
@@ -418,7 +412,6 @@ describe('AgentRouterService WorkBuddy routes', () => {
       'workbuddy',
       { modelId: route.modelId, credentialId: route.credentialId },
       {
-        displayName: '',
         accessMode: 'tokenPlan',
         tokenPlanId: 'plan-pro',
         apiKey: 'tk-new',
@@ -428,7 +421,6 @@ describe('AgentRouterService WorkBuddy routes', () => {
 
     expect(updated).toMatchObject({
       modelId: 'gpt-5',
-      displayName: 'AiOnly',
       accessMode: 'tokenPlan',
       tokenPlanId: 'plan-pro',
       modelTypes: ['vision', 'reasoning', 'function_calling']

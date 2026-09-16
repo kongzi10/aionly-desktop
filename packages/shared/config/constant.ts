@@ -514,6 +514,7 @@ export const MARKET_OAUTH_CONFIG = {
 
 // Application Identity
 export const APP_NAME = 'AiOnly'
+export const LOGO_URL = 'https://file.aionly.com/maas/2026/09/15/eec887f89cc8410298f64c9262464c2c.png'
 // export const APP_VERSION = '0.7.25' // unused — source of truth is package.json
 export const APP_PROTOCOL = 'aionly'
 export const APP_BUNDLE_ID = 'global.verycloud.AiOnly'
@@ -542,6 +543,3 @@ export const UPDATE_CHECK_PATH = '/api/base/clientVersion/latest' // GET {base}/
 
 export const ENABLED_PLAN_STORAGE_KEY = `enabled_plan`
 export const LOCAL_USER_SECRET_KEY = `userSecretKey`
-
-// AiOnly logo地址
-export const AIONLY_LOGO_URL = 'https://file.aionly.com/maas/2026/09/15/eec887f89cc8410298f64c9262464c2c.png'
