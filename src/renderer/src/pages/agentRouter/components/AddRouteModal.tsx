@@ -1,5 +1,5 @@
 import { DownOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
-import type { AgentRouteModel, AgentRouteTemplate, CreateAgentRouteRequest } from '@shared/agentRouter'
+import type { AgentRouteTemplate, CreateAgentRouteRequest, RedactedTargetEntry } from '@shared/agentRouter'
 import { Button, Checkbox, Empty, Form, message, Modal, Radio, Select, Tabs } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,8 +21,7 @@ const HIDDEN_API_KEY = '••••••••••••••••••�
 export const AddRouteModal = ({
   open,
   templates,
-  routes = [],
-  onRevealCredential,
+  onListWorkBuddyRoutes = async () => [],
   apiCredentials,
   tokenPlanCredentials,
   apiModels,
@@ -32,8 +31,7 @@ export const AddRouteModal = ({
 }: {
   open: boolean
   templates: AgentRouteTemplate[]
-  routes?: AgentRouteModel[]
-  onRevealCredential?: (route: AgentRouteModel) => Promise<string>
+  onListWorkBuddyRoutes?: () => Promise<RedactedTargetEntry[]>
   apiCredentials: AgentRouterCredential[]
   tokenPlanCredentials: AgentRouterCredential[]
   apiModels: RouteModel[]
@@ -101,29 +99,17 @@ export const AddRouteModal = ({
     if (saving || checking || confirming) return
     setChecking(true)
     try {
-      let conflicts: AgentRouteModel[] = []
-      if (path === 'global') {
-        const selected = templates.filter((template) => selectedIds.includes(template.templateId) && !template.joined)
-        const ids = new Set(selected.map((template) => template.modelId))
-        conflicts = routes.filter((route) => route.enabled && ids.has(route.modelId))
-      } else if (credential) {
-        const matching = routes.filter((route) => modelIds.includes(route.modelId))
-        if (matching.some((route) => route.enabled)) {
-          const existing = await Promise.all(
-            matching.map(async (route) => ({
-              route,
-              key: await onRevealCredential?.(route).catch(() => undefined)
-            }))
-          )
-          const newIds = new Set(
-            modelIds.filter(
-              (id) => !existing.some(({ route, key }) => route.modelId === id && key === credential.value)
-            )
-          )
-          conflicts = matching.filter((route) => route.enabled && newIds.has(route.modelId))
-        }
-      }
-      if (conflicts.length) setConflictingModelIds([...new Set(conflicts.map((route) => route.modelId))])
+      const requestedIds = new Set(
+        path === 'global'
+          ? templates
+              .filter((template) => selectedIds.includes(template.templateId) && !template.joined)
+              .map((template) => template.modelId)
+          : modelIds
+      )
+      const conflicts = [...new Set((await onListWorkBuddyRoutes()).map((entry) => entry.id))].filter((id) =>
+        requestedIds.has(id)
+      )
+      if (conflicts.length) setConflictingModelIds(conflicts)
       else await submit()
     } finally {
       setChecking(false)

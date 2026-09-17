@@ -380,12 +380,15 @@ export class AgentRouterService {
     return this.adapter
       .parse(snapshot.content)
       .entries.map(({ value }) => value)
-      .filter((entry) => this.adapter.isAionlyEntry(entry))
       .map((entry) => this.redact(entry))
   }
 
   async previewWorkBuddyRoutes(configPath: string, request: PreviewWorkBuddyRoutesRequest): Promise<ApplyPreview> {
-    if (!request.accountId || request.resolvedCredentials.length > 100) {
+    if (
+      !request.accountId ||
+      request.resolvedCredentials.length > 100 ||
+      (request.incrementalModelIds?.length ?? 0) > 100
+    ) {
       throw new AgentRouterError('INVALID_REQUEST', 'Invalid WorkBuddy preview request')
     }
     const normalizedPath = resolve(configPath)
@@ -396,9 +399,14 @@ export class AgentRouterService {
     const current = this.adapter.parse(snapshot.content).entries.map(({ value }) => value)
     const credentials = new Map(request.resolvedCredentials.map((item) => [item.credentialId, item.value]))
     const enabledRoutes = new Set(request.enabledRoutes.map((route) => `${route.modelId}\u0000${route.credentialId}`))
+    const incrementalModelIds = request.incrementalModelIds ? new Set(request.incrementalModelIds) : undefined
     const generated = await Promise.all(
       config.models
-        .filter((model) => enabledRoutes.has(`${model.modelId}\u0000${model.credentialId}`))
+        .filter(
+          (model) =>
+            enabledRoutes.has(`${model.modelId}\u0000${model.credentialId}`) &&
+            (!incrementalModelIds || incrementalModelIds.has(model.modelId))
+        )
         .map(async (model) => {
           let credential = credentials.get(model.credentialId)
           if (!credential) {
@@ -414,8 +422,12 @@ export class AgentRouterService {
         })
     )
     const managedIds = await this.findManagedEntryIds(request.accountId, current, config.models, credentials)
-    const entries = this.adapter.merge(current, generated, managedIds)
-    const counts = this.countChanges(current, generated, managedIds)
+    const appliedManagedIds = incrementalModelIds
+      ? new Set([...managedIds].filter((modelId) => incrementalModelIds.has(modelId)))
+      : managedIds
+    const iconRefreshKeys = await this.findManagedEntryKeys(request.accountId, current, config.models, credentials)
+    const entries = this.adapter.merge(current, generated, appliedManagedIds, iconRefreshKeys)
+    const counts = this.countChanges(current, generated, appliedManagedIds)
     const pending: PendingWorkBuddyApply = {
       accountId: request.accountId,
       configPath: normalizedPath,
@@ -470,6 +482,18 @@ export class AgentRouterService {
     models: AgentRouteModel[],
     credentials = new Map<string, string>()
   ): Promise<Set<string>> {
+    const managedKeys = await this.findManagedEntryKeys(accountId, entries, models, credentials)
+    return new Set(
+      entries.filter((entry) => managedKeys.has(JSON.stringify([entry.id, entry.apiKey]))).map((entry) => entry.id)
+    )
+  }
+
+  private async findManagedEntryKeys(
+    accountId: string,
+    entries: WorkBuddyEntry[],
+    models: AgentRouteModel[],
+    credentials = new Map<string, string>()
+  ): Promise<Set<string>> {
     const managedKeys = new Set(
       await Promise.all(
         models.map(async (route) => {
@@ -485,7 +509,7 @@ export class AgentRouterService {
         .filter(
           (entry) => this.adapter.isAionlyEntry(entry) && managedKeys.has(JSON.stringify([entry.id, entry.apiKey]))
         )
-        .map((entry) => entry.id)
+        .map((entry) => JSON.stringify([entry.id, entry.apiKey]))
     )
   }
 

@@ -83,7 +83,7 @@ describe('AddRouteModal', () => {
     expect(screen.queryByRole('combobox', { name: 'agentRouter.accessMode' })).not.toBeInTheDocument()
   })
 
-  it('selects exact unmatched global templates and submits template ids', () => {
+  it('selects exact unmatched global templates and submits template ids', async () => {
     const onAdd = vi.fn()
     render(<AddRouteModal {...commonProps} onAdd={onAdd} />)
     fireEvent.click(screen.getByRole('tab', { name: 'agentRouter.useGlobalConfiguration' }))
@@ -95,7 +95,7 @@ describe('AddRouteModal', () => {
     expect(screen.getByRole('checkbox', { name: /joined-model/ })).toBeDisabled()
     fireEvent.click(screen.getByRole('checkbox', { name: /gpt-5/ }))
     fireEvent.click(screen.getByRole('button', { name: 'agentRouter.addSelectedModels:1' }))
-    expect(onAdd).toHaveBeenCalledWith(['template-1'])
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(['template-1']))
   })
 
   it('creates a direct Agent route through the first path', async () => {
@@ -187,17 +187,11 @@ describe('AddRouteModal', () => {
         onCreate={onCreate}
         onAdd={onAdd}
         onCancel={onCancel}
-        routes={[
-          {
-            modelId: 'gpt-5',
-            accessMode: 'api',
-            credentialId: 'old-key',
-            enabled: true,
-            modelTypes: [],
-            routedAt: ''
-          }
-        ]}
-        onRevealCredential={vi.fn().mockResolvedValue('sk-other')}
+        onListWorkBuddyRoutes={vi
+          .fn()
+          .mockResolvedValue([
+            { id: 'gpt-5', name: 'Local', url: 'https://local.example/v1', apiKey: '••••', modelTypes: [] }
+          ])}
       />
     )
     expect(screen.queryByText(/^agentRouter.confirmCloseSameModel/)).not.toBeInTheDocument()
@@ -224,24 +218,21 @@ describe('AddRouteModal', () => {
     await waitFor(() => expect(path === 'global' ? onAdd : onCreate).toHaveBeenCalledTimes(1))
   })
 
-  it('lists only the selected model IDs whose routes are currently enabled', async () => {
+  it('lists only selected model IDs that already exist in the WorkBuddy configuration', async () => {
     render(
       <AddRouteModal
         {...commonProps}
         onAdd={vi.fn()}
+        onListWorkBuddyRoutes={vi.fn().mockResolvedValue([
+          { id: 'gpt-5', name: 'Local', url: '', apiKey: '••••', modelTypes: [] },
+          { id: 'claude-sonnet', name: 'Local', url: '', apiKey: '••••', modelTypes: [] },
+          { id: 'unselected-model', name: 'Local', url: '', apiKey: '••••', modelTypes: [] }
+        ])}
         templates={[
           { ...templates[0], modelId: 'gpt-5' },
           { ...templates[0], templateId: 'second', modelId: 'claude-sonnet' },
           { ...templates[0], templateId: 'third', modelId: 'disabled-model' }
         ]}
-        routes={['gpt-5', 'claude-sonnet', 'disabled-model', 'unselected-model'].map((modelId) => ({
-          modelId,
-          credentialId: modelId,
-          accessMode: 'api',
-          enabled: modelId !== 'disabled-model',
-          modelTypes: [],
-          routedAt: ''
-        }))}
       />
     )
     fireEvent.click(screen.getByRole('tab', { name: 'agentRouter.useGlobalConfiguration' }))
@@ -266,32 +257,16 @@ describe('AddRouteModal', () => {
     expect(screen.queryByText(/^agentRouter.confirmCloseSameModel/)).not.toBeInTheDocument()
   })
 
-  it('does not warn for an exact duplicate even if a different key is currently active', async () => {
+  it('warns for an existing WorkBuddy model even when its key matches the new route', async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined)
     render(
       <AddRouteModal
         {...commonProps}
         onAdd={vi.fn()}
         onCreate={onCreate}
-        routes={[
-          {
-            modelId: 'gpt-5',
-            accessMode: 'api',
-            credentialId: 'same-key',
-            enabled: false,
-            modelTypes: [],
-            routedAt: ''
-          },
-          {
-            modelId: 'gpt-5',
-            accessMode: 'api',
-            credentialId: 'other-key',
-            enabled: true,
-            modelTypes: [],
-            routedAt: ''
-          }
-        ]}
-        onRevealCredential={async (route) => (route.credentialId === 'same-key' ? 'sk-secret' : 'sk-other')}
+        onListWorkBuddyRoutes={vi
+          .fn()
+          .mockResolvedValue([{ id: 'gpt-5', name: 'Local', url: '', apiKey: '••••', modelTypes: [] }])}
       />
     )
     fireEvent.mouseDown(screen.getByLabelText('agentRouter.apiKey'))
@@ -300,8 +275,8 @@ describe('AddRouteModal', () => {
     fireEvent.click((await screen.findAllByText('gpt-5')).at(-1)!)
     fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }))
     fireEvent.click(screen.getByRole('button', { name: 'agentRouter.createRoute' }))
-    await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1))
-    expect(screen.queryByText(/^agentRouter.confirmCloseSameModel/)).not.toBeInTheDocument()
+    expect(await screen.findByText('agentRouter.confirmCloseSameModel:gpt-5')).toBeInTheDocument()
+    expect(onCreate).not.toHaveBeenCalled()
   })
 
   it('loads models for the selected TokenPlan key and clears the model when switching keys', async () => {

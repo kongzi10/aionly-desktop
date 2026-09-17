@@ -73,7 +73,7 @@ export const useAgentRouter = () => {
     [allCredentials]
   )
 
-  const applyRoutes = async (nextRoutes: AgentRouteModel[]) => {
+  const applyRoutes = async (nextRoutes: AgentRouteModel[], incrementalModelIds?: string[]) => {
     if (!target?.revision) throw Object.assign(new Error('Target is not configured'), { code: 'TARGET_NOT_FOUND' })
     const resolvedCredentials = nextRoutes
       .filter((route) => route.enabled)
@@ -88,7 +88,8 @@ export const useAgentRouter = () => {
         .filter((route) => route.enabled)
         .map(({ modelId, credentialId }) => ({ modelId, credentialId })),
       resolvedCredentials,
-      apiUrl: sources.apiUrl
+      apiUrl: sources.apiUrl,
+      incrementalModelIds
     })
     await window.api.agentRouter.apply({
       accountId: sources.accountId,
@@ -97,12 +98,12 @@ export const useAgentRouter = () => {
     })
   }
 
-  const saveAndApplyRoutes = async (next: AgentRouteModel[]) => {
+  const saveAndApplyRoutes = async (next: AgentRouteModel[], incrementalModelIds?: string[]) => {
     setBusy(true)
     try {
       await window.api.agentRouter.saveRouteModels(sources.accountId, next)
       setRoutes(next)
-      await applyRoutes(next)
+      await applyRoutes(next, incrementalModelIds)
       await refresh()
     } finally {
       setBusy(false)
@@ -120,7 +121,7 @@ export const useAgentRouter = () => {
         ? { ...route, enabled: enabledByModel.get(route.modelId) === route.credentialId }
         : route
     )
-    await applyRoutes(next)
+    await applyRoutes(next, [...enabledByModel.keys()])
   }
 
   const createAgentRoute = async (requests: CreateAgentRouteRequest[]) => {
@@ -162,7 +163,8 @@ export const useAgentRouter = () => {
       const isRemoved = (item: AgentRouteModel) =>
         item.modelId === route.modelId && item.credentialId === route.credentialId
       const next = current.models.filter((item: AgentRouteModel) => !isRemoved(item))
-      if (current.models.some((item: AgentRouteModel) => isRemoved(item) && item.enabled)) await applyRoutes(next)
+      if (current.models.some((item: AgentRouteModel) => isRemoved(item) && item.enabled))
+        await applyRoutes(next, [route.modelId])
       await window.api.agentRouter.removeRouteModels(sources.accountId, [
         { modelId: route.modelId, credentialId: route.credentialId }
       ])
@@ -224,7 +226,7 @@ export const useAgentRouter = () => {
           : item
       )
       setRoutes(next)
-      await applyRoutes(next)
+      await applyRoutes(next, [route.modelId])
       await refresh()
     } finally {
       setBusy(false)
@@ -237,13 +239,16 @@ export const useAgentRouter = () => {
       credentialId: route.credentialId
     })
 
+  const listWorkBuddyRoutes = () => window.api.agentRouter.listAppliedWorkBuddyRoutes()
+
   const setRouteEnabled = async (route: AgentRouteModel, enabled: boolean) => {
     await saveAndApplyRoutes(
       routes.map((item) => {
         if (item.modelId !== route.modelId) return item
         if (item.credentialId === route.credentialId) return { ...item, enabled }
         return enabled ? { ...item, enabled: false } : item
-      })
+      }),
+      [route.modelId]
     )
   }
 
@@ -279,6 +284,7 @@ export const useAgentRouter = () => {
     removeRoute,
     updateAgentRoute,
     revealAgentRouteCredential,
+    listWorkBuddyRoutes,
     setRouteEnabled,
     selectConfig,
     refresh

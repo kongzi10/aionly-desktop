@@ -177,6 +177,7 @@ export interface PreviewWorkBuddyRoutesRequest {
   enabledRoutes: AgentRouteRef[]
   resolvedCredentials: ResolvedAgentRouterCredential[]
   apiUrl: string
+  incrementalModelIds?: string[]
 }
 
 export interface AgentRouterApplyRequest {

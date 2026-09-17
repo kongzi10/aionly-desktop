@@ -151,9 +151,9 @@ describe('WorkBuddyAdapter', () => {
     expect(incomplete?.value).toMatchObject({
       id: 'gemini-3.1-flash-lite',
       vendor: 'Ollama',
-      apiKey: '',
       useCustomProtocol: true
     })
+    expect(incomplete?.value).not.toHaveProperty('apiKey')
     expect(extended?.unknownFields).toEqual({
       reasoning: { defaultEffort: 'xhigh', canDisableThinking: false },
       maxInputTokens: 262144,
@@ -185,7 +185,7 @@ describe('WorkBuddyAdapter', () => {
     expect(adapter.merge([first, oldManaged, second], [generated])).toEqual([generated, first, second])
   })
 
-  it('prepends a generated entry without replacing a non-Aionly entry with the same model id', () => {
+  it('prepends a generated entry and removes every existing entry with the same model id', () => {
     const external = entry('https://api.deepseek.com/chat/completions', {
       name: 'DeepSeek-V4 Flash',
       vendor: 'DeepSeek'
@@ -195,7 +195,7 @@ describe('WorkBuddyAdapter', () => {
 
     const merged = adapter.merge([oldManaged, external], [generated])
 
-    expect(merged).toEqual([generated, external])
+    expect(merged).toEqual([generated])
     expect(() => adapter.serialize(merged)).not.toThrow()
   })
 

@@ -56,13 +56,6 @@ export interface ParsedWorkBuddyDocument {
   entries: ParsedWorkBuddyEntry[]
 }
 
-const normalizeString = (entry: Record<string, unknown>, key: string): string => {
-  const value = entry[key]
-  return typeof value === 'string' ? value : ''
-}
-
-const normalizeBoolean = (value: unknown): boolean => value === true
-
 export class WorkBuddyAdapter {
   isAionlyEntry(entry: WorkBuddyEntry): boolean {
     if (entry.vendor !== 'Custom') return false
@@ -101,22 +94,8 @@ export class WorkBuddyAdapter {
       }
 
       const source = candidate as Record<string, unknown>
-      const id = normalizeString(source, 'id')
-      const vendor = normalizeString(source, 'vendor')
-
       const unknownFields = Object.fromEntries(Object.entries(source).filter(([key]) => !KNOWN_ENTRY_KEYS.has(key)))
-      const value: WorkBuddyEntry = {
-        ...unknownFields,
-        id,
-        name: normalizeString(source, 'name'),
-        vendor,
-        url: normalizeString(source, 'url'),
-        apiKey: normalizeString(source, 'apiKey'),
-        supportsToolCall: normalizeBoolean(source.supportsToolCall),
-        supportsImages: normalizeBoolean(source.supportsImages),
-        supportsReasoning: normalizeBoolean(source.supportsReasoning),
-        useCustomProtocol: normalizeBoolean(source.useCustomProtocol)
-      }
+      const value = { ...source } as WorkBuddyEntry
 
       return { value, unknownFields }
     })
@@ -146,14 +125,17 @@ export class WorkBuddyAdapter {
   merge(
     current: WorkBuddyEntry[],
     generated: WorkBuddyEntry[],
-    managedIds = new Set(current.filter((entry) => this.isAionlyEntry(entry)).map((entry) => entry.id))
+    managedIds = new Set(current.filter((entry) => this.isAionlyEntry(entry)).map((entry) => entry.id)),
+    iconRefreshKeys = new Set<string>()
   ): WorkBuddyEntry[] {
     const generatedIds = new Set(generated.map((entry) => entry.id))
-    const preserved = current.filter(
-      (entry) =>
-        !(generatedIds.has(entry.id) && entry.vendor === 'Custom') &&
-        (!managedIds.has(entry.id) || !this.isAionlyEntry(entry))
-    )
+    const preserved = current
+      .filter((entry) => !generatedIds.has(entry.id) && (!managedIds.has(entry.id) || !this.isAionlyEntry(entry)))
+      .map((entry) =>
+        this.isAionlyEntry(entry) && iconRefreshKeys.has(JSON.stringify([entry.id, entry.apiKey]))
+          ? { ...entry, iconUrl: LOGO_URL }
+          : entry
+      )
     return [...generated, ...preserved]
   }
 

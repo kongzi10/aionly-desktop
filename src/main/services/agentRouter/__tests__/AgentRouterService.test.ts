@@ -1,7 +1,8 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import type { AgentRouteModel } from '@shared/agentRouter'
+import type { AgentRouteModel, PreviewWorkBuddyRoutesRequest } from '@shared/agentRouter'
+import { LOGO_URL } from '@shared/config/constant'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { AgentRouterService } from '../AgentRouterService'
@@ -30,6 +31,22 @@ describe('AgentRouterService WorkBuddy routes', () => {
   })
 
   afterEach(async () => rm(root, { recursive: true, force: true }))
+
+  it('lists every WorkBuddy model for overwrite detection', async () => {
+    await writeFile(
+      configPath,
+      JSON.stringify([
+        { id: 'local-model', name: 'Local', vendor: 'OpenAI', url: 'https://local.example/v1', apiKey: 'local-key' },
+        { id: 'aionly-model', name: 'AiOnly', vendor: 'Custom', url: 'https://api.aionly.com/v1', apiKey: 'aionly-key' }
+      ])
+    )
+
+    const entries = await service.listAppliedWorkBuddyRoutes(configPath)
+
+    expect(entries.map((entry) => entry.id)).toEqual(['local-model', 'aionly-model'])
+    expect(JSON.stringify(entries)).not.toContain('local-key')
+    expect(JSON.stringify(entries)).not.toContain('aionly-key')
+  })
 
   it('applies the transient enabled route set without persisting enabled state', async () => {
     await service.saveRouteModels('account-a', 'workbuddy', [{ ...model, enabled: false }])
@@ -173,6 +190,83 @@ describe('AgentRouterService WorkBuddy routes', () => {
     const entries = JSON.parse(await readFile(configPath, 'utf8'))
     expect(entries).toHaveLength(1)
     expect(entries[0]).toMatchObject({ id: 'gpt-5', name: 'AiOnly', url: 'https://api.aionly.com/v1' })
+  })
+
+  it('incrementally prepends new routes, replaces same-id Custom entries, and only refreshes matched icons', async () => {
+    const existingRoute = await service.createAgentRoute('account-a', 'workbuddy', {
+      modelId: 'existing-model',
+      accessMode: 'api',
+      apiKey: 'existing-secret',
+      modelTypes: ['reasoning']
+    })
+    const newRoute = await service.createAgentRoute('account-a', 'workbuddy', {
+      modelId: 'new-model',
+      accessMode: 'api',
+      apiKey: 'new-secret',
+      modelTypes: ['function_calling']
+    })
+    const existing = {
+      id: 'existing-model',
+      name: 'Keep this name',
+      vendor: 'Custom',
+      url: 'https://api.aionly.com/original',
+      apiKey: 'existing-secret',
+      supportsToolCall: false,
+      supportsImages: true,
+      supportsReasoning: false,
+      useCustomProtocol: true,
+      iconUrl: 'https://old.example/icon.png',
+      reasoning: { defaultEffort: 'xhigh' },
+      maxInputTokens: 123456
+    }
+    const unrelated = {
+      id: 'unrelated-model',
+      name: 'Untouched',
+      vendor: 'OpenAI',
+      url: 'https://unrelated.example/v1',
+      iconUrl: 'https://unrelated.example/icon.png',
+      extra: { preserve: true }
+    }
+    const replaced = {
+      id: 'new-model',
+      name: 'Remove me',
+      vendor: 'OpenAI',
+      url: 'https://old.example/v1',
+      apiKey: 'old-secret',
+      supportsToolCall: false,
+      supportsImages: false,
+      supportsReasoning: false,
+      useCustomProtocol: true,
+      extra: { remove: true }
+    }
+    await writeFile(configPath, `${JSON.stringify([existing, unrelated, replaced], null, 2)}\n`, 'utf8')
+    const snapshot = await service.inspectTarget('workbuddy', configPath)
+    const request = {
+      accountId: 'account-a',
+      expectedRevision: snapshot.revision!,
+      apiUrl: 'https://api.aionly.com/v1',
+      enabledRoutes: [
+        { modelId: existingRoute.modelId, credentialId: existingRoute.credentialId },
+        { modelId: newRoute.modelId, credentialId: newRoute.credentialId }
+      ],
+      resolvedCredentials: [
+        { credentialId: existingRoute.credentialId, value: 'existing-secret' },
+        { credentialId: newRoute.credentialId, value: 'new-secret' }
+      ],
+      incrementalModelIds: ['new-model']
+    } as PreviewWorkBuddyRoutesRequest
+    const preview = await service.previewWorkBuddyRoutes(configPath, request)
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+
+    const entries = JSON.parse(await readFile(configPath, 'utf8'))
+    expect(entries).toHaveLength(3)
+    expect(entries[0]).toMatchObject({ id: 'new-model', apiKey: 'new-secret', iconUrl: LOGO_URL })
+    expect(entries[1]).toEqual({ ...existing, iconUrl: LOGO_URL })
+    expect(entries[2]).toEqual(unrelated)
   })
 
   it('binds a preview token to its account and revision', async () => {

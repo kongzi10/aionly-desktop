@@ -98,7 +98,8 @@ describe('useAgentRouter', () => {
         enabledRoutes: [
           { modelId: 'gpt-5', credentialId: 'new-key' },
           { modelId: 'claude-sonnet', credentialId: 'new-key-2' }
-        ]
+        ],
+        incrementalModelIds: ['gpt-5', 'claude-sonnet']
       })
     )
     expect(apply).toHaveBeenCalledTimes(1)
@@ -121,7 +122,8 @@ describe('useAgentRouter', () => {
     )
     expect(previewWorkBuddyRoutes).toHaveBeenCalledWith(
       expect.objectContaining({
-        enabledRoutes: [{ modelId: 'gpt-5', credentialId: 'new-key' }]
+        enabledRoutes: [{ modelId: 'gpt-5', credentialId: 'new-key' }],
+        incrementalModelIds: ['gpt-5']
       })
     )
   })
@@ -144,7 +146,8 @@ describe('useAgentRouter', () => {
         enabledRoutes: [
           { modelId: 'other', credentialId: 'other-key' },
           { modelId: 'gpt-5', credentialId: 'new-key-2' }
-        ]
+        ],
+        incrementalModelIds: ['gpt-5']
       })
     )
     expect(apply).toHaveBeenCalledTimes(1)
@@ -223,7 +226,9 @@ describe('useAgentRouter', () => {
     const route = result.current.routes[0]
     await act(() => result.current.setRouteEnabled(route, false))
     expect(saveRouteModels).toHaveBeenCalledWith('account-a', [expect.objectContaining({ enabled: false })])
-    expect(previewWorkBuddyRoutes).toHaveBeenCalledWith(expect.objectContaining({ accountId: 'account-a' }))
+    expect(previewWorkBuddyRoutes).toHaveBeenCalledWith(
+      expect.objectContaining({ accountId: 'account-a', incrementalModelIds: ['gpt-5'] })
+    )
     expect(apply).toHaveBeenCalledWith({
       accountId: 'account-a',
       previewToken: 'token',
@@ -265,7 +270,10 @@ describe('useAgentRouter', () => {
     )
 
     expect(previewWorkBuddyRoutes).toHaveBeenCalledWith(
-      expect.objectContaining({ enabledRoutes: [{ modelId: 'gpt-5', credentialId: 'credential-2' }] })
+      expect.objectContaining({
+        enabledRoutes: [{ modelId: 'gpt-5', credentialId: 'credential-2' }],
+        incrementalModelIds: ['gpt-5']
+      })
     )
   })
 })

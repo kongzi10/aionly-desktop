@@ -136,8 +136,7 @@ const AgentRouterPage = () => {
       <AddRouteModal
         open={adding}
         templates={router.globalTemplates}
-        routes={router.routes}
-        onRevealCredential={router.revealAgentRouteCredential}
+        onListWorkBuddyRoutes={router.listWorkBuddyRoutes}
         apiCredentials={router.apiCredentials}
         tokenPlanCredentials={router.tokenPlanCredentials}
         apiModels={router.apiModels}
