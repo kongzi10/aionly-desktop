@@ -683,8 +683,8 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
             autoFocus
             variant="borderless"
             spellCheck={enableSpellCheck}
-            rows={2}
-            autoSize={height ? false : { minRows: 2, maxRows: 20 }}
+            rows={4}
+            autoSize={height ? false : { minRows: 4, maxRows: 20 }}
             styles={{ textarea: TextareaStyle }}
             style={{
               fontSize,
@@ -699,16 +699,13 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
           />
 
           <BottomBar>
-            <div></div>
+            <LeftSection className={noModels ? 'disabled' : ''}>{leftToolbar}</LeftSection>
             <RightSection>
               {rightToolbar}
               {rightSectionExtras}
             </RightSection>
           </BottomBar>
         </InputBarContainer>
-        <ToolBar className={noModels ? 'disabled' : ''}>
-          <LeftSection>{leftToolbar}</LeftSection>
-        </ToolBar>
       </Container>
     </NarrowLayout>
   )
@@ -810,8 +807,12 @@ const BottomBar = styled.div`
 const LeftSection = styled.div`
   display: flex;
   align-items: center;
-  // flex: 1;
   min-width: 0;
+  &.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
 `
 
 const RightSection = styled.div`
@@ -819,22 +820,4 @@ const RightSection = styled.div`
   flex-direction: row;
   align-items: center;
   gap: 6px;
-`
-
-const ToolBar = styled.div`
-  padding: 8px 20px;
-  flex-shrink: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: fit-content;
-  margin: 10px auto 0;
-  cursor: not-allowed;
-  &.disabled{
-    opacity: 0.5;
-    pointer-events: none;
-    cursor: not-allowed;
-  }
 `
