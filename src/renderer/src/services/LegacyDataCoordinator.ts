@@ -3,6 +3,7 @@ import { persistor, resetStore } from '@renderer/store'
 import type { LegacyDataStatus, LegacyRecoveryState } from '@shared/legacyData'
 
 import { rendererLegacyDataService } from './LegacyDataService'
+import { classifyLegacyDataOwner, readLegacyReduxUserId, readProfileAuthUserId } from './ProfileDataMigrationService'
 import { PROFILE_RUNTIME_CHANGED_EVENT } from './ProfileRendererRuntime'
 import { getActiveProfileId } from './ProfileStorageService'
 
@@ -70,7 +71,14 @@ async function withRendererRuntimePaused(action: (profileId: string) => Promise<
   return operation
 }
 
-export function recoverLegacyData(): Promise<void> {
+export function recoverLegacyData(allowUnknownOwner = false): Promise<void> {
+  const profileId = requireProfileId()
+  const ownerStatus = classifyLegacyDataOwner(
+    readLegacyReduxUserId(localStorage),
+    readProfileAuthUserId(localStorage, profileId)
+  )
+  if (ownerStatus === 'mismatch') throw new Error('LEGACY_DATA_OWNER_MISMATCH')
+  if (ownerStatus === 'unknown' && !allowUnknownOwner) throw new Error('LEGACY_DATA_OWNER_UNKNOWN')
   return withRendererRuntimePaused(async (profileId) => {
     await window.api.legacyData.recover()
     await rendererLegacyDataService.recover(profileId)

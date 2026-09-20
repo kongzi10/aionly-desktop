@@ -4515,11 +4515,14 @@
         "cleanup_failed": "Failed to clear legacy data",
         "cleanup_success": "Legacy data cleared",
         "cleanup_title": "Clear legacy data",
+        "owner_mismatch": "This legacy data belongs to another account. Sign in to that account before recovering it.",
         "recover": "Recover legacy data",
         "recover_confirm": "Legacy data will replace the current account data. Current data not present in the legacy snapshot will be deleted. Continue?",
         "recover_failed": "Failed to recover legacy data",
         "recover_success": "Legacy data recovered",
-        "recover_title": "Recover legacy data"
+        "recover_title": "Recover legacy data",
+        "unknown_owner_confirm": "The account that owns this legacy data cannot be identified. Continuing may replace this account's data. Recover anyway?",
+        "unknown_owner_title": "Unable to verify data owner"
       },
       "limit": {
         "appDataDiskQuota": "Disk Space Warning",

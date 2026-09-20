@@ -146,20 +146,24 @@ export const LoginForm = (_props: LoginFormProps) => {
   /** 登录成功 **/
   const handleLoginSuccess = async () => {
     const { userData, secretKey, balance, providerApiKey } = await saveUserInfo()
+    const userId = userData?.userId
+    if (userId === undefined || userId === null || !String(userId).trim()) {
+      throw new Error('登录响应缺少用户 ID，无法创建用户数据目录')
+    }
     const bootstrap = {
       token: localStorage.getItem('token') || undefined,
       userInfo: JSON.stringify(userData || {}),
       serviceInfo: localStorage.getItem('serviceInfo') || undefined,
       localUserSecret: secretKey || undefined
     }
-    const result = await window.api.profile.activate(String(userData?.userId || ''), bootstrap)
+    const result = await window.api.profile.activate(String(userId), bootstrap)
     await applyProfileSwitch({ profileId: result.profileId, bootstrap }, async () => {
       store.dispatch(setUserInfo(userData || {}))
       store.dispatch(setMyBalance(balance))
       store.dispatch(setApiKey(secretKey))
       profileStorage.setItem(LOCAL_USER_SECRET_KEY, secretKey)
       if (providerApiKey) store.dispatch(updateProviderAction({ id: 'aionly', apiKey: providerApiKey }))
-      await setupModels(10, String(userData?.userId || ''))
+      await setupModels(10, String(userId))
     })
   }
 

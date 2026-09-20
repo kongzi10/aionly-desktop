@@ -70,7 +70,29 @@ const BasicDataSettings: React.FC = () => {
       onOk: async () => {
         setLegacyAction('recover')
         try {
-          await executeLegacyDataAction(recoverLegacyData, refreshLegacyStatus)
+          let allowUnknownOwner = false
+          try {
+            await executeLegacyDataAction(() => recoverLegacyData(), refreshLegacyStatus)
+          } catch (error) {
+            if (error instanceof Error && error.message === 'LEGACY_DATA_OWNER_MISMATCH') {
+              window.toast.error(t('settings.data.legacy_data.owner_mismatch'))
+              return
+            }
+            if (!(error instanceof Error) || error.message !== 'LEGACY_DATA_OWNER_UNKNOWN') throw error
+            allowUnknownOwner = await new Promise<boolean>((resolve) => {
+              window.modal.confirm({
+                title: t('settings.data.legacy_data.unknown_owner_title'),
+                content: t('settings.data.legacy_data.unknown_owner_confirm'),
+                okText: t('settings.data.legacy_data.recover'),
+                cancelText: t('common.cancel'),
+                centered: true,
+                onOk: () => resolve(true),
+                onCancel: () => resolve(false)
+              })
+            })
+            if (!allowUnknownOwner) return
+            await executeLegacyDataAction(() => recoverLegacyData(true), refreshLegacyStatus)
+          }
           window.toast.success(t('settings.data.legacy_data.recover_success'))
         } catch (error) {
           window.toast.error(`${t('settings.data.legacy_data.recover_failed')}: ${String(error)}`)

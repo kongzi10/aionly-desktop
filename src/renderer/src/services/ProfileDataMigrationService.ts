@@ -44,7 +44,14 @@ export function migrateLegacyReduxState(storage: Storage, profileId: string): bo
 export function replaceLegacyReduxState(storage: Storage, profileId: string): boolean {
   const targetKey = `persist:aionly:${profileId}`
   const legacyState = storage.getItem(LEGACY_REDUX_KEY)
-  if (legacyState !== null) storage.setItem(targetKey, legacyState)
+  if (legacyState !== null) {
+    const restoredState = JSON.parse(legacyState) as Record<string, unknown>
+    const currentStateValue = storage.getItem(targetKey)
+    const currentState = currentStateValue ? (JSON.parse(currentStateValue) as Record<string, unknown>) : null
+    delete restoredState.user
+    if (currentState?.user !== undefined) restoredState.user = currentState.user
+    storage.setItem(targetKey, JSON.stringify(restoredState))
+  }
 
   const hasLegacyProfileStorage = LEGACY_PROFILE_KEYS.some((key) => storage.getItem(key) !== null)
   if (hasLegacyProfileStorage) {
@@ -56,6 +63,44 @@ export function replaceLegacyReduxState(storage: Storage, profileId: string): bo
     }
   }
   return legacyState !== null || hasLegacyProfileStorage
+}
+
+export function readLegacyReduxUserId(storage: Storage): string | null {
+  const legacyState = storage.getItem(LEGACY_REDUX_KEY)
+  if (!legacyState) return null
+  try {
+    const persisted = JSON.parse(legacyState) as { user?: unknown }
+    const user = typeof persisted.user === 'string' ? JSON.parse(persisted.user) : persisted.user
+    if (!user || typeof user !== 'object') return null
+    const userInfoValue = (user as { userInfo?: unknown }).userInfo
+    const userInfo = typeof userInfoValue === 'string' ? JSON.parse(userInfoValue) : userInfoValue
+    if (!userInfo || typeof userInfo !== 'object') return null
+    const userId = (userInfo as { userId?: unknown }).userId
+    return userId === undefined || userId === null || !String(userId).trim() ? null : String(userId)
+  } catch {
+    return null
+  }
+}
+
+export function readProfileAuthUserId(storage: Storage, profileId: string): string | null {
+  const value = storage.getItem(`profile:${profileId}:userInfo`)
+  if (!value) return null
+  try {
+    const userId = (JSON.parse(value) as { userId?: unknown }).userId
+    return userId === undefined || userId === null || !String(userId).trim() ? null : String(userId)
+  } catch {
+    return null
+  }
+}
+
+export type LegacyDataOwnerStatus = 'match' | 'mismatch' | 'unknown'
+
+export function classifyLegacyDataOwner(
+  legacyUserId: string | null,
+  currentUserId: string | null
+): LegacyDataOwnerStatus {
+  if (!legacyUserId || !currentUserId) return 'unknown'
+  return legacyUserId === currentUserId ? 'match' : 'mismatch'
 }
 
 interface IndexedDbMigrationOptions {

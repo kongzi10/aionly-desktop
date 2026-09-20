@@ -8,9 +8,12 @@ describe('RendererLegacyDataService', () => {
   beforeEach(() => localStorage.clear())
 
   it('replaces active profile storage even when the target already exists', async () => {
-    localStorage.setItem('persist:aionly', 'legacy-redux')
+    localStorage.setItem('persist:aionly', JSON.stringify({ settings: JSON.stringify({ legacy: true }) }))
     localStorage.setItem('ai302_token', 'legacy-token')
-    localStorage.setItem(`persist:aionly:${profileId}`, 'current-redux')
+    localStorage.setItem(
+      `persist:aionly:${profileId}`,
+      JSON.stringify({ user: JSON.stringify({ userInfo: { userId: 'current' } }) })
+    )
     localStorage.setItem(`profile:${profileId}:ai302_token`, 'current-token')
     localStorage.setItem(`profile:${profileId}:cacheUpdatedModels`, 'current-only')
     const migrateIndexedDb = vi.fn(async () => undefined)
@@ -22,7 +25,10 @@ describe('RendererLegacyDataService', () => {
 
     await service.recover(profileId)
 
-    expect(localStorage.getItem(`persist:aionly:${profileId}`)).toBe('legacy-redux')
+    expect(JSON.parse(localStorage.getItem(`persist:aionly:${profileId}`) || '{}')).toEqual({
+      settings: JSON.stringify({ legacy: true }),
+      user: JSON.stringify({ userInfo: { userId: 'current' } })
+    })
     expect(localStorage.getItem(`profile:${profileId}:ai302_token`)).toBe('legacy-token')
     expect(localStorage.getItem(`profile:${profileId}:cacheUpdatedModels`)).toBeNull()
     expect(migrateIndexedDb).toHaveBeenCalledWith(profileId)

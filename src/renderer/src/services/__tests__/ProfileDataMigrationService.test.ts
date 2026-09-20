@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  classifyLegacyDataOwner,
   copyMissingRecords,
   isLegacyProfileDataMigrationEnabled,
   migrateLegacyProfileData,
-  migrateLegacyReduxState
+  migrateLegacyReduxState,
+  readLegacyReduxUserId,
+  readProfileAuthUserId,
+  replaceLegacyReduxState
 } from '../ProfileDataMigrationService'
 
 const profileId = '0123456789abcdef0123456789abcdef'
@@ -55,6 +59,40 @@ describe('ProfileDataMigrationService', () => {
     ])
     expect(reads).toBe(2)
     expect(writes).toBe(1)
+  })
+
+  it('restores legacy Redux data without replacing the current user slice', () => {
+    const legacyState = JSON.stringify({
+      user: JSON.stringify({ token: 'old-token', userInfo: { userId: 'old-user' } }),
+      settings: JSON.stringify({ theme: 'dark' })
+    })
+    const currentUser = JSON.stringify({ token: 'new-token', userInfo: { userId: 'new-user' } })
+    localStorage.setItem('persist:aionly', legacyState)
+    localStorage.setItem(`persist:aionly:${profileId}`, JSON.stringify({ user: currentUser }))
+
+    replaceLegacyReduxState(localStorage, profileId)
+
+    const restored = JSON.parse(localStorage.getItem(`persist:aionly:${profileId}`) || '{}')
+    expect(restored.user).toBe(currentUser)
+    expect(JSON.parse(restored.settings)).toEqual({ theme: 'dark' })
+  })
+
+  it('reads the owning user id from legacy Redux data', () => {
+    localStorage.setItem('persist:aionly', JSON.stringify({ user: JSON.stringify({ userInfo: { userId: 42 } }) }))
+
+    expect(readLegacyReduxUserId(localStorage)).toBe('42')
+  })
+
+  it('classifies matching, mismatched, and unknown legacy owners', () => {
+    expect(classifyLegacyDataOwner('42', '42')).toBe('match')
+    expect(classifyLegacyDataOwner('42', '43')).toBe('mismatch')
+    expect(classifyLegacyDataOwner(null, '43')).toBe('unknown')
+  })
+
+  it('reads the current user id from profile authentication storage', () => {
+    localStorage.setItem(`profile:${profileId}:userInfo`, JSON.stringify({ userId: 'current-user' }))
+
+    expect(readProfileAuthUserId(localStorage, profileId)).toBe('current-user')
   })
 
   it('keeps a pending marker after failure and completes on retry', async () => {

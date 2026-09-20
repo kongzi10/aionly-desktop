@@ -4515,11 +4515,14 @@
         "cleanup_failed": "清除舊版資料失敗",
         "cleanup_success": "舊版資料已清除",
         "cleanup_title": "清除舊版資料",
+        "owner_mismatch": "舊版資料屬於其他帳號，請登入對應帳號後再恢復。",
         "recover": "恢復舊版資料",
         "recover_confirm": "舊版資料將覆蓋目前帳號的資料，目前帳號中舊版沒有的資料會被刪除。是否繼續？",
         "recover_failed": "恢復舊版資料失敗",
         "recover_success": "舊版資料恢復完成",
-        "recover_title": "恢復舊版資料"
+        "recover_title": "恢復舊版資料",
+        "unknown_owner_confirm": "無法識別舊版資料所屬帳號，繼續操作可能替換目前帳號的資料。仍要恢復嗎？",
+        "unknown_owner_title": "無法驗證資料所屬帳號"
       },
       "limit": {
         "appDataDiskQuota": "磁碟空間警告",

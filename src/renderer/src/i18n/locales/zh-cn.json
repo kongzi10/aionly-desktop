@@ -4515,11 +4515,14 @@
         "cleanup_failed": "清除旧版数据失败",
         "cleanup_success": "旧版数据已清除",
         "cleanup_title": "清除旧版数据",
+        "owner_mismatch": "旧版数据属于其他账号，请登录对应账号后再恢复。",
         "recover": "恢复旧版数据",
         "recover_confirm": "旧版数据将覆盖当前账号的数据，当前账号中旧版没有的数据会被删除。是否继续？",
         "recover_failed": "恢复旧版数据失败",
         "recover_success": "旧版数据恢复完成",
-        "recover_title": "恢复旧版数据"
+        "recover_title": "恢复旧版数据",
+        "unknown_owner_confirm": "无法识别旧版数据所属账号，继续操作可能替换当前账号的数据。仍要恢复吗？",
+        "unknown_owner_title": "无法验证数据所属账号"
       },
       "limit": {
         "appDataDiskQuota": "磁盘空间警告",
