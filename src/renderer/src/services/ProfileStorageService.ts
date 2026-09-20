@@ -46,15 +46,30 @@ export const profileStorage = {
 
 export const authStorage = {
   getItem(key: string): string | null {
+    if (key === 'token') {
+      const pendingLoginToken = localStorage.getItem(key)
+      if (pendingLoginToken) return pendingLoginToken
+    }
     const profileId = getActiveProfileId()
     return localStorage.getItem(profileId ? `profile:${profileId}:${key}` : key)
   },
   setItem(key: string, value: string): void {
     const profileId = getActiveProfileId()
     localStorage.setItem(profileId ? `profile:${profileId}:${key}` : key, value)
+    if (key === 'token' && profileId) localStorage.removeItem(key)
   },
   removeItem(key: string): void {
+    if (key === 'token' && localStorage.getItem(key) !== null) {
+      localStorage.removeItem(key)
+      return
+    }
     const profileId = getActiveProfileId()
     localStorage.removeItem(profileId ? `profile:${profileId}:${key}` : key)
   }
+}
+
+export function clearAuthTokenIfCurrent(expectedToken: string | null | undefined): boolean {
+  if (!expectedToken || authStorage.getItem('token') !== expectedToken) return false
+  authStorage.removeItem('token')
+  return true
 }

@@ -1,6 +1,6 @@
 import { loggerService } from '@logger'
 import { profileGeneration } from '@renderer/services/ProfileRendererRuntime'
-import { authStorage } from '@renderer/services/ProfileStorageService'
+import { authStorage, clearAuthTokenIfCurrent } from '@renderer/services/ProfileStorageService'
 import { encryptBase64, encryptWithAes, generateAesKey } from '@renderer/utils/crypt/crypto'
 import { encrypt } from '@renderer/utils/crypt/jsencrypt'
 import { AxiosCanceler } from '@renderer/utils/helper/axiosCancel'
@@ -50,6 +50,7 @@ class RequestHttp {
         // 是否需要加密
         const isEncrypt = config.headers?.isEncrypt === 'true'
         const token = authStorage.getItem('token')
+        config.__authToken = token
         if (token && !isToken) {
           // config.headers['Authorization'] = 'Bearer ' + useUserStore().getToken();// 让每个请求携带自定义token 请根据实际情况自行修改
           config.headers['Authorization'] = 'Bearer ' + token // 让每个请求携带自定义token 请根据实际情况自行修改
@@ -101,7 +102,10 @@ class RequestHttp {
           }
           // 该分支随后 return Promise.resolve()，调用方拿到 undefined，故先落日志便于定位
           logger.warn('response biz code 401', { url: config.url, code: data.code, msg: data.msg })
-          authStorage.removeItem('token')
+          if (!clearAuthTokenIfCurrent(config.__authToken)) {
+            logger.info('Ignored stale 401 response after authentication token changed', { url: config.url })
+            return Promise.reject(data)
+          }
           message.warning('登录过期请重新登录！')
           // 跳转到登录页
           window.location.hash = '/login'

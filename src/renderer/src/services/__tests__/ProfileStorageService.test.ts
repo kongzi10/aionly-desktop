@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   ACTIVE_PROFILE_STORAGE_KEY,
   authStorage,
+  clearAuthTokenIfCurrent,
   getActiveProfileId,
   getDexieDatabaseName,
   getProfileStorageKey,
@@ -62,5 +63,31 @@ describe('ProfileStorageService', () => {
     authStorage.setItem('token', 'profile-token')
     expect(authStorage.getItem('token')).toBe('profile-token')
     expect(localStorage.getItem('profile:0123456789abcdef0123456789abcdef:token')).toBe('profile-token')
+  })
+
+  it('uses a newly issued login token while an expired profile is still active', () => {
+    const profileId = '0123456789abcdef0123456789abcdef'
+    localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, profileId)
+    localStorage.setItem(`profile:${profileId}:token`, 'expired-profile-token')
+    localStorage.setItem('token', 'new-login-token')
+
+    expect(authStorage.getItem('token')).toBe('new-login-token')
+  })
+
+  it('does not clear a newer login token when an older request expires', () => {
+    const profileId = '0123456789abcdef0123456789abcdef'
+    localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, profileId)
+    localStorage.setItem(`profile:${profileId}:token`, 'expired-profile-token')
+    localStorage.setItem('token', 'new-login-token')
+
+    expect(clearAuthTokenIfCurrent('expired-profile-token')).toBe(false)
+    expect(authStorage.getItem('token')).toBe('new-login-token')
+  })
+
+  it('clears the token when the rejected request used the current credential', () => {
+    localStorage.setItem('token', 'expired-login-token')
+
+    expect(clearAuthTokenIfCurrent('expired-login-token')).toBe(true)
+    expect(authStorage.getItem('token')).toBeNull()
   })
 })
