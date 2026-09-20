@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
+import { authStorage, getProfileWebviewPartition } from '@renderer/services/ProfileStorageService'
 import { USER_UI_HOST, WEB_UI_HOST } from '@shared/config/constant'
 import type { WebviewTag } from 'electron'
 import { memo, useEffect, useRef, useState } from 'react'
@@ -229,7 +230,7 @@ const WebviewContainer = memo(
       const sendInitData = () => {
         const configData = {
           appId: appid,
-          token: localStorage.getItem('token'),
+          token: authStorage.getItem('token'),
           path,
           clientId: import.meta.env.VITE_APP_CLIENT_ID,
           config: { theme }
@@ -266,7 +267,7 @@ const WebviewContainer = memo(
         data-minapp-id={appid}
         style={WebviewStyle}
         allowpopups={'true' as any}
-        partition="persist:webview"
+        partition={getProfileWebviewPartition()}
         preload={preloadPath || undefined}
         nodeintegration={false}
         disablewebsecurity={true}

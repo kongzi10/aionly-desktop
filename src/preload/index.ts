@@ -73,6 +73,42 @@ import type {
   SkillResult,
   SkillToggleOptions
 } from '../renderer/src/types/skill'
+import { createProfileRendererReadyNotifier } from './profileLifecycle'
+
+const isTrustedAppRenderer = process.argv.includes('--aionly-main-renderer')
+const ACTIVE_PROFILE_STORAGE_KEY = 'aionly:active-profile-id'
+const profileStartup = (isTrustedAppRenderer ? ipcRenderer.sendSync(IpcChannel.Profile_GetBootstrap) : null) as {
+  profileId: string | null
+  bootstrap: {
+    token?: string
+    userInfo?: string
+    serviceInfo?: string
+    localUserSecret?: string
+  } | null
+} | null
+
+if (profileStartup && !profileStartup.profileId) {
+  localStorage.removeItem(ACTIVE_PROFILE_STORAGE_KEY)
+  localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+  localStorage.removeItem('serviceInfo')
+  localStorage.removeItem('userSecretKey')
+} else if (profileStartup?.profileId) {
+  localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, profileStartup.profileId)
+}
+
+if (profileStartup?.bootstrap) {
+  const { token, userInfo, serviceInfo, localUserSecret } = profileStartup.bootstrap
+  const profilePrefix = `profile:${profileStartup.profileId}:`
+  if (token) localStorage.setItem(`${profilePrefix}token`, token)
+  if (userInfo) localStorage.setItem(`${profilePrefix}userInfo`, userInfo)
+  if (serviceInfo) localStorage.setItem(`${profilePrefix}serviceInfo`, serviceInfo)
+  if (localUserSecret) localStorage.setItem(`${profilePrefix}userSecretKey`, localUserSecret)
+  localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+  localStorage.removeItem('serviceInfo')
+  localStorage.removeItem('userSecretKey')
+}
 
 // OpenClaw types
 type OpenClawGatewayStatus = 'stopped' | 'starting' | 'running' | 'error'
@@ -109,6 +145,33 @@ export function tracedInvoke(channel: string, spanContext: SpanContext | undefin
 
 // Custom APIs for renderer
 const api = {
+  profile: {
+    rendererReady: createProfileRendererReadyNotifier(isTrustedAppRenderer, () =>
+      ipcRenderer.invoke(IpcChannel.Profile_RendererReady)
+    ),
+    activate: (userId: string, bootstrap: Record<string, string | undefined>) =>
+      isTrustedAppRenderer
+        ? ipcRenderer.invoke(IpcChannel.Profile_Activate, userId, bootstrap)
+        : Promise.reject(new Error('Profile lifecycle API is unavailable in embedded content')),
+    deactivate: () =>
+      isTrustedAppRenderer
+        ? ipcRenderer.invoke(IpcChannel.Profile_Deactivate)
+        : Promise.reject(new Error('Profile lifecycle API is unavailable in embedded content'))
+  },
+  legacyData: {
+    getStatus: () =>
+      isTrustedAppRenderer
+        ? ipcRenderer.invoke(IpcChannel.LegacyData_GetStatus)
+        : Promise.reject(new Error('Legacy data API is unavailable in embedded content')),
+    recover: () =>
+      isTrustedAppRenderer
+        ? ipcRenderer.invoke(IpcChannel.LegacyData_Recover)
+        : Promise.reject(new Error('Legacy data API is unavailable in embedded content')),
+    cleanup: () =>
+      isTrustedAppRenderer
+        ? ipcRenderer.invoke(IpcChannel.LegacyData_Cleanup)
+        : Promise.reject(new Error('Legacy data API is unavailable in embedded content'))
+  },
   agentRouter: {
     onTargetChanged: (callback: (targetId: AgentRouterTargetId) => void): (() => void) => {
       const listener = (_: Electron.IpcRendererEvent, targetId: AgentRouterTargetId) => callback(targetId)
@@ -221,10 +284,12 @@ const api = {
   },
   backup: {
     restore: (path: string) => ipcRenderer.invoke(IpcChannel.Backup_Restore, path),
+    cancelRestore: () => ipcRenderer.invoke(IpcChannel.Backup_CancelRestore),
     // Direct backup methods (copy IndexedDB/LocalStorage directories directly)
-    backup: (fileName: string, destinationPath: string, skipBackupFile: boolean) =>
-      ipcRenderer.invoke(IpcChannel.Backup_Backup, fileName, destinationPath, skipBackupFile),
-    backupToWebdav: (webdavConfig: WebDavConfig) => ipcRenderer.invoke(IpcChannel.Backup_BackupToWebdav, webdavConfig),
+    backup: (fileName: string, destinationPath: string, skipBackupFile: boolean, data: string) =>
+      ipcRenderer.invoke(IpcChannel.Backup_Backup, fileName, destinationPath, skipBackupFile, data),
+    backupToWebdav: (webdavConfig: WebDavConfig, data: string) =>
+      ipcRenderer.invoke(IpcChannel.Backup_BackupToWebdav, webdavConfig, data),
     restoreFromWebdav: (webdavConfig: WebDavConfig) =>
       ipcRenderer.invoke(IpcChannel.Backup_RestoreFromWebdav, webdavConfig),
     listWebdavFiles: (webdavConfig: WebDavConfig) =>
@@ -235,8 +300,11 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Backup_CreateDirectory, webdavConfig, path, options),
     deleteWebdavFile: (fileName: string, webdavConfig: WebDavConfig) =>
       ipcRenderer.invoke(IpcChannel.Backup_DeleteWebdavFile, fileName, webdavConfig),
-    backupToLocalDir: (fileName: string, localConfig: { localBackupDir?: string; skipBackupFile?: boolean }) =>
-      ipcRenderer.invoke(IpcChannel.Backup_BackupToLocalDir, fileName, localConfig),
+    backupToLocalDir: (
+      fileName: string,
+      localConfig: { localBackupDir?: string; skipBackupFile?: boolean },
+      data: string
+    ) => ipcRenderer.invoke(IpcChannel.Backup_BackupToLocalDir, fileName, localConfig, data),
     restoreFromLocalBackup: (fileName: string, localBackupDir?: string) =>
       ipcRenderer.invoke(IpcChannel.Backup_RestoreFromLocalBackup, fileName, localBackupDir),
     listLocalBackupFiles: (localBackupDir?: string) =>
@@ -245,7 +313,7 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Backup_DeleteLocalBackupFile, fileName, localBackupDir),
     checkWebdavConnection: (webdavConfig: WebDavConfig) =>
       ipcRenderer.invoke(IpcChannel.Backup_CheckConnection, webdavConfig),
-    backupToS3: (s3Config: S3Config) => ipcRenderer.invoke(IpcChannel.Backup_BackupToS3, s3Config),
+    backupToS3: (s3Config: S3Config, data: string) => ipcRenderer.invoke(IpcChannel.Backup_BackupToS3, s3Config, data),
     restoreFromS3: (s3Config: S3Config) => ipcRenderer.invoke(IpcChannel.Backup_RestoreFromS3, s3Config),
     listS3Files: (s3Config: S3Config) => ipcRenderer.invoke(IpcChannel.Backup_ListS3Files, s3Config),
     deleteS3File: (fileName: string, s3Config: S3Config) =>

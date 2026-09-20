@@ -8,6 +8,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import HomePage from '../../home/HomePage'
 
+const { useAssistantsMock } = vi.hoisted(() => ({
+  useAssistantsMock: vi.fn()
+}))
+
 const chatTopic = { id: 'chat-topic', name: 'Chat topic' } as Topic
 const roundtableTopic = { id: 'roundtable-topic', name: 'Roundtable topic' } as Topic
 const chatAssistant = {
@@ -29,7 +33,7 @@ const roundtableAssistant = {
 const testStore = configureStore({ reducer: () => ({}) })
 
 vi.mock('@renderer/hooks/useAssistant', () => ({
-  useAssistants: () => ({ assistants: [chatAssistant, roundtableAssistant], addAssistant: vi.fn() }),
+  useAssistants: useAssistantsMock,
   useDefaultAssistant: () => ({ defaultAssistant: chatAssistant })
 }))
 vi.mock('@renderer/utils', () => ({ uuid: () => 'workspace-default' }))
@@ -86,6 +90,7 @@ vi.mock('../RoundtableChat', () => ({
 }))
 
 beforeEach(() => {
+  useAssistantsMock.mockReturnValue({ assistants: [chatAssistant, roundtableAssistant], addAssistant: vi.fn() })
   Object.assign(window.api, {
     window: { setMinimumSize: vi.fn(), resetMinimumSize: vi.fn() }
   })
@@ -94,6 +99,36 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('HomePage workspace integration', () => {
+  it('selects the current profile default assistant after the profile changes', () => {
+    const previousProfileView = render(
+      <Provider store={testStore}>
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <HomePage />
+        </MemoryRouter>
+      </Provider>
+    )
+
+    expect(screen.getByTestId('workspace-panel')).toHaveAttribute('data-assistant', chatAssistant.id)
+    previousProfileView.unmount()
+
+    const currentProfileAssistant = {
+      ...chatAssistant,
+      id: 'current-profile-assistant',
+      name: 'Current profile assistant'
+    }
+    useAssistantsMock.mockReturnValue({ assistants: [currentProfileAssistant], addAssistant: vi.fn() })
+
+    render(
+      <Provider store={testStore}>
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <HomePage />
+        </MemoryRouter>
+      </Provider>
+    )
+
+    expect(screen.getByTestId('workspace-panel')).toHaveAttribute('data-assistant', currentProfileAssistant.id)
+  })
+
   it('keeps the active assistant and topic isolated between chat and roundtable', () => {
     const chatView = render(
       <Provider store={testStore}>

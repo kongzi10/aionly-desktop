@@ -49,9 +49,6 @@ export const AccountLogin = ({ ref, ...props }: AccountLoginProps) => {
   const accountIdRegexp = /^\d+$/
   // 合并正则（手机号、邮箱或账号ID）
   const userNamePattern = new RegExp(`(${phoneRegexp.source})|(${emailRegexp.source})|(${accountIdRegexp.source})`)
-  // 密码正则
-  const passwordPattern = /^(?![\d]+$)(?![a-zA-Z]+$)(?![^\da-zA-Z]+$)([^\u4e00-\u9fa5\s]){6,20}$/
-
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [form] = Form.useForm<FieldType>()
@@ -214,10 +211,6 @@ export const AccountLogin = ({ ref, ...props }: AccountLoginProps) => {
             {
               required: true,
               message: i18n.t('login.account_login.password_required')
-            },
-            {
-              pattern: passwordPattern,
-              message: i18n.t('login.account_login.password_invalid')
             }
           ]}>
           <PwdInput

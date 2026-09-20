@@ -14,7 +14,7 @@
  */
 import { loggerService } from '@logger'
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
-import { PERSIST_KEY } from '@renderer/config/env'
+import { getActiveProfileId, getReduxPersistKey } from '@renderer/services/ProfileStorageService'
 import { IpcChannel } from '@shared/IpcChannel'
 import { useDispatch, useSelector, useStore } from 'react-redux'
 import { FLUSH, PAUSE, PERSIST, persistReducer, persistStore, PURGE, REGISTER, REHYDRATE } from 'redux-persist'
@@ -48,11 +48,11 @@ import shortcuts from './shortcuts'
 import tabs from './tabs'
 import toolPermissions from './toolPermissions'
 import translate from './translate'
+import { reloadProfileUserState } from './user'
 import user from './user'
 import websearch from './websearch'
 
 const logger = loggerService.withContext('Store')
-
 const rootReducer = combineReducers({
   assistants,
   backup,
@@ -83,17 +83,6 @@ const rootReducer = combineReducers({
   user
 })
 
-const persistedReducer = persistReducer(
-  {
-    key: PERSIST_KEY,
-    storage,
-    version: 207,
-    blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
-    migrate
-  },
-  rootReducer
-)
-
 /**
  * Configures the store sync service to synchronize specific state slices across all windows.
  * For detailed implementation, see @renderer/services/StoreSyncService.ts
@@ -109,31 +98,44 @@ storeSyncService.setOptions({
   syncList: ['assistants/', 'settings/', 'llm/', 'selectionStore/', 'note/']
 })
 
-const store = configureStore({
-  // @ts-ignore store type is unknown
-  reducer: persistedReducer as typeof rootReducer,
-  middleware: (getDefaultMiddleware) => {
-    return getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER]
-      }
-    }).concat(storeSyncService.createMiddleware())
-  },
-  devTools: true
-})
+function createStoreRuntime() {
+  const persistKey = getActiveProfileId() ? getReduxPersistKey() : 'aionly:login'
+  const persistedReducer = persistReducer(
+    {
+      key: persistKey,
+      storage,
+      version: 207,
+      blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
+      migrate
+    },
+    rootReducer
+  )
 
-export type RootState = ReturnType<typeof rootReducer>
-export type AppDispatch = typeof store.dispatch
+  const nextStore = configureStore({
+    // @ts-ignore store type is unknown
+    reducer: persistedReducer as typeof rootReducer,
+    middleware: (getDefaultMiddleware) => {
+      return getDefaultMiddleware({
+        serializableCheck: {
+          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER]
+        }
+      }).concat(storeSyncService.createMiddleware())
+    },
+    devTools: true
+  })
+  nextStore.dispatch(reloadProfileUserState())
 
-export const persistor = persistStore(store, undefined, () => {
-  // Initialize notes path after rehydration if empty
-  const state = store.getState()
+  const nextPersistor = persistStore(nextStore, undefined, () => notifyRendererReady(nextStore))
+  return { store: nextStore, persistor: nextPersistor }
+}
+
+function notifyRendererReady(currentStore: ReturnType<typeof configureStore>): void {
+  const state = currentStore.getState() as RootState
   if (!state.note.notesPath) {
-    // Use setTimeout to ensure this runs after the store is fully initialized
     setTimeout(async () => {
       try {
         const info = await window.api.getAppInfo()
-        store.dispatch(setNotesPath(info.notesPath))
+        currentStore.dispatch(setNotesPath(info.notesPath))
         logger.info('Initialized notes path on startup:', info.notesPath)
       } catch (error) {
         logger.error('Failed to initialize notes path on startup:', error as Error)
@@ -141,10 +143,24 @@ export const persistor = persistStore(store, undefined, () => {
     }, 0)
   }
 
-  // Notify main process that Redux store is ready
   void window.electron?.ipcRenderer?.invoke(IpcChannel.ReduxStoreReady)
+  void window.api.profile?.rendererReady?.()
   logger.info('Redux store ready, notified main process')
-})
+}
+
+const initialRuntime = createStoreRuntime()
+export let store = initialRuntime.store
+export let persistor = initialRuntime.persistor
+
+export function resetStore(): void {
+  const nextRuntime = createStoreRuntime()
+  store = nextRuntime.store
+  persistor = nextRuntime.persistor
+  window.store = store
+}
+
+export type RootState = ReturnType<typeof rootReducer>
+export type AppDispatch = typeof store.dispatch
 
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>()
 export const useAppSelector = useSelector.withTypes<RootState>()
@@ -157,4 +173,4 @@ export async function handleSaveData() {
   logger.info('Flushed redux persistor data')
 }
 
-export default store
+export { store as default }

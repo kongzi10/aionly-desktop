@@ -52,6 +52,13 @@ export enum IpcChannel {
   App_MacRequestProcessTrust = 'app:mac-request-process-trust',
 
   App_QuoteToMain = 'app:quote-to-main',
+  Profile_GetBootstrap = 'profile:get-bootstrap',
+  Profile_Activate = 'profile:activate',
+  Profile_Deactivate = 'profile:deactivate',
+  Profile_RendererReady = 'profile:renderer-ready',
+  LegacyData_GetStatus = 'legacy-data:get-status',
+  LegacyData_Recover = 'legacy-data:recover',
+  LegacyData_Cleanup = 'legacy-data:cleanup',
   App_SetDisableHardwareAcceleration = 'app:set-disable-hardware-acceleration',
   App_SetUseSystemTitleBar = 'app:set-use-system-title-bar',
 
@@ -256,6 +263,7 @@ export enum IpcChannel {
   // backup
   Backup_Backup = 'backup:backup',
   Backup_Restore = 'backup:restore',
+  Backup_CancelRestore = 'backup:cancelRestore',
   Backup_BackupToWebdav = 'backup:backupToWebdav',
   Backup_RestoreFromWebdav = 'backup:restoreFromWebdav',
   Backup_ListWebdavFiles = 'backup:listWebdavFiles',

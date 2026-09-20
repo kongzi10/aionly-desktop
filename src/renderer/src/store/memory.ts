@@ -42,7 +42,7 @@ const defaultMemoryConfig: MemoryConfig = {
  */
 export const initialState: MemoryState = {
   memoryConfig: defaultMemoryConfig,
-  currentUserId: localStorage.getItem('memory_currentUserId') || 'default-user',
+  currentUserId: 'default-user',
   globalMemoryEnabled: false // Default to false
 }
 
@@ -77,7 +77,6 @@ const memorySlice = createSlice({
      */
     setCurrentUserId: (state, action: PayloadAction<string>) => {
       state.currentUserId = action.payload
-      localStorage.setItem('memory_currentUserId', action.payload)
     },
     /**
      * Sets the global memory enabled state and persists it to localStorage

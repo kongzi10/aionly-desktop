@@ -101,6 +101,7 @@ import {
 } from './services/SpanCacheService'
 import storeSyncService from './services/StoreSyncService'
 import { themeService } from './services/ThemeService'
+import { getProfilePartition, getUserProfileService } from './services/UserProfileService'
 import VertexAIService from './services/VertexAIService'
 import { downloadVeryClaw } from './services/VeryClawDownloadService'
 import { openVeryClaw } from './services/VeryClawService'
@@ -131,7 +132,17 @@ const memoryService = MemoryService.getInstance()
 const dxtService = new DxtService()
 
 export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) {
-  const agentRouter = new AgentRouterService({ dataRoot: path.join(app.getPath('userData'), 'Data', 'agent-router') })
+  let agentRouterProfileId: string | null = null
+  let agentRouter: AgentRouterService | null = null
+  const getAgentRouter = (): AgentRouterService => {
+    const profile = getUserProfileService().getActiveProfile()
+    if (!profile) throw new Error('Profile is not active')
+    if (!agentRouter || agentRouterProfileId !== profile.id) {
+      agentRouter = new AgentRouterService({ dataRoot: getDataPath('agent-router') })
+      agentRouterProfileId = profile.id
+    }
+    return agentRouter
+  }
 
   let workBuddyConfigPath = path.join(homedir(), '.workbuddy', 'models.json')
   const configWatcher = new ConfigFileWatcher(() => {
@@ -163,65 +174,67 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   })
   ipcMain.handle(IpcChannel.AgentRouter_InspectTarget, (_, targetId: AgentRouterTargetId, accountId?: string) => {
     if (targetId !== 'workbuddy') return null
-    return agentRouter.inspectTarget('workbuddy', workBuddyConfigPath, accountId)
+    return getAgentRouter().inspectTarget('workbuddy', workBuddyConfigPath, accountId)
   })
-  ipcMain.handle(IpcChannel.AgentRouter_IdentifyConfig, (_, filePath: string) => agentRouter.identifyConfig(filePath))
+  ipcMain.handle(IpcChannel.AgentRouter_IdentifyConfig, (_, filePath: string) =>
+    getAgentRouter().identifyConfig(filePath)
+  )
   ipcMain.handle(IpcChannel.AgentRouter_GetRouteConfig, (_, accountId: string) =>
-    agentRouter.getRouteConfig(accountId, 'workbuddy', workBuddyConfigPath)
+    getAgentRouter().getRouteConfig(accountId, 'workbuddy', workBuddyConfigPath)
   )
   ipcMain.handle(
     IpcChannel.AgentRouter_ListAgentCredentialSummaries,
     (_, accountId: string, knownCredentials?: NamedAgentRouterCredential[]) =>
-      agentRouter.listAgentCredentialSummaries(accountId, 'workbuddy', knownCredentials)
+      getAgentRouter().listAgentCredentialSummaries(accountId, 'workbuddy', knownCredentials)
   )
   ipcMain.handle(IpcChannel.AgentRouter_ResolveAgentRouteCredential, (_, accountId: string, route: AgentRouteRef) =>
-    agentRouter.resolveAgentRouteCredential(accountId, 'workbuddy', route)
+    getAgentRouter().resolveAgentRouteCredential(accountId, 'workbuddy', route)
   )
   ipcMain.handle(IpcChannel.AgentRouter_SaveRouteModels, (_, accountId: string, models: AgentRouteModel[]) =>
-    agentRouter.saveRouteModels(accountId, 'workbuddy', models)
+    getAgentRouter().saveRouteModels(accountId, 'workbuddy', models)
   )
   ipcMain.handle(IpcChannel.AgentRouter_CreateAgentRoute, (_, accountId: string, request: CreateAgentRouteRequest) =>
-    agentRouter.createAgentRoute(accountId, 'workbuddy', request)
+    getAgentRouter().createAgentRoute(accountId, 'workbuddy', request)
   )
   ipcMain.handle(
     IpcChannel.AgentRouter_UpdateAgentRoute,
     (_, accountId: string, route: AgentRouteRef, request: UpdateAgentRouteRequest) =>
-      agentRouter.updateAgentRoute(accountId, 'workbuddy', route, request)
+      getAgentRouter().updateAgentRoute(accountId, 'workbuddy', route, request)
   )
   ipcMain.handle(IpcChannel.AgentRouter_RemoveRouteModels, (_, accountId: string, routes: AgentRouteRef[]) =>
-    agentRouter.removeRouteModels(accountId, 'workbuddy', routes)
+    getAgentRouter().removeRouteModels(accountId, 'workbuddy', routes)
   )
   ipcMain.handle(
     IpcChannel.AgentRouter_ListGlobalTemplates,
     (_, accountId: string, knownCredentials?: NamedAgentRouterCredential[]) =>
-      agentRouter.listGlobalTemplates(accountId, 'workbuddy', knownCredentials)
+      getAgentRouter().listGlobalTemplates(accountId, 'workbuddy', knownCredentials)
   )
   ipcMain.handle(
     IpcChannel.AgentRouter_CreateGlobalTemplate,
     (_, accountId: string, request: CreateAgentRouteTemplateRequest) =>
-      agentRouter.createGlobalTemplate(accountId, request)
+      getAgentRouter().createGlobalTemplate(accountId, request)
   )
   ipcMain.handle(IpcChannel.AgentRouter_DeleteGlobalTemplate, (_, accountId: string, templateId: string) =>
-    agentRouter.deleteGlobalTemplate(accountId, templateId)
+    getAgentRouter().deleteGlobalTemplate(accountId, templateId)
   )
   ipcMain.handle(
     IpcChannel.AgentRouter_CopyTemplatesToAgent,
     (_, accountId: string, targetId: AgentRouterTargetId, templateIds: string[]) =>
-      agentRouter.copyTemplatesToAgent(accountId, targetId, templateIds)
+      getAgentRouter().copyTemplatesToAgent(accountId, targetId, templateIds)
   )
   ipcMain.handle(IpcChannel.AgentRouter_ListAppliedWorkBuddyRoutes, () =>
-    agentRouter.listAppliedWorkBuddyRoutes(workBuddyConfigPath)
+    getAgentRouter().listAppliedWorkBuddyRoutes(workBuddyConfigPath)
   )
   ipcMain.handle(IpcChannel.AgentRouter_PreviewWorkBuddyRoutes, (_, request) =>
-    agentRouter.previewWorkBuddyRoutes(workBuddyConfigPath, request)
+    getAgentRouter().previewWorkBuddyRoutes(workBuddyConfigPath, request)
   )
-  ipcMain.handle(IpcChannel.AgentRouter_Apply, (_, request) => agentRouter.apply(request))
-  ipcMain.handle(IpcChannel.AgentRouter_ListBackups, () => agentRouter.listBackups(workBuddyConfigPath))
+  ipcMain.handle(IpcChannel.AgentRouter_Apply, (_, request) => getAgentRouter().apply(request))
+  ipcMain.handle(IpcChannel.AgentRouter_ListBackups, () => getAgentRouter().listBackups(workBuddyConfigPath))
   ipcMain.handle(
     IpcChannel.AgentRouter_Rollback,
     (_, targetId: AgentRouterTargetId, backupId: string, expectedRevision: string) =>
       targetId === 'workbuddy'
-        ? agentRouter.rollback(workBuddyConfigPath, backupId, expectedRevision)
+        ? getAgentRouter().rollback(workBuddyConfigPath, backupId, expectedRevision)
         : Promise.reject(Object.assign(new Error('Target is not available'), { code: 'TARGET_NOT_FOUND' }))
   )
   const appUpdater = new AppUpdater()
@@ -466,7 +479,7 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
 
   // clear cache
   ipcMain.handle(IpcChannel.App_ClearCache, async () => {
-    const sessions = [session.defaultSession, session.fromPartition('persist:webview')]
+    const sessions = [session.defaultSession, session.fromPartition(getProfilePartition('webview'))]
 
     try {
       await Promise.all(
@@ -717,6 +730,7 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   // backup
   ipcMain.handle(IpcChannel.Backup_Backup, backupManager.backup.bind(backupManager))
   ipcMain.handle(IpcChannel.Backup_Restore, backupManager.restore.bind(backupManager))
+  ipcMain.handle(IpcChannel.Backup_CancelRestore, backupManager.cancelRestore.bind(backupManager))
   ipcMain.handle(IpcChannel.Backup_BackupToWebdav, backupManager.backupToWebdav.bind(backupManager))
   ipcMain.handle(IpcChannel.Backup_RestoreFromWebdav, backupManager.restoreFromWebdav.bind(backupManager))
   ipcMain.handle(IpcChannel.Backup_ListWebdavFiles, backupManager.listWebdavFiles.bind(backupManager))

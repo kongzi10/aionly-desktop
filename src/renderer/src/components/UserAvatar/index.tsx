@@ -1,10 +1,11 @@
+import { loggerService } from '@logger'
 import defaultAvatar from '@renderer/assets/images/avatar-default.png'
-import { PERSIST_KEY } from '@renderer/config/env'
 import { SHOW_IN_USER_MENUS } from '@renderer/config/sidebar'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { modelGenerating, useRuntime } from '@renderer/hooks/useRuntime'
 import { getSidebarIconLabel } from '@renderer/i18n/label'
+import { applyProfileSwitch } from '@renderer/services/ProfileLifecycleService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { clearToken, selectUserInfo } from '@renderer/store/user'
 import { Avatar, Popover } from 'antd'
@@ -16,6 +17,8 @@ import styled from 'styled-components'
 interface Props {
   children?: React.ReactNode
 }
+
+const logger = loggerService.withContext('UserAvatar')
 
 const Container = styled.div`
   display: flex;
@@ -108,13 +111,17 @@ const UserAvatar: React.FC<Props> = () => {
       content: t(content),
       okText: t(okText),
       cancelText: t(cancelText),
-      onOk: () => {
-        localStorage.removeItem('token')
-        localStorage.removeItem('userInfo')
-        localStorage.removeItem(`persist:${PERSIST_KEY}`)
-        closeAllMinapps()
-        dispatch(clearToken())
-        navigate('/login')
+      onOk: async () => {
+        try {
+          await window.api.profile.deactivate()
+          closeAllMinapps()
+          dispatch(clearToken())
+          await applyProfileSwitch({ profileId: null, bootstrap: null })
+        } catch (error) {
+          logger.error('Failed to deactivate profile', error as Error)
+          window.toast.error(t('common.error'))
+          throw error
+        }
       }
     })
   }

@@ -31,6 +31,7 @@ import {
 } from '@renderer/pages/paintings/config/NewApiConfig'
 import AiOnlyAddModelPopup from '@renderer/pages/settings/ProviderSettings/AiOnlyModel/add/AddModelPopup'
 import FileManager from '@renderer/services/FileManager'
+import { authStorage } from '@renderer/services/ProfileStorageService'
 import { translateText } from '@renderer/services/TranslateService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
@@ -363,7 +364,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
 
     let body: string | FormData = ''
     // 针对tokenPlan兼容一下
-    const apikey = !userTokenPlan ? AI.getApiKey() : localStorage.getItem(LOCAL_USER_SECRET_KEY) || AI.getApiKey()
+    const apikey = !userTokenPlan ? AI.getApiKey() : authStorage.getItem(LOCAL_USER_SECRET_KEY) || AI.getApiKey()
     const headers: Record<string, string> = {
       Authorization: `Bearer ${apikey}`
     }

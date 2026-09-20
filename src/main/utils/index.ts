@@ -4,6 +4,8 @@ import path from 'node:path'
 
 import { app } from 'electron'
 
+import { getUserProfileService } from '../services/UserProfileService'
+
 export function getResourcePath() {
   return path.join(app.getAppPath(), 'resources')
 }
@@ -32,7 +34,7 @@ export function toAsarUnpackedPath(filePath: string): string {
 }
 
 export function getDataPath(subPath?: string) {
-  const dataPath = path.join(app.getPath('userData'), 'Data')
+  const dataPath = getUserProfileService().getDataRoot()
 
   if (!fs.existsSync(dataPath)) {
     fs.mkdirSync(dataPath, { recursive: true })

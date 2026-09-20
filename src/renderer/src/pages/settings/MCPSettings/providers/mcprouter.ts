@@ -1,5 +1,6 @@
 import { loggerService } from '@logger'
 import { nanoid } from '@reduxjs/toolkit'
+import { profileStorage } from '@renderer/services/ProfileStorageService'
 import type { MCPServer } from '@renderer/types'
 import i18next from 'i18next'
 
@@ -10,15 +11,15 @@ const TOKEN_STORAGE_KEY = 'mcprouter_token'
 export const MCPROUTER_HOST = 'https://mcprouter.co'
 
 export const saveMCPRouterToken = (token: string): void => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, token)
+  profileStorage.setItem(TOKEN_STORAGE_KEY, token)
 }
 
 export const getMCPRouterToken = (): string | null => {
-  return localStorage.getItem(TOKEN_STORAGE_KEY)
+  return profileStorage.getItem(TOKEN_STORAGE_KEY)
 }
 
 export const clearMCPRouterToken = (): void => {
-  localStorage.removeItem(TOKEN_STORAGE_KEY)
+  profileStorage.removeItem(TOKEN_STORAGE_KEY)
 }
 
 export const hasMCPRouterToken = (): boolean => {

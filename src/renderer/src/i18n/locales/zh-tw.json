@@ -4509,6 +4509,18 @@
         "url": "Joplin 剪輯服務 URL",
         "url_placeholder": "http://127.0.0.1:41184/"
       },
+      "legacy_data": {
+        "cleanup": "清除舊版資料",
+        "cleanup_confirm": "舊版資料將被永久刪除且無法復原，是否繼續？",
+        "cleanup_failed": "清除舊版資料失敗",
+        "cleanup_success": "舊版資料已清除",
+        "cleanup_title": "清除舊版資料",
+        "recover": "恢復舊版資料",
+        "recover_confirm": "舊版資料將覆蓋目前帳號的資料，目前帳號中舊版沒有的資料會被刪除。是否繼續？",
+        "recover_failed": "恢復舊版資料失敗",
+        "recover_success": "舊版資料恢復完成",
+        "recover_title": "恢復舊版資料"
+      },
       "limit": {
         "appDataDiskQuota": "磁碟空間警告",
         "appDataDiskQuotaDescription": "資料目錄空間即將用盡，請清理磁碟空間，否則可能導致資料遺失"

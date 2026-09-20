@@ -4,9 +4,11 @@ import { getApikeyByUserId, getUserProfileApi, loginApi } from '@renderer/api/lo
 import { queryPhoneByName } from '@renderer/api/user'
 import Verify from '@renderer/components/verifition/Verify'
 import { useFetchAndSetupModels } from '@renderer/hooks/useAiOnlyModels'
-import { useProvider } from '@renderer/hooks/useProvider'
 import i18n from '@renderer/i18n'
-import { useAppDispatch } from '@renderer/store'
+import { applyProfileSwitch } from '@renderer/services/ProfileLifecycleService'
+import { profileStorage } from '@renderer/services/ProfileStorageService'
+import { store } from '@renderer/store'
+import { updateProvider as updateProviderAction } from '@renderer/store/llm'
 import { setApiKey, setUserInfo } from '@renderer/store/user'
 import { ENABLED_PLAN_STORAGE_KEY, LOCAL_USER_SECRET_KEY } from '@shared/config/constant'
 import { Button, Flex, Form, type FormProps, Input } from 'antd'
@@ -86,6 +88,7 @@ const LoginButton = styled(Button)`
 const logger = loggerService.withContext('SubAccountLogin')
 
 export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
+  void props
   // 手机号正则
   const phoneRegexp =
     /^(((13[0-9]{1})|(15[0-9]{1})|(16[0-9]{1})|(17[3-8]{1})|(18[0-9]{1})|(19[0-9]{1})|(14[5-7]{1}))+\d{8})$/
@@ -98,8 +101,6 @@ export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
   // 密码正则
   // const passwordPattern = /^(?![\d]+$)(?![a-zA-Z]+$)(?![^\da-zA-Z]+$)([^\u4e00-\u9fa5\s]){6,20}$/
 
-  const { updateProvider } = useProvider('aionly')
-  const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const setupModels = useFetchAndSetupModels()
 
@@ -172,15 +173,12 @@ export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
   const saveUserInfo = useCallback(async () => {
     const res = await getUserProfileApi()
     const user_data = res.data?.user
-    dispatch(setUserInfo(user_data))
     // const balance = await getFinanceInfo()
     // dispatch(setMyBalance(balance.data))
 
     // TODO：无论用户有没有启用tokenPlan, 先使用用户id获取用户的apikey存到本地
     const api_key_res = await getApikeyByUserId({ userId: user_data?.userId || '' })
     const secretKey = api_key_res?.msg ?? ''
-    dispatch(setApiKey(secretKey))
-    localStorage.setItem(LOCAL_USER_SECRET_KEY, secretKey)
 
     // TODO：用户启用了tokenPlan, 则需要将预存的apikey换成tokenPlan的apikey
     const key = `${ENABLED_PLAN_STORAGE_KEY}_${user_data?.userId || ''}`
@@ -189,25 +187,36 @@ export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
       const userTokenPlan = JSON.parse(user_token_plan)
       const apiKey = userTokenPlan.apikey
       if (!!apiKey) {
-        updateProvider({
-          apiKey
-        })
+        return { userData: user_data, secretKey, providerApiKey: apiKey }
       }
     } else {
       // TODO：用户没有启用tokenPlan, 则使用用户id获取用户的apikey来预存
-      updateProvider({
-        apiKey: secretKey
-      })
+      return { userData: user_data, secretKey, providerApiKey: secretKey }
     }
-  }, [dispatch, updateProvider])
+    return { userData: user_data, secretKey, providerApiKey: undefined }
+  }, [])
 
   /** 登录成功 **/
   const handleLoginSuccess = async () => {
-    await saveUserInfo()
-    await setupModels(10) // 预存10个模型供页面优先展示
-    setScene(LoginSceneType.MainAccount)
-    props.onComplete?.()
-    navigate('/')
+    const { userData, secretKey, providerApiKey } = await saveUserInfo()
+    const userId = userData?.userId
+    if (userId === undefined || userId === null || !String(userId).trim()) {
+      throw new Error('登录响应缺少用户 ID，无法创建用户数据目录')
+    }
+    const bootstrap = {
+      token: localStorage.getItem('token') || undefined,
+      userInfo: JSON.stringify(userData || {}),
+      serviceInfo: localStorage.getItem('serviceInfo') || undefined,
+      localUserSecret: secretKey || undefined
+    }
+    const result = await window.api.profile.activate(String(userId), bootstrap)
+    await applyProfileSwitch({ profileId: result.profileId, bootstrap }, async () => {
+      store.dispatch(setUserInfo(userData || {}))
+      store.dispatch(setApiKey(secretKey))
+      profileStorage.setItem(LOCAL_USER_SECRET_KEY, secretKey)
+      if (providerApiKey) store.dispatch(updateProviderAction({ id: 'aionly', apiKey: providerApiKey }))
+      await setupModels(10, String(userId))
+    })
   }
 
   /** 接口校验 **/

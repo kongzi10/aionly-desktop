@@ -17,6 +17,7 @@ import process from 'node:process'
 
 import { registerIpc } from './ipc'
 import { agentService } from './services/agents'
+import { DatabaseManager } from './services/agents/database/DatabaseManager'
 import { schedulerService } from './services/agents/services/SchedulerService'
 import { bootstrapBuiltinAgents } from './services/agents/services/builtin/BuiltinAgentBootstrap'
 import { channelManager } from './services/agents/services/channels'
@@ -28,7 +29,11 @@ import { configManager } from './services/ConfigManager'
 import { lanTransferClientService } from './services/lanTransfer'
 import mcpService from './services/MCPService'
 import { localTransferService } from './services/LocalTransferService'
+import knowledgeService from './services/KnowledgeService'
+import MemoryService from './services/memory/MemoryService'
 import { openClawService } from './services/OpenClawService'
+import { registerProfileIpc, setProfileMainWebContentsIdResolver } from './services/ProfileIpcService'
+import { createProfileRuntime } from './services/ProfileRuntime'
 import { nodeTraceService } from './services/NodeTraceService'
 import powerMonitorService from './services/PowerMonitorService'
 import { handleProtocolUrl, registerProtocolClient, setupAppImageDeepLink } from './services/ProtocolClient'
@@ -37,12 +42,45 @@ import { registerShortcuts } from './services/ShortcutService'
 import { TrayService } from './services/TrayService'
 import { versionService } from './services/VersionService'
 import { windowService } from './services/WindowService'
+import { getUserProfileService } from './services/UserProfileService'
 import { initWebviewHotkeys } from './services/WebviewService'
 import { runAsyncFunction } from './utils'
 import { isOvmsSupported } from './services/OvmsManager'
 import { extractRtkBinaries } from './utils/rtk'
 
 const logger = loggerService.withContext('MainEntry')
+
+const profileRuntime = createProfileRuntime({
+  bootstrapAgents: bootstrapBuiltinAgents,
+  startApiServer: async () => {
+    const config = await apiServerService.getCurrentConfig()
+    logger.info('API server config:', config)
+
+    let shouldStart = config.enabled
+    if (!shouldStart) {
+      try {
+        const { total } = await agentService.listAgents({ limit: 1 })
+        shouldStart = total > 0
+        if (shouldStart) logger.info(`Detected ${total} agent(s), auto-starting API server`)
+      } catch (error) {
+        logger.warn('Failed to check agent count', error as Error)
+      }
+    }
+
+    if (shouldStart) await apiServerService.start()
+  },
+  restoreSchedulers: () => schedulerService.restoreSchedulers(),
+  startChannels: () => channelManager.start(),
+  stopSchedulers: () => schedulerService.stopAll(),
+  stopChannels: () => channelManager.stop(),
+  stopApiServer: async () => {
+    if (apiServerService.isRunning()) await apiServerService.stop()
+  },
+  cleanupMcp: () => mcpService.cleanup(),
+  closeKnowledge: () => knowledgeService.closeAll(),
+  closeMemory: () => MemoryService.getInstance().close(),
+  closeDatabase: () => DatabaseManager.close()
+})
 
 // enable local crash reports
 crashReporter.start({
@@ -153,6 +191,8 @@ if (!app.requestSingleInstanceLock()) {
   // Some APIs can only be used after this event occurs.
 
   void app.whenReady().then(async () => {
+    setProfileMainWebContentsIdResolver(() => windowService.getMainWindow()?.webContents.id)
+    registerProfileIpc(profileRuntime)
     // Record current version for tracking
     // A preparation for v2 data refactoring
     versionService.recordCurrentVersion()
@@ -201,6 +241,7 @@ if (!app.requestSingleInstanceLock()) {
     registerShortcuts(mainWindow)
 
     await registerIpc(mainWindow, app)
+    registerSessionStreamIpc()
     localTransferService.startDiscovery({ resetList: true })
 
     replaceDevtoolsFont(mainWindow)
@@ -218,43 +259,15 @@ if (!app.requestSingleInstanceLock()) {
     initSelectionService()
 
     void runAsyncFunction(async () => {
-      // Initialize built-in skills and agents (sequential to avoid SQLITE_BUSY)
-      // TODO: v2 lifecycle
-      await bootstrapBuiltinAgents()
+      if (!getUserProfileService().getActiveProfile()) {
+        logger.info('Skipping account services until a user profile is activated')
+        return
+      }
 
-      // Start API server if enabled or if agents exist
       try {
-        const config = await apiServerService.getCurrentConfig()
-        logger.info('API server config:', config)
-
-        // Check if there are any agents
-        let shouldStart = config.enabled
-        if (!shouldStart) {
-          try {
-            const { total } = await agentService.listAgents({ limit: 1 })
-            if (total > 0) {
-              shouldStart = true
-              logger.info(`Detected ${total} agent(s), auto-starting API server`)
-            }
-          } catch (error: any) {
-            logger.warn('Failed to check agent count:', error)
-          }
-        }
-
-        if (shouldStart) {
-          await apiServerService.start()
-        }
-
-        // Restore AionlyClaw schedulers after services are ready
-        await schedulerService.restoreSchedulers()
-
-        // Register IPC handlers for session stream before starting channels
-        registerSessionStreamIpc()
-
-        // Start AionlyClaw channel adapters (Telegram, etc.)
-        await channelManager.start()
-      } catch (error: any) {
-        logger.error('Failed to check/start API server:', error)
+        await profileRuntime.start()
+      } catch (error) {
+        logger.error('Failed to start profile runtime services', error as Error)
       }
     })
   })
@@ -313,12 +326,10 @@ if (!app.requestSingleInstanceLock()) {
     }
 
     try {
-      schedulerService.stopAll()
-      await channelManager.stop()
+      await profileRuntime.stop()
       await analyticsService.destroy()
       await openClawService.stopGateway()
       await mcpService.cleanup()
-      await apiServerService.stop()
     } catch (error) {
       logger.warn('Error cleaning up services:', error as Error)
     }

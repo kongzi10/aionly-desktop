@@ -96,8 +96,15 @@ const loaderTaskIntoOfSet = (loaderTask: LoaderTask): LoaderTaskOfSet => {
 }
 
 class KnowledgeService {
-  private storageDir = path.join(getDataPath(), 'KnowledgeBase')
-  private pendingDeleteFile = path.join(this.storageDir, 'knowledge_pending_delete.json')
+  private get storageDir(): string {
+    const directory = path.join(getDataPath(), 'KnowledgeBase')
+    fs.mkdirSync(directory, { recursive: true })
+    return directory
+  }
+
+  private get pendingDeleteFile(): string {
+    return path.join(this.storageDir, 'knowledge_pending_delete.json')
+  }
   // Byte based
   private workload = 0
   private processingItemCount = 0

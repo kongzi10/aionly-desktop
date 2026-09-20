@@ -1,4 +1,5 @@
 import { LoadingOutlined, WifiOutlined } from '@ant-design/icons'
+import { loggerService } from '@logger'
 import { HStack } from '@renderer/components/Layout'
 import BackupPopup from '@renderer/components/Popups/BackupPopup'
 import LanTransferPopup from '@renderer/components/Popups/LanTransferPopup'
@@ -7,6 +8,8 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import { useKnowledgeFiles } from '@renderer/hooks/useKnowledgeFiles'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { reset } from '@renderer/services/BackupService'
+import { cleanupLegacyData, getLegacyDataStatus, recoverLegacyData } from '@renderer/services/LegacyDataCoordinator'
+import { getActiveProfileId } from '@renderer/services/ProfileStorageService'
 import store, { useAppDispatch } from '@renderer/store'
 import { setSkipBackupFile as _setSkipBackupFile } from '@renderer/store/settings'
 import type { AppInfo } from '@renderer/types'
@@ -21,10 +24,23 @@ import styled from 'styled-components'
 
 import { SettingDivider, SettingGroup, SettingHelpText, SettingRow, SettingRowTitle, SettingTitle } from '..'
 
+const logger = loggerService.withContext('BasicDataSettings')
+
+export async function executeLegacyDataAction(action: () => Promise<unknown>, refresh: () => Promise<unknown>) {
+  await action()
+  try {
+    await refresh()
+  } catch (error) {
+    logger.error('Legacy data action succeeded but status refresh failed', error as Error)
+  }
+}
+
 const BasicDataSettings: React.FC = () => {
   const { t } = useTranslation()
   const [appInfo, setAppInfo] = useState<AppInfo>()
   const [cacheSize, setCacheSize] = useState<string>('')
+  const [legacyStatus, setLegacyStatus] = useState<Awaited<ReturnType<typeof getLegacyDataStatus>>>()
+  const [legacyAction, setLegacyAction] = useState<'recover' | 'cleanup' | null>(null)
   const { size, removeAllFiles } = useKnowledgeFiles()
   const { theme } = useTheme()
   const { setTimeoutTimer } = useTimer()
@@ -37,7 +53,55 @@ const BasicDataSettings: React.FC = () => {
   useEffect(() => {
     void window.api.getAppInfo().then(setAppInfo)
     void window.api.getCacheSize().then(setCacheSize)
+    void getLegacyDataStatus()
+      .then(setLegacyStatus)
+      .catch((error) => logger.error('Failed to load legacy data status', error as Error))
   }, [])
+
+  const refreshLegacyStatus = async () => setLegacyStatus(await getLegacyDataStatus())
+
+  const handleRecoverLegacyData = () => {
+    window.modal.confirm({
+      title: t('settings.data.legacy_data.recover_title'),
+      content: t('settings.data.legacy_data.recover_confirm'),
+      okText: t('settings.data.legacy_data.recover'),
+      cancelText: t('common.cancel'),
+      centered: true,
+      onOk: async () => {
+        setLegacyAction('recover')
+        try {
+          await executeLegacyDataAction(recoverLegacyData, refreshLegacyStatus)
+          window.toast.success(t('settings.data.legacy_data.recover_success'))
+        } catch (error) {
+          window.toast.error(`${t('settings.data.legacy_data.recover_failed')}: ${String(error)}`)
+        } finally {
+          setLegacyAction(null)
+        }
+      }
+    })
+  }
+
+  const handleCleanupLegacyData = () => {
+    window.modal.confirm({
+      title: t('settings.data.legacy_data.cleanup_title'),
+      content: t('settings.data.legacy_data.cleanup_confirm'),
+      okText: t('settings.data.legacy_data.cleanup'),
+      cancelText: t('common.cancel'),
+      okButtonProps: { danger: true },
+      centered: true,
+      onOk: async () => {
+        setLegacyAction('cleanup')
+        try {
+          await executeLegacyDataAction(cleanupLegacyData, refreshLegacyStatus)
+          window.toast.success(t('settings.data.legacy_data.cleanup_success'))
+        } catch (error) {
+          window.toast.error(`${t('settings.data.legacy_data.cleanup_failed')}: ${String(error)}`)
+        } finally {
+          setLegacyAction(null)
+        }
+      }
+    })
+  }
 
   const handleSelectAppDataPath = async () => {
     if (!appInfo || !appInfo.appDataPath) {
@@ -458,7 +522,33 @@ const BasicDataSettings: React.FC = () => {
   return (
     <>
       <SettingGroup theme={theme}>
-        <SettingTitle>{t('settings.data.title')}</SettingTitle>
+        <SettingTitle>
+          <span>{t('settings.data.title')}</span>
+          <HStack gap="5px">
+            <Button
+              size="small"
+              loading={legacyAction === 'recover'}
+              disabled={
+                !getActiveProfileId() ||
+                legacyAction !== null ||
+                !legacyStatus ||
+                (!legacyStatus.hasLegacyNativeData &&
+                  !legacyStatus.hasLegacyReduxData &&
+                  !legacyStatus.hasLegacyIndexedDb)
+              }
+              onClick={handleRecoverLegacyData}>
+              {t('settings.data.legacy_data.recover')}
+            </Button>
+            <Button
+              size="small"
+              danger
+              loading={legacyAction === 'cleanup'}
+              disabled={!getActiveProfileId() || legacyAction !== null || !legacyStatus?.cleanupAllowed}
+              onClick={handleCleanupLegacyData}>
+              {t('settings.data.legacy_data.cleanup')}
+            </Button>
+          </HStack>
+        </SettingTitle>
         <SettingDivider />
         <SettingRow>
           <SettingRowTitle>{t('settings.general.backup.title')}</SettingRowTitle>

@@ -4,6 +4,7 @@ import { app, session } from 'electron'
 import { getSystemProxy } from 'os-proxy-config'
 
 import { NodeProxyController } from './proxy/nodeProxy'
+import { getProfilePartition } from './UserProfileService'
 
 const logger = loggerService.withContext('ProxyManager')
 
@@ -82,7 +83,7 @@ export class ProxyManager {
   }
 
   private async setSessionsProxy(config: ProxyConfig): Promise<void> {
-    const sessions = [session.defaultSession, session.fromPartition('persist:webview')]
+    const sessions = [session.defaultSession, session.fromPartition(getProfilePartition('webview'))]
     await Promise.all(sessions.map((session) => session.setProxy(config)))
 
     void app.setProxy(config)

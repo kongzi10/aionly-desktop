@@ -1,12 +1,14 @@
 import { loggerService } from '@logger'
-import { PERSIST_KEY } from '@renderer/config/env'
 import db from '@renderer/databases'
-import { upgradeToV7, upgradeToV8 } from '@renderer/databases/upgrades'
 import i18n from '@renderer/i18n'
+import { createProfileBackupPayload } from '@renderer/services/ProfileBackupExportService'
+import { validateProfileBackup } from '@renderer/services/ProfileBackupRestoreService'
+import { getActiveProfileId, getReduxPersistKey } from '@renderer/services/ProfileStorageService'
 import store from '@renderer/store'
 import { setLocalBackupSyncState, setS3SyncState, setWebDAVSyncState } from '@renderer/store/backup'
 import type { S3Config, WebDavConfig } from '@renderer/types'
 import { uuid } from '@renderer/utils'
+import { PROFILE_BACKUP_VERSION } from '@shared/profileBackup'
 import dayjs from 'dayjs'
 
 import { NotificationService } from './NotificationService'
@@ -68,7 +70,7 @@ export async function backup(skipBackupFile: boolean) {
   const selectFolder = await window.api.file.selectFolder()
   if (selectFolder) {
     // Use direct backup method - copy IndexedDB/LocalStorage directories directly
-    await window.api.backup.backup(filename, selectFolder, skipBackupFile)
+    await window.api.backup.backup(filename, selectFolder, skipBackupFile, await getBackupData())
     window.toast.success(i18n.t('message.backup.success'))
   }
 }
@@ -223,15 +225,18 @@ export async function backupToWebdav({
 
   // 上传文件 - Use direct backup method (copy IndexedDB/LocalStorage directories)
   try {
-    const success = await window.api.backup.backupToWebdav({
-      webdavHost,
-      webdavUser,
-      webdavPass,
-      webdavPath,
-      fileName: finalFileName,
-      skipBackupFile: webdavSkipBackupFile,
-      disableStream: webdavDisableStream
-    })
+    const success = await window.api.backup.backupToWebdav(
+      {
+        webdavHost,
+        webdavUser,
+        webdavPass,
+        webdavPath,
+        fileName: finalFileName,
+        skipBackupFile: webdavSkipBackupFile,
+        disableStream: webdavDisableStream
+      },
+      await getBackupData()
+    )
     if (success) {
       store.dispatch(
         setWebDAVSyncState({
@@ -404,10 +409,13 @@ export async function backupToS3({
 
   try {
     // Use direct backup method (copy IndexedDB/LocalStorage directories)
-    const success = await window.api.backup.backupToS3({
-      ...s3Config,
-      fileName: finalFileName
-    })
+    const success = await window.api.backup.backupToS3(
+      {
+        ...s3Config,
+        fileName: finalFileName
+      },
+      await getBackupData()
+    )
 
     if (success) {
       store.dispatch(
@@ -885,16 +893,34 @@ export function stopAutoSync(type?: BackupType) {
 }
 
 export async function getBackupData() {
-  return JSON.stringify({
-    time: new Date().getTime(),
-    version: 5,
-    localStorage,
-    indexedDB: await backupDatabase()
+  const profileId = getActiveProfileId()
+  if (!profileId) throw new Error('Profile is not active')
+  const entries = new Map<string, string>()
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index)
+    if (key) entries.set(key, localStorage.getItem(key) ?? '')
+  }
+  const payload = await createProfileBackupPayload({
+    profileId,
+    storage: entries,
+    exportIndexedDb: async () => (await backupDatabase()) as Record<string, unknown>
   })
+  return JSON.stringify({ ...payload, version: PROFILE_BACKUP_VERSION, time: payload.metadata.timestamp })
 }
 
 /************************************* Backup Utils ************************************** */
 export async function handleData(data: Record<string, any>) {
+  const activeProfileId = getActiveProfileId()
+  if (!activeProfileId) throw new Error('Profile is not active')
+  try {
+    validateProfileBackup(data, activeProfileId)
+  } catch (error) {
+    await window.api.backup.cancelRestore()
+    throw error
+  }
+  const targetPersistKey = `persist:${getReduxPersistKey()}`
+  const restoredPersistedState = data.localStorage[targetPersistKey]
+
   if (data.version === 1) {
     await clearDatabase()
 
@@ -907,33 +933,32 @@ export async function handleData(data: Record<string, any>) {
       }
     }
 
-    localStorage.setItem(`persist:${PERSIST_KEY}`, data.localStorage[`persist:${PERSIST_KEY}`])
+    if (restoredPersistedState) localStorage.setItem(targetPersistKey, restoredPersistedState)
     window.toast.success(i18n.t('message.restore.success'))
     setTimeout(() => window.api.relaunchApp(), 1000)
     return
   }
 
-  if (data.version >= 2) {
-    localStorage.setItem(`persist:${PERSIST_KEY}`, data.localStorage[`persist:${PERSIST_KEY}`])
+  if (data.version === 7) {
+    const incomingStorage = data.localStorage as Record<string, string>
+    const previousStorage = new Map<string, string | null>(
+      Object.keys(incomingStorage).map((key) => [key, localStorage.getItem(key)])
+    )
+    const previousDatabase = await backupDatabase()
+    try {
+      for (const [key, value] of Object.entries(incomingStorage)) localStorage.setItem(key, value)
+      if (restoredPersistedState) localStorage.setItem(targetPersistKey, restoredPersistedState)
 
-    // remove notes_tree from indexedDB
-    if (data.indexedDB['notes_tree']) {
-      delete data.indexedDB['notes_tree']
-    }
-
-    await restoreDatabase(data.indexedDB)
-
-    if (data.version === 3) {
-      await db.transaction('rw', db.tables, async (tx) => {
-        await db.table('message_blocks').clear()
-        await upgradeToV7(tx)
-      })
-    }
-
-    if (data.version === 4) {
-      await db.transaction('rw', db.tables, async (tx) => {
-        await upgradeToV8(tx)
-      })
+      if (data.indexedDB['notes_tree']) delete data.indexedDB['notes_tree']
+      await restoreDatabase(data.indexedDB)
+    } catch (error) {
+      for (const [key, value] of previousStorage) {
+        if (value === null) localStorage.removeItem(key)
+        else localStorage.setItem(key, value)
+      }
+      await restoreDatabase(previousDatabase)
+      await window.api.backup.cancelRestore()
+      throw error
     }
 
     window.toast.success(i18n.t('message.restore.success'))
@@ -1020,10 +1045,14 @@ export async function backupToLocal({
 
   try {
     // Use direct backup method (copy IndexedDB/LocalStorage directories)
-    const result = await window.api.backup.backupToLocalDir(finalFileName, {
-      localBackupDir,
-      skipBackupFile: localBackupSkipBackupFile
-    })
+    const result = await window.api.backup.backupToLocalDir(
+      finalFileName,
+      {
+        localBackupDir,
+        skipBackupFile: localBackupSkipBackupFile
+      },
+      await getBackupData()
+    )
 
     if (result) {
       store.dispatch(

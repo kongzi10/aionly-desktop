@@ -6,15 +6,19 @@ import { promises as fs } from 'fs'
 
 import { configManager } from './ConfigManager'
 import { isSafeExternalUrl } from './security'
+import { getProfilePartition } from './UserProfileService'
 
 const logger = loggerService.withContext('WebviewService')
+const initializedWebviewSessions = new WeakSet<Electron.Session>()
 
 /**
  * init the useragent of the webview session
  * remove the AiOnly and Electron from the useragent
  */
 export function initSessionUserAgent() {
-  const wvSession = session.fromPartition('persist:webview')
+  const wvSession = session.fromPartition(getProfilePartition('webview'))
+  if (initializedWebviewSessions.has(wvSession)) return
+  initializedWebviewSessions.add(wvSession)
   const originUA = wvSession.getUserAgent()
   const newUA = originUA.replace(/AiOnly\/\S+\s/, '').replace(/Electron\/\S+\s/, '')
 

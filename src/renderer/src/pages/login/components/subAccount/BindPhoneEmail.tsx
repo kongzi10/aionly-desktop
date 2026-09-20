@@ -2,7 +2,8 @@ import { getUserProfileApi } from '@renderer/api/login'
 import { TopView } from '@renderer/components/TopView'
 import Verify from '@renderer/components/verifition/Verify'
 import { SubAccountLoginProvider } from '@renderer/pages/login/contexts/SubAccountContext'
-import { useAppDispatch } from '@renderer/store'
+import { applyProfileSwitch } from '@renderer/services/ProfileLifecycleService'
+import { store } from '@renderer/store'
 import { setUserInfo } from '@renderer/store/user'
 import type { FormInstance, TabsProps } from 'antd'
 import { Button, Flex, Modal } from 'antd'
@@ -30,9 +31,8 @@ interface showParamsType {
 }
 
 const BindPhoneEmail: React.FC<Props> = ({ resolve, parentForm, navigate }) => {
+  void navigate
   const { t } = useTranslation()
-
-  const dispatch = useAppDispatch()
 
   const [open, setOpen] = useState(true)
   const verifyRef = useRef<any>(null)
@@ -45,15 +45,22 @@ const BindPhoneEmail: React.FC<Props> = ({ resolve, parentForm, navigate }) => {
   const saveUserInfo = useCallback(async () => {
     const res = await getUserProfileApi()
     const data = res.data?.user
-    dispatch(setUserInfo(data))
     // const balance = await getFinanceInfo()
     // dispatch(setMyBalance(balance.data))
-  }, [dispatch])
+    return data
+  }, [])
 
   /** 登录成功 **/
-  const handleLoginSuccess = () => {
-    saveUserInfo().then()
-    navigate?.('/')
+  const handleLoginSuccess = async () => {
+    const userData = await saveUserInfo()
+    const bootstrap = {
+      token: localStorage.getItem('token') || undefined,
+      userInfo: JSON.stringify(userData || {})
+    }
+    const result = await window.api.profile.activate(String(userData?.userId || ''), bootstrap)
+    await applyProfileSwitch({ profileId: result.profileId, bootstrap }, () => {
+      store.dispatch(setUserInfo(userData || {}))
+    })
   }
 
   const tabList: TabsProps['items'] = [

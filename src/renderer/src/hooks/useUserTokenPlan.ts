@@ -1,18 +1,22 @@
 import { loggerService } from '@logger'
 import { ENABLED_PLAN_STORAGE_KEY } from '@shared/config/constant'
 
+export function readUserEnabledPlan(userId: string, storage: Storage = localStorage) {
+  try {
+    const raw = storage.getItem(`${ENABLED_PLAN_STORAGE_KEY}_${userId}`)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 const useUserTokenPlan = (userId: string) => {
   const KEY = `${ENABLED_PLAN_STORAGE_KEY}_${userId}`
 
   const logger = loggerService.withContext('TokenPlanCache')
 
   const getUserEnabledPlan = () => {
-    try {
-      const raw = localStorage.getItem(KEY)
-      return raw ? JSON.parse(raw) : null
-    } catch {
-      return null
-    }
+    return readUserEnabledPlan(userId)
   }
 
   const setUserEnabledPlan = (plan: any) => {

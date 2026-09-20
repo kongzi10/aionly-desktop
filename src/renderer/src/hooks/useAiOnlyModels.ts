@@ -2,8 +2,8 @@ import { loggerService } from '@logger'
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
 import { pageListApi } from '@renderer/api/openManagement'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
-import useUserTokenPlan from '@renderer/hooks/useUserTokenPlan'
-import { useAppDispatch, useAppSelector } from '@renderer/store'
+import { readUserEnabledPlan } from '@renderer/hooks/useUserTokenPlan'
+import { store, useAppSelector } from '@renderer/store'
 import { selectUserInfo, setAiOnlyModels } from '@renderer/store/user'
 import { getDefaultEndpointTypeById } from '@renderer/tools'
 import type { ApiModel, Model, Provider } from '@renderer/types'
@@ -11,7 +11,7 @@ import { isModelPackageActive } from '@renderer/utils/model'
 import { isNewApiProvider } from '@renderer/utils/provider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { useDefaultModel } from './useAssistant'
+import { createCurrentStoreModelSetters } from './modelProfileInitialization'
 
 const logger = loggerService.withContext('useAiOnlyModels')
 
@@ -519,23 +519,20 @@ async function fetchAndSetupModels(options: FetchAndSetupModelsOptions): Promise
  * ```
  */
 export function useFetchAndSetupModels() {
-  const dispatch = useAppDispatch()
   const userInfo: any = useAppSelector(selectUserInfo)
-  const { getUserEnabledPlan } = useUserTokenPlan(userInfo?.userId)
-  const { setDefaultModel, setQuickModel, setTranslateModel } = useDefaultModel()
-
   return useCallback(
-    async (pageSize = 10) => {
+    async (pageSize = 10, explicitUserId: string | undefined = userInfo?.userId) => {
+      const { setDefaultModel, setQuickModel, setTranslateModel } = createCurrentStoreModelSetters(store.dispatch)
       await fetchAndSetupModels({
         pageSize,
-        dispatch,
-        getUserEnabledPlan,
+        dispatch: store.dispatch,
+        getUserEnabledPlan: () => (explicitUserId ? readUserEnabledPlan(explicitUserId) : null),
         setAiOnlyModelsAction: setAiOnlyModels,
         setDefaultModel,
         setQuickModel,
         setTranslateModel
       })
     },
-    [dispatch, setDefaultModel, setQuickModel, setTranslateModel]
+    [userInfo?.userId]
   )
 }

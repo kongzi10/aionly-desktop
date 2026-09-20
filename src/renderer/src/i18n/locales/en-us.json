@@ -4509,6 +4509,18 @@
         "url": "Joplin Web Clipper Service URL",
         "url_placeholder": "http://127.0.0.1:41184/"
       },
+      "legacy_data": {
+        "cleanup": "Clear legacy data",
+        "cleanup_confirm": "Legacy data will be permanently deleted and cannot be recovered. Continue?",
+        "cleanup_failed": "Failed to clear legacy data",
+        "cleanup_success": "Legacy data cleared",
+        "cleanup_title": "Clear legacy data",
+        "recover": "Recover legacy data",
+        "recover_confirm": "Legacy data will replace the current account data. Current data not present in the legacy snapshot will be deleted. Continue?",
+        "recover_failed": "Failed to recover legacy data",
+        "recover_success": "Legacy data recovered",
+        "recover_title": "Recover legacy data"
+      },
       "limit": {
         "appDataDiskQuota": "Disk Space Warning",
         "appDataDiskQuotaDescription": "Data directory space is almost full, please clear disk space, otherwise data will be lost"

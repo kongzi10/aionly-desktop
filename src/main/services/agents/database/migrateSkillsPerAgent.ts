@@ -14,8 +14,8 @@ import * as path from 'node:path'
 import { loggerService } from '@logger'
 import { eq } from 'drizzle-orm'
 import type { LibSQLDatabase } from 'drizzle-orm/libsql'
-import { app } from 'electron'
 
+import { getUserProfileService } from '../../UserProfileService'
 import type * as schema from './schema'
 import { agentSkillsTable, agentsTable, skillsTable } from './schema'
 
@@ -139,5 +139,5 @@ function parseFirstAccessiblePath(serialized: string | null | undefined): string
  * Mirrors `getDataPath('Skills')` — `userData/Data/Skills`.
  */
 function getSkillsStorageRoot(): string {
-  return path.join(app.getPath('userData'), 'Data', 'Skills')
+  return path.join(getUserProfileService().getDataRoot(), 'Skills')
 }

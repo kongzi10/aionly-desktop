@@ -1,5 +1,6 @@
 import { titleBarOverlayDark, titleBarOverlayLight } from '@main/config'
 import { isMac } from '@main/constant'
+import { getProfilePartition, getUserProfileService } from '@main/services/UserProfileService'
 import { randomUUID } from 'crypto'
 import { app, BrowserView, BrowserWindow, nativeTheme } from 'electron'
 import TurndownService from 'turndown'
@@ -39,11 +40,13 @@ export class CdpBrowserController {
   }
 
   private getWindowKey(privateMode: boolean): string {
-    return privateMode ? SESSION_KEY_PRIVATE : SESSION_KEY_DEFAULT
+    return this.getPartition(privateMode)
   }
 
   private getPartition(privateMode: boolean): string {
-    return privateMode ? SESSION_KEY_PRIVATE : `persist:${SESSION_KEY_DEFAULT}`
+    if (!privateMode) return getProfilePartition(SESSION_KEY_DEFAULT)
+    const profileId = getUserProfileService().getActiveProfile()?.id ?? 'login'
+    return `${SESSION_KEY_PRIVATE}-${profileId}`
   }
 
   private async ensureAppReady() {

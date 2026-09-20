@@ -21,6 +21,7 @@ import AnthropicSettings from '@renderer/pages/settings/ProviderSettings/Anthrop
 import { ModelList } from '@renderer/pages/settings/ProviderSettings/ModelList'
 import { checkApi } from '@renderer/services/ApiService'
 import { loggerService } from '@renderer/services/LoggerService'
+import { authStorage } from '@renderer/services/ProfileStorageService'
 import { isProviderSupportAuth } from '@renderer/services/ProviderService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { selectServiceInfo, selectUserInfo } from '@renderer/store/user'
@@ -244,7 +245,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
     const user = user_res.data?.user
     const res = await getApikeyByUserId({ userId: user?.userId || '' })
     const secretKey = res.msg
-    localStorage.setItem(LOCAL_USER_SECRET_KEY, secretKey)
+    authStorage.setItem(LOCAL_USER_SECRET_KEY, secretKey)
     setLocalApiKey(secretKey)
     updateProvider({ apiKey: secretKey })
   }
@@ -620,7 +621,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
   // 停用 TokenPlan：清空启用套餐缓存并回退到用户基础 apiKey（与登录流程 saveUserInfo 的逻辑保持一致）
   const disableTokenPlan = () => {
     clearUserEnabledPlan()
-    const userSecretKey = localStorage.getItem(LOCAL_USER_SECRET_KEY) ?? ''
+    const userSecretKey = authStorage.getItem(LOCAL_USER_SECRET_KEY) ?? ''
     setLocalApiKey(userSecretKey)
     setActiveHostField('apiHost')
     setApiHost(provider.apiHost)

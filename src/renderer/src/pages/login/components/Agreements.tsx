@@ -56,7 +56,7 @@ export const Agreements = (props: AgreementsProps) => {
           src={url}
           style={WebviewStyle}
           allowpopups={'true' as any}
-          partition="persist:webview"
+          partition="persist:webview-login"
           nodeintegration={false}
           disablewebsecurity={true}
           useragent={undefined}

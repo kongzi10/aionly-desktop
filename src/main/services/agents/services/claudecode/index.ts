@@ -27,6 +27,7 @@ import SkillsServer from '@main/mcpServers/skills'
 import WorkspaceMemoryServer from '@main/mcpServers/workspaceMemory'
 import { configManager } from '@main/services/ConfigManager'
 import { getProxyEnvironment } from '@main/services/proxy/nodeProxy'
+import { getDataPath } from '@main/utils'
 import { resolveClaudeExecutablePath } from '@main/utils/bundledBinaries'
 import { autoDiscoverGitBash, getBinaryPath } from '@main/utils/process'
 import { rtkRewrite } from '@main/utils/rtk'
@@ -230,7 +231,7 @@ class ClaudeCodeService implements AgentServiceInterface {
       // This prevents the SDK from using the user's home directory which may have encoding problems.
       // Per-agent skills live in `<cwd>/.claude/skills/` and are picked up by the SDK's
       // project-level skill loading layer — no need to point CLAUDE_CONFIG_DIR at the workspace.
-      CLAUDE_CONFIG_DIR: path.join(app.getPath('userData'), '.claude'),
+      CLAUDE_CONFIG_DIR: getDataPath('ClaudeConfig'),
       ENABLE_TOOL_SEARCH: 'auto',
       AIONLY_BUN_PATH: bunPath,
       ...(customGitBashPath ? { CLAUDE_CODE_GIT_BASH_PATH: customGitBashPath } : {})

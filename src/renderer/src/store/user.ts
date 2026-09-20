@@ -3,6 +3,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 // import webLogo from "@/assets/images/login/webLogo.png";
 import { getIndentCountList } from '@renderer/api/order'
 import logo from '@renderer/assets/images/logo.png'
+import { authStorage } from '@renderer/services/ProfileStorageService'
 import type { Model } from '@renderer/types'
 
 interface UserInfo {
@@ -24,18 +25,30 @@ interface UserState {
   aiOnlyModels: Model[]
 }
 
-const initialState: UserState = {
-  token: localStorage.getItem('token') || '',
-  userInfo: {},
-  myBalance: '',
-  indentCount: {},
-  wdCount: '',
-  logoUrl: logo,
-  apiKey: '',
-  aiOnlyModels: [],
-  // webUrl: webLogo,
-  serviceInfo: {}
+function readStoredUserInfo(): UserInfo {
+  try {
+    return JSON.parse(authStorage.getItem('userInfo') || '{}') as UserInfo
+  } catch {
+    return {}
+  }
 }
+
+export function createInitialUserState(): UserState {
+  return {
+    token: authStorage.getItem('token') || '',
+    userInfo: readStoredUserInfo(),
+    myBalance: '',
+    indentCount: {},
+    wdCount: '',
+    logoUrl: logo,
+    apiKey: '',
+    aiOnlyModels: [],
+    // webUrl: webLogo,
+    serviceInfo: {}
+  }
+}
+
+const initialState = createInitialUserState()
 
 export const fetchIndentCountList = createAsyncThunk('user/fetchIndentCountList', async () => {
   const res = await getIndentCountList()
@@ -46,23 +59,27 @@ const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
+    reloadProfileUserState() {
+      return createInitialUserState()
+    },
     setToken(state, action: PayloadAction<string>) {
       state.token = action.payload
       if (action.payload) {
-        localStorage.setItem('token', action.payload)
+        authStorage.setItem('token', action.payload)
       } else {
-        localStorage.removeItem('token')
+        authStorage.removeItem('token')
       }
     },
     clearToken(state) {
       state.token = ''
-      localStorage.removeItem('token')
+      authStorage.removeItem('token')
     },
     setMyBalance(state, action: PayloadAction<string>) {
       state.myBalance = action.payload
     },
     setUserInfo(state, action: PayloadAction<UserInfo>) {
       state.userInfo = action.payload
+      authStorage.setItem('userInfo', JSON.stringify(action.payload))
     },
     setLogoUrl(state, action: PayloadAction<{ logoUrl: string; webUrl: string } | null>) {
       if (action.payload) {
@@ -79,7 +96,7 @@ const userSlice = createSlice({
     },
     setServiceInfo(state, action: PayloadAction<Record<string, unknown>>) {
       state.serviceInfo = action.payload
-      localStorage.setItem('serviceInfo', JSON.stringify(action.payload))
+      authStorage.setItem('serviceInfo', JSON.stringify(action.payload))
     },
     setApiKey(state, action: PayloadAction<string>) {
       state.apiKey = action.payload
@@ -96,6 +113,7 @@ const userSlice = createSlice({
 })
 
 export const {
+  reloadProfileUserState,
   setToken,
   clearToken,
   setMyBalance,
@@ -107,7 +125,7 @@ export const {
   setAiOnlyModels
 } = userSlice.actions
 
-export const selectToken = (state: { user: UserState }) => state.user.token || localStorage.getItem('token') || ''
+export const selectToken = (state: { user: UserState }) => state.user.token || authStorage.getItem('token') || ''
 export const selectUserInfo = (state: { user: UserState }) => state.user.userInfo
 export const selectMyBalance = (state: { user: UserState }) => state.user.myBalance
 export const selectServiceInfo = (state: { user: UserState }) => state.user.serviceInfo

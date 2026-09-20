@@ -20,7 +20,7 @@ export const handleCacheUpdatedModels = () => {
   const KEY = 'cacheUpdatedModels'
 
   const getUpdatedModels = () => {
-    const str = localStorage.getItem(KEY)
+    const str = profileStorage.getItem(KEY)
     return str ? JSON.parse(str) : []
   }
 
@@ -33,7 +33,7 @@ export const handleCacheUpdatedModels = () => {
       updatedModels[existIndex] = updatedModel
     }
     const value = JSON.stringify(updatedModels)
-    localStorage.setItem(KEY, value)
+    profileStorage.setItem(KEY, value)
   }
 
   return {
@@ -41,3 +41,4 @@ export const handleCacheUpdatedModels = () => {
     getUpdatedModels
   }
 }
+import { profileStorage } from '@renderer/services/ProfileStorageService'

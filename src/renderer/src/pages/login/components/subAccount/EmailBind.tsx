@@ -13,7 +13,7 @@ const logger = loggerService.withContext('EmailBind')
 
 interface Props {
   ref?: React.Ref<EmailBindRef>
-  onSuccess?: () => void
+  onSuccess?: () => void | Promise<void>
   onFormChange?: (valid: boolean) => void
   verifyRef?: React.RefObject<any | null>
 }
@@ -93,7 +93,7 @@ const EmailBind: React.FC<Props> = ({ ref, verifyRef, onSuccess, onFormChange })
     const { data } = await loginApi(loginParams)
     if (data && data.access_token) {
       localStorage.setItem('token', data.access_token)
-      onSuccess?.()
+      await onSuccess?.()
     }
   }
 

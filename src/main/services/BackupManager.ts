@@ -15,8 +15,8 @@
 import type { Stats } from 'node:fs'
 
 import { loggerService } from '@logger'
-import { APP_NAME } from '@shared/config/constant'
 import { IpcChannel } from '@shared/IpcChannel'
+import { PROFILE_BACKUP_SCOPE, PROFILE_BACKUP_VERSION } from '@shared/profileBackup'
 import type { WebDavConfig } from '@types'
 import type { S3Config } from '@types'
 import archiver from 'archiver'
@@ -29,7 +29,7 @@ import type { CreateDirectoryOptions, FileStat } from 'webdav'
 import { getDataPath } from '../utils'
 import { isPathInside, resolveAndValidatePath } from '../utils/file'
 import S3Storage from './S3Storage'
-import selectionService from './SelectionService'
+import { getUserProfileService } from './UserProfileService'
 import WebDav from './WebDav'
 import { windowService } from './WindowService'
 
@@ -81,77 +81,51 @@ class BackupManager {
    * Called after window is created but before renderer is loaded
    */
   static async handleStartupRestore(): Promise<void> {
-    const userDataPath = app.getPath('userData')
-
     // Define restore paths
-    const indexedDBRestore = path.join(userDataPath, 'IndexedDB.restore')
-    const localStorageRestore = path.join(userDataPath, 'Local Storage.restore')
     const dataRestore = getDataPath() + '.restore'
 
     // Define target paths
-    const indexedDBDest = path.join(userDataPath, 'IndexedDB')
-    const localStorageDest = path.join(userDataPath, 'Local Storage')
     const dataDest = getDataPath()
+    const dataRollback = `${dataDest}.rollback`
 
     try {
       // Check if any restore markers exist
-      const hasIndexedDBRestore = await fs.pathExists(indexedDBRestore)
-      const hasLocalStorageRestore = await fs.pathExists(localStorageRestore)
       const hasDataRestore = await fs.pathExists(dataRestore)
 
-      if (!hasIndexedDBRestore && !hasLocalStorageRestore && !hasDataRestore) {
+      if (!hasDataRestore) {
         return
-      }
-
-      // Restore IndexedDB
-      if (hasIndexedDBRestore) {
-        logger.info('[handleStartupRestore] Found IndexedDB.restore directories, completing restoration...')
-        await fs.remove(indexedDBDest).catch(() => {})
-        await fs.rename(indexedDBRestore, indexedDBDest)
-      }
-
-      // Restore Local Storage
-      if (hasLocalStorageRestore) {
-        logger.info('[handleStartupRestore] Found Local Storage.restore directories, completing restoration...')
-        await fs.remove(localStorageDest).catch(() => {})
-        await fs.rename(localStorageRestore, localStorageDest)
       }
 
       // Restore Data
       if (hasDataRestore) {
         logger.info('[handleStartupRestore] Found Local Data.restore directories, completing restoration...')
-        await fs.remove(dataDest).catch(() => {})
+        await fs.remove(dataRollback).catch(() => {})
+        if (await fs.pathExists(dataDest)) await fs.rename(dataDest, dataRollback)
         await fs.rename(dataRestore, dataDest)
+        await fs.remove(dataRollback).catch(() => {})
       }
 
       logger.info('[handleStartupRestore] Restoration completed successfully')
     } catch (error) {
       logger.error('[handleStartupRestore] Failed to complete restoration:', error as Error)
-      // Clean up restore markers to avoid endless retry loop
-      await fs.remove(indexedDBRestore).catch(() => {})
-      await fs.remove(localStorageRestore).catch(() => {})
-      await fs.remove(dataRestore).catch(() => {})
-    }
-  }
-
-  /**
-   * Backup metadata for direct backup format (version 6+)
-   */
-  private createDirectBackupMetadata(): {
-    version: number
-    timestamp: number
-    appName: string
-    appVersion: string
-    platform: string
-    arch: string
-  } {
-    return {
-      version: 6,
-      timestamp: Date.now(),
-      appName: APP_NAME,
-      appVersion: app.getVersion(),
-      platform: process.platform,
-      arch: process.arch
+      if (await fs.pathExists(dataRollback)) {
+        try {
+          await fs.remove(dataDest)
+          await fs.rename(dataRollback, dataDest)
+        } catch (rollbackError) {
+          logger.error(
+            '[handleStartupRestore] Failed to restore rollback data; recovery files were preserved:',
+            rollbackError as Error
+          )
+          return
+        }
+      }
+      if (await fs.pathExists(dataRestore)) {
+        const failedRestore = `${dataRestore}.failed-${Date.now()}`
+        await fs.rename(dataRestore, failedRestore).catch(async () => {
+          await fs.remove(dataRestore).catch(() => {})
+        })
+      }
     }
   }
 
@@ -168,99 +142,11 @@ class BackupManager {
     _: Electron.IpcMainInvokeEvent,
     fileName: string,
     destinationPath: string = this.backupDir,
-    skipBackupFile: boolean = false
+    skipBackupFile: boolean = false,
+    data?: string
   ): Promise<string> {
-    const onProgress = this.onProgress(IpcChannel.BackupProgress, true)
-
-    try {
-      await fs.ensureDir(this.tempDir)
-      onProgress({ stage: 'preparing', progress: 0, total: 100 })
-
-      const userDataPath = app.getPath('userData')
-      let currentProgress = 10
-
-      // Step 2: Copy IndexedDB and Local Storage directories
-      onProgress({ stage: 'copying_database', progress: 15, total: 100 })
-      logger.debug('[backupDirect] Copying database directories...')
-
-      const indexedDBSource = path.join(userDataPath, 'IndexedDB')
-      const indexedDBDest = path.join(this.tempDir, 'IndexedDB')
-      if (await fs.pathExists(indexedDBSource)) {
-        await fs.copy(indexedDBSource, indexedDBDest)
-      } else {
-        logger.debug('[backupDirect] IndexedDB directory not found, skipping')
-      }
-
-      const localStorageSource = path.join(userDataPath, 'Local Storage')
-      const localStorageDest = path.join(this.tempDir, 'Local Storage')
-      if (await fs.pathExists(localStorageSource)) {
-        await fs.copy(localStorageSource, localStorageDest)
-      } else {
-        logger.debug('[backupDirect] Local Storage directory not found, skipping')
-      }
-
-      currentProgress = 50
-      onProgress({ stage: 'copying_database', progress: currentProgress, total: 100 })
-
-      // Step 3: Write metadata.json
-      const metadata = this.createDirectBackupMetadata()
-      await fs.writeJson(path.join(this.tempDir, 'metadata.json'), metadata, { spaces: 2 })
-      onProgress({ stage: 'copying_database', progress: 52, total: 100 })
-
-      // Step 4: Copy Data directory (if not skipped)
-      if (!skipBackupFile) {
-        const sourcePath = path.join(userDataPath, 'Data')
-        const tempDataDir = path.join(this.tempDir, 'Data')
-
-        if (await fs.pathExists(sourcePath)) {
-          const totalSize = await this.getDirSize(sourcePath, { dereferenceSymlinks: true })
-
-          await this.copyDirWithProgress(
-            sourcePath,
-            tempDataDir,
-            this.createCopyProgressHandler(totalSize, 52, 80, 'copying_files', onProgress),
-            { dereferenceSymlinks: true }
-          )
-        }
-      } else {
-        logger.debug('[backupDirect] Skip the backup of the file')
-        await fs.promises.mkdir(path.join(this.tempDir, 'Data'))
-      }
-      onProgress({ stage: 'compressing', progress: 80, total: 100 })
-
-      // Step 5: Create ZIP archive
-      const backupedFilePath = path.join(destinationPath, fileName)
-      const output = fs.createWriteStream(backupedFilePath)
-      const archive = archiver('zip', {
-        zlib: { level: 1 }, // Use lowest compression level for speed (same as legacy backup)
-        zip64: true
-      })
-
-      await new Promise<void>((resolve, reject) => {
-        output.on('close', () => resolve())
-        archive.on('error', reject)
-        archive.on('warning', (err: any) => {
-          if (err.code !== 'ENOENT') {
-            logger.warn('[backupDirect] Archive warning:', err)
-          }
-        })
-        archive.pipe(output)
-        archive.directory(this.tempDir, false)
-        archive.finalize()
-      })
-
-      // Clean up temp directory
-      await fs.remove(this.tempDir)
-      onProgress({ stage: 'completed', progress: 100, total: 100 })
-
-      logger.info('[backupDirect] Backup completed successfully')
-      return backupedFilePath
-    } catch (error) {
-      logger.error('[backupDirect] Backup failed:', error as Error)
-      await fs.remove(this.tempDir).catch(() => {})
-
-      throw error
-    }
+    if (!data) throw new Error('Profile backup payload is required')
+    return this.backupLegacy(_, fileName, data, destinationPath, skipBackupFile)
   }
 
   /**
@@ -304,7 +190,7 @@ class BackupManager {
 
       if (!skipBackupFile) {
         // Copy Data directory to temp directory
-        const sourcePath = path.join(app.getPath('userData'), 'Data')
+        const sourcePath = getDataPath()
         const tempDataDir = path.join(this.tempDir, 'Data')
 
         // Get total size of source directory
@@ -434,12 +320,13 @@ class BackupManager {
   async backupToLocalDir(
     _: Electron.IpcMainInvokeEvent,
     fileName: string,
-    localConfig: { localBackupDir?: string; skipBackupFile?: boolean }
+    localConfig: { localBackupDir?: string; skipBackupFile?: boolean },
+    data: string
   ) {
     try {
       const backupDir = localConfig.localBackupDir || this.backupDir
       await fs.ensureDir(backupDir)
-      return await this.backup(_, fileName, backupDir, localConfig.skipBackupFile)
+      return await this.backup(_, fileName, backupDir, localConfig.skipBackupFile, data)
     } catch (error) {
       logger.error('[backupToLocalDir] Local backup failed:', error as Error)
       throw error
@@ -453,9 +340,9 @@ class BackupManager {
    * @param webdavConfig - WebDAV configuration including server URL, credentials, and options
    * @returns Result from WebDAV upload operation
    */
-  async backupToWebdav(_: Electron.IpcMainInvokeEvent, webdavConfig: WebDavConfig) {
+  async backupToWebdav(_: Electron.IpcMainInvokeEvent, webdavConfig: WebDavConfig, data: string) {
     const filename = webdavConfig.fileName || 'aionly.backup.zip'
-    const backupedFilePath = await this.backup(_, filename, undefined, webdavConfig.skipBackupFile)
+    const backupedFilePath = await this.backup(_, filename, undefined, webdavConfig.skipBackupFile, data)
     const webdavClient = this.getWebDavInstance(webdavConfig)
     try {
       let result
@@ -484,7 +371,7 @@ class BackupManager {
    * @param s3Config - S3 configuration including endpoint, bucket, credentials, and options
    * @returns Result from S3 upload operation
    */
-  async backupToS3(_: Electron.IpcMainInvokeEvent, s3Config: S3Config) {
+  async backupToS3(_: Electron.IpcMainInvokeEvent, s3Config: S3Config, data: string) {
     const os = require('os')
     const deviceName = os.hostname ? os.hostname() : 'device'
     const timestamp = new Date()
@@ -495,7 +382,7 @@ class BackupManager {
 
     logger.debug(`[backupToS3] Starting S3 backup to ${filename}`)
 
-    const backupedFilePath = await this.backup(_, filename, undefined, s3Config.skipBackupFile)
+    const backupedFilePath = await this.backup(_, filename, undefined, s3Config.skipBackupFile, data)
     const s3Client = this.getS3Storage(s3Config)
     try {
       const fileBuffer = await fs.promises.readFile(backupedFilePath)
@@ -539,12 +426,7 @@ class BackupManager {
       const isDirectBackup = await fs.pathExists(metadataPath)
 
       if (isDirectBackup) {
-        // Direct backup format (version 6+)
-        logger.debug('Detected direct backup format (version 6+)')
-        // Note: tempDir is NOT cleaned up here - restoreDirect will use and clean it
-        await this.restoreDirect()
-        // Direct restore doesn't return data - app needs to relaunch
-        return
+        throw new Error('Unsupported legacy backup format')
       }
 
       // Legacy backup format (version <= 5)
@@ -560,100 +442,8 @@ class BackupManager {
     }
   }
 
-  /**
-   * Restore from direct backup format (version 6+).
-   * Writes to `*.restore` directories; `handleStartupRestore` performs the atomic
-   * swap on next launch, before any DB connection or window opens. Avoids
-   * overwriting live IndexedDB / libsql files (issue #14774).
-   */
-  private async restoreDirect(): Promise<void> {
-    const onProgress = this.onProgress(IpcChannel.RestoreProgress, true)
-
-    const userDataPath = app.getPath('userData')
-    const indexedDBDest = path.join(userDataPath, 'IndexedDB.restore')
-    const localStorageDest = path.join(userDataPath, 'Local Storage.restore')
-    const dataDest = path.join(userDataPath, 'Data.restore')
-
-    try {
-      // Read and validate metadata
-      const metadataPath = path.join(this.tempDir, 'metadata.json')
-      const metadata = await fs.readJson(metadataPath)
-
-      // Validate appName to ensure backup is from this app
-      if (metadata.appName !== APP_NAME) {
-        throw new Error(`This backup file is not from ${APP_NAME} and cannot be restored`)
-      }
-
-      // Warn about cross-platform restore
-      if (metadata.platform && metadata.platform !== process.platform) {
-        logger.warn(
-          `[restoreDirect] Cross-platform restore: backup from ${metadata.platform}, current is ${process.platform}`
-        )
-      }
-
-      onProgress({ stage: 'validating', progress: 25, total: 100 })
-
-      onProgress({ stage: 'restoring_database', progress: 30, total: 100 })
-
-      // IndexedDB & Local Storage Path
-      const indexedDBSource = path.join(this.tempDir, 'IndexedDB')
-      const localStorageSource = path.join(this.tempDir, 'Local Storage')
-
-      logger.debug('[restoreDirect] Staging database directories...')
-
-      if (await fs.pathExists(indexedDBSource)) {
-        await fs.remove(indexedDBDest).catch(() => {})
-        await fs.copy(indexedDBSource, indexedDBDest)
-      }
-
-      if (await fs.pathExists(localStorageSource)) {
-        await fs.remove(localStorageDest).catch(() => {})
-        await fs.copy(localStorageSource, localStorageDest)
-      }
-
-      onProgress({ stage: 'restoring_database', progress: 65, total: 100 })
-
-      //  Restore Data directory
-      const dataSource = path.join(this.tempDir, 'Data')
-      const dataExists = await fs.pathExists(dataSource)
-      const dataFiles = dataExists ? await fs.readdir(dataSource) : []
-
-      if (dataExists && dataFiles.length > 0) {
-        logger.debug('[restoreDirect] Staging Data directory...')
-
-        const totalSize = await this.getDirSize(dataSource, { dereferenceSymlinks: false })
-
-        await fs.remove(dataDest).catch(() => {})
-
-        await this.copyDirWithProgress(
-          dataSource,
-          dataDest,
-          this.createCopyProgressHandler(totalSize, 65, 95, 'restoring_data', onProgress),
-          { dereferenceSymlinks: false }
-        )
-      } else {
-        logger.debug('[restoreDirect] No Data directory to restore')
-      }
-
-      // Clean up
-      await fs.remove(this.tempDir)
-      onProgress({ stage: 'completed', progress: 100, total: 100 })
-
-      logger.info('[restoreDirect] Restore staged successfully, relaunching app to apply...')
-
-      selectionService?.quit()
-      app.relaunch()
-      app.exit(0)
-    } catch (error) {
-      logger.error('[restoreDirect] Restore failed:', error as Error)
-      await Promise.all([
-        fs.remove(this.tempDir).catch(() => {}),
-        fs.remove(indexedDBDest).catch(() => {}),
-        fs.remove(localStorageDest).catch(() => {}),
-        fs.remove(dataDest).catch(() => {})
-      ])
-      throw error
-    }
+  async cancelRestore(): Promise<void> {
+    await fs.remove(`${getDataPath()}.restore`).catch(() => {})
   }
 
   /**
@@ -675,9 +465,26 @@ class BackupManager {
 
       logger.debug('[restoreLegacy] restore Data directory')
 
-      const userDataPath = app.getPath('userData')
       const dataSourcePath = path.join(this.tempDir, 'Data')
-      const dataDestPath = path.join(userDataPath, 'Data.restore')
+      let parsed: { metadata?: { version?: number; scope?: string; profile?: { id?: string } } }
+      try {
+        parsed = JSON.parse(data)
+      } catch {
+        throw new Error('Backup file is corrupted')
+      }
+      const activeProfileId = getUserProfileService().getActiveProfile()?.id
+      if (!activeProfileId) {
+        throw new Error('Profile is not active')
+      }
+      if (
+        parsed.metadata?.version !== PROFILE_BACKUP_VERSION ||
+        parsed.metadata.scope !== PROFILE_BACKUP_SCOPE ||
+        !parsed.metadata.profile?.id ||
+        parsed.metadata.profile?.id !== activeProfileId
+      ) {
+        throw new Error('Unsupported backup format or backup belongs to another profile')
+      }
+      const dataDestPath = `${getDataPath()}.restore`
 
       const dataExists = await fs.pathExists(dataSourcePath)
       const dataFiles = dataExists ? await fs.readdir(dataSourcePath) : []

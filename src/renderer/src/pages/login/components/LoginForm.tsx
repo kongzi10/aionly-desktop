@@ -2,17 +2,18 @@ import { getFinanceInfo } from '@renderer/api/balance'
 import { getApikeyByUserId, getUserProfileApi } from '@renderer/api/login'
 import Verify from '@renderer/components/verifition/Verify'
 import { useFetchAndSetupModels } from '@renderer/hooks/useAiOnlyModels'
-import { useProvider } from '@renderer/hooks/useProvider'
 import i18n from '@renderer/i18n'
 import { Agreements } from '@renderer/pages/login/components/Agreements'
-import { useAppDispatch } from '@renderer/store'
+import { applyProfileSwitch } from '@renderer/services/ProfileLifecycleService'
+import { profileStorage } from '@renderer/services/ProfileStorageService'
+import { store } from '@renderer/store'
+import { updateProvider as updateProviderAction } from '@renderer/store/llm'
 import { setApiKey, setMyBalance, setUserInfo } from '@renderer/store/user'
 import { APP_PROTOCOL, ENABLED_PLAN_STORAGE_KEY, LOCAL_USER_SECRET_KEY } from '@shared/config/constant'
 import type { TabsProps } from 'antd'
 import { Button } from 'antd'
 import { Tabs } from 'antd'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
 import { LoginSceneType, useLoginContext } from '../contexts/LoginContext'
@@ -82,11 +83,8 @@ interface LoginFormProps {
   onComplete?: () => void
 }
 
-export const LoginForm = (props: LoginFormProps) => {
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
-
-  const { updateProvider } = useProvider('aionly')
+export const LoginForm = (_props: LoginFormProps) => {
+  void _props
   const setupModels = useFetchAndSetupModels()
 
   const [activeTabKey, setActiveTabKey] = useState((APP_PROTOCOL as string) === 'aionly' ? '2' : '1')
@@ -123,15 +121,11 @@ export const LoginForm = (props: LoginFormProps) => {
   const saveUserInfo = useCallback(async () => {
     const res = await getUserProfileApi()
     const user_data = res.data?.user
-    dispatch(setUserInfo(user_data))
     const balance = await getFinanceInfo()
-    dispatch(setMyBalance(balance.data))
 
     // TODO：无论用户有没有启用tokenPlan, 先使用用户id获取用户的apikey存到本地
     const api_key_res = await getApikeyByUserId({ userId: user_data?.userId || '' })
     const secretKey = api_key_res?.msg ?? ''
-    dispatch(setApiKey(secretKey))
-    localStorage.setItem(LOCAL_USER_SECRET_KEY, secretKey)
 
     // TODO：用户启用了tokenPlan, 则需要将预存的apikey换成tokenPlan的apikey
     const key = `${ENABLED_PLAN_STORAGE_KEY}_${user_data?.userId || ''}`
@@ -140,24 +134,33 @@ export const LoginForm = (props: LoginFormProps) => {
       const userTokenPlan = JSON.parse(user_token_plan)
       const apiKey = userTokenPlan.apikey
       if (!!apiKey) {
-        updateProvider({
-          apiKey
-        })
+        return { userData: user_data, secretKey, balance: balance.data, providerApiKey: apiKey }
       }
     } else {
       // TODO：用户没有启用tokenPlan, 则使用用户id获取用户的apikey来预存
-      updateProvider({
-        apiKey: secretKey
-      })
+      return { userData: user_data, secretKey, balance: balance.data, providerApiKey: secretKey }
     }
-  }, [dispatch, updateProvider])
+    return { userData: user_data, secretKey, balance: balance.data, providerApiKey: undefined }
+  }, [])
 
   /** 登录成功 **/
   const handleLoginSuccess = async () => {
-    await saveUserInfo()
-    await setupModels(10) // 预存10个模型供页面优先展示
-    props.onComplete?.()
-    navigate('/')
+    const { userData, secretKey, balance, providerApiKey } = await saveUserInfo()
+    const bootstrap = {
+      token: localStorage.getItem('token') || undefined,
+      userInfo: JSON.stringify(userData || {}),
+      serviceInfo: localStorage.getItem('serviceInfo') || undefined,
+      localUserSecret: secretKey || undefined
+    }
+    const result = await window.api.profile.activate(String(userData?.userId || ''), bootstrap)
+    await applyProfileSwitch({ profileId: result.profileId, bootstrap }, async () => {
+      store.dispatch(setUserInfo(userData || {}))
+      store.dispatch(setMyBalance(balance))
+      store.dispatch(setApiKey(secretKey))
+      profileStorage.setItem(LOCAL_USER_SECRET_KEY, secretKey)
+      if (providerApiKey) store.dispatch(updateProviderAction({ id: 'aionly', apiKey: providerApiKey }))
+      await setupModels(10, String(userData?.userId || ''))
+    })
   }
 
   const tabList: TabsProps['items'] = useMemo(() => {

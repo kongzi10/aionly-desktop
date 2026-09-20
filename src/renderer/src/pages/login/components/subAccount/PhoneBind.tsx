@@ -13,7 +13,7 @@ const logger = loggerService.withContext('PhoneBind')
 
 interface Props {
   ref?: React.Ref<PhoneBindRef>
-  onSuccess?: () => void
+  onSuccess?: () => void | Promise<void>
   onFormChange?: (valid: boolean) => void
   verifyRef?: React.RefObject<any | null>
 }
@@ -95,7 +95,7 @@ const PhoneBind: React.FC<Props> = ({ ref, verifyRef, onSuccess, onFormChange })
     const { data } = await loginApi(loginParams)
     if (data && data.access_token) {
       localStorage.setItem('token', data.access_token)
-      onSuccess?.()
+      await onSuccess?.()
     }
   }
 

@@ -1,5 +1,6 @@
 import { loggerService } from '@logger'
 import { getProviderLabel } from '@renderer/i18n/label'
+import { profileStorage } from '@renderer/services/ProfileStorageService'
 import type { MCPServer } from '@renderer/types'
 import i18next from 'i18next'
 
@@ -12,15 +13,15 @@ export const LANYUN_MCP_HOST = TOKENLANYUN_HOST + '/mcp/manager/selectListByApiK
 export const LANYUN_KEY_HOST = TOKENLANYUN_HOST + '/#/manage/apiKey'
 
 export const saveTokenLanYunToken = (token: string): void => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, token)
+  profileStorage.setItem(TOKEN_STORAGE_KEY, token)
 }
 
 export const getTokenLanYunToken = (): string | null => {
-  return localStorage.getItem(TOKEN_STORAGE_KEY)
+  return profileStorage.getItem(TOKEN_STORAGE_KEY)
 }
 
 export const clearTokenLanYunToken = (): void => {
-  localStorage.removeItem(TOKEN_STORAGE_KEY)
+  profileStorage.removeItem(TOKEN_STORAGE_KEY)
 }
 
 export const hasTokenLanYunToken = (): boolean => {

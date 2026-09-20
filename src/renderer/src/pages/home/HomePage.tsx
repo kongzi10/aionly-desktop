@@ -49,7 +49,8 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
   const [activeAssistant, _setActiveAssistant] = useState<Assistant>(() => {
     const stateAssistant = state?.assistant as Assistant | undefined
     if (stateAssistant && getAssistantWorkspace(stateAssistant) === workspace) return stateAssistant
-    return activeAssistants[workspace] || workspaceAssistants[0] || workspaceDefault
+    const cachedAssistant = workspaceAssistants.find((assistant) => assistant.id === activeAssistants[workspace]?.id)
+    return cachedAssistant || workspaceAssistants[0] || workspaceDefault
   })
   const { activeTopic, setActiveTopic: _setActiveTopic } = useActiveTopic(activeAssistant?.id ?? '', state?.topic)
   const { showAssistants, showTopics, topicPosition } = useSettings()

@@ -17,6 +17,7 @@ import { titleBarOverlayDark, titleBarOverlayLight } from '../config'
 import { configManager } from './ConfigManager'
 import { contextMenu } from './ContextMenu'
 import { isSafeExternalUrl } from './security'
+import { getProfilePartition } from './UserProfileService'
 import { initSessionUserAgent } from './WebviewService'
 
 const DEFAULT_MINIWINDOW_WIDTH = 550
@@ -97,6 +98,7 @@ export class WindowService {
       ...(isLinux ? { icon: linuxIcon } : {}),
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
+        additionalArguments: ['--aionly-main-renderer'],
         sandbox: false,
         webSecurity: false,
         webviewTag: true,
@@ -192,6 +194,8 @@ export class WindowService {
 
     // Setup webview preload for both dev and production
     mainWindow.webContents.on('will-attach-webview', (_, webPreferences) => {
+      webPreferences.additionalArguments = []
+      webPreferences.partition = getProfilePartition('webview')
       // Set correct preload path based on environment
       if (app.isPackaged) {
         // Production: use unpacked path
@@ -334,7 +338,8 @@ export class WindowService {
           action: 'allow',
           overrideBrowserWindowOptions: {
             webPreferences: {
-              partition: 'persist:webview'
+              partition: getProfilePartition('webview'),
+              additionalArguments: []
             },
             // 如果是全屏URL,不设置parent,让窗口独立
             // parent: isFullScreenUrl ? undefined : mainWindow,

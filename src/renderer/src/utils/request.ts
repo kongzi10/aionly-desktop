@@ -1,4 +1,6 @@
 import { loggerService } from '@logger'
+import { profileGeneration } from '@renderer/services/ProfileRendererRuntime'
+import { authStorage } from '@renderer/services/ProfileStorageService'
 import { encryptBase64, encryptWithAes, generateAesKey } from '@renderer/utils/crypt/crypto'
 import { encrypt } from '@renderer/utils/crypt/jsencrypt'
 import { AxiosCanceler } from '@renderer/utils/helper/axiosCancel'
@@ -35,6 +37,7 @@ class RequestHttp {
      */
     this.service.interceptors.request.use(
       (config) => {
+        config.__profileGeneration = profileGeneration.capture()
         // 重复请求不需要取消，在 api 服务中通过指定的第三个参数: { cancel: false } 来控制
         config.cancel = config.cancel !== false
         config.cancel && axiosCanceler.addPending(config)
@@ -46,7 +49,7 @@ class RequestHttp {
         const isToken = config.headers?.isToken === false
         // 是否需要加密
         const isEncrypt = config.headers?.isEncrypt === 'true'
-        const token = localStorage.getItem('token')
+        const token = authStorage.getItem('token')
         if (token && !isToken) {
           // config.headers['Authorization'] = 'Bearer ' + useUserStore().getToken();// 让每个请求携带自定义token 请根据实际情况自行修改
           config.headers['Authorization'] = 'Bearer ' + token // 让每个请求携带自定义token 请根据实际情况自行修改
@@ -87,6 +90,7 @@ class RequestHttp {
         const { data, config } = response
 
         axiosCanceler.removePending(config)
+        profileGeneration.assertCurrent(config.__profileGeneration)
         // config.loading && tryHideFullScreenLoading();
         // 登录失效
         if (data.code == '401') {
@@ -97,7 +101,7 @@ class RequestHttp {
           }
           // 该分支随后 return Promise.resolve()，调用方拿到 undefined，故先落日志便于定位
           logger.warn('response biz code 401', { url: config.url, code: data.code, msg: data.msg })
-          localStorage.removeItem('token')
+          authStorage.removeItem('token')
           message.warning('登录过期请重新登录！')
           // 跳转到登录页
           window.location.hash = '/login'
