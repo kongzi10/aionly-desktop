@@ -38,6 +38,7 @@ import { setGenerating } from '@renderer/store/runtime'
 import { selectUserInfo } from '@renderer/store/user'
 import type { FileMetadata, PaintingAction, PaintingsState } from '@renderer/types'
 import { convertToBase64, getErrorMessage, uuid } from '@renderer/utils'
+import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import { isNewApiProvider } from '@renderer/utils/provider'
 import { LOCAL_USER_SECRET_KEY } from '@shared/config/constant'
 import type { RadioChangeEvent } from 'antd'
@@ -92,7 +93,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
   const dispatch = useAppDispatch()
   const { generating } = useRuntime()
   // const navigate = useNavigate()
-  const { autoTranslateWithSpace } = useSettings()
+  const { autoTranslateWithSpace, sendMessageShortcut } = useSettings()
   const spaceClickTimer = useRef<NodeJS.Timeout>(null)
   const newApiProvider = newApiProviders.find((p) => p.id === routeName) || newApiProviders[0]
 
@@ -560,6 +561,18 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      event.key === 'Enter' &&
+      !event.nativeEvent.isComposing &&
+      isSendMessageKeyPressed(event, sendMessageShortcut) &&
+      !isLoading &&
+      !disabled
+    ) {
+      event.preventDefault()
+      void onGenerate()
+      return
+    }
+
     if (autoTranslateWithSpace && event.key === ' ') {
       setSpaceClickCount((prev) => prev + 1)
 

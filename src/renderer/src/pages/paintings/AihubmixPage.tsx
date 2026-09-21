@@ -21,6 +21,7 @@ import { setGenerating } from '@renderer/store/runtime'
 import type { FileMetadata } from '@renderer/types'
 import type { PaintingAction, PaintingsState } from '@renderer/types'
 import { getErrorMessage, uuid } from '@renderer/utils'
+import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import { Avatar, Button, Input, InputNumber, Radio, Segmented, Select, Slider, Switch, Tooltip, Upload } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
 import { Info } from 'lucide-react'
@@ -80,7 +81,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
   const { generating } = useRuntime()
   const navigate = useNavigate()
   const location = useLocation()
-  const { autoTranslateWithSpace } = useSettings()
+  const { autoTranslateWithSpace, sendMessageShortcut } = useSettings()
   const spaceClickTimer = useRef<NodeJS.Timeout>(null)
   const aihubmixProvider = providers.find((p) => p.id === 'aihubmix')!
 
@@ -649,6 +650,17 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      event.key === 'Enter' &&
+      !event.nativeEvent.isComposing &&
+      isSendMessageKeyPressed(event, sendMessageShortcut) &&
+      !isLoading
+    ) {
+      event.preventDefault()
+      void onGenerate()
+      return
+    }
+
     if (autoTranslateWithSpace && event.key === ' ') {
       setSpaceClickCount((prev) => prev + 1)
 

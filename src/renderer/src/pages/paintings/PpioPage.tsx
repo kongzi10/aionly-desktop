@@ -17,6 +17,7 @@ import { useAppDispatch } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
 import type { FileMetadata, PaintingsState, PpioPainting } from '@renderer/types'
 import { getErrorMessage, uuid } from '@renderer/utils'
+import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import type { UploadFile } from 'antd'
 import { Button, Input, Segmented, Select, Switch, Tooltip, Upload } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
@@ -85,7 +86,7 @@ const PpioPage: FC<{ Options: string[] }> = ({ Options }) => {
 
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const { autoTranslateWithSpace } = useSettings()
+  const { autoTranslateWithSpace, sendMessageShortcut } = useSettings()
   const spaceClickTimer = useRef<NodeJS.Timeout>(null)
   const textareaRef = useRef<any>(null)
 
@@ -332,9 +333,15 @@ const PpioPage: FC<{ Options: string[] }> = ({ Options }) => {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (
+      e.key === 'Enter' &&
+      !e.nativeEvent.isComposing &&
+      isSendMessageKeyPressed(e, sendMessageShortcut) &&
+      !isLoading
+    ) {
       e.preventDefault()
       void onGenerate()
+      return
     }
 
     if (e.key === ' ' && autoTranslateWithSpace && !painting.prompt?.trim()) {

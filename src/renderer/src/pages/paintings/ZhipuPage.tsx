@@ -8,10 +8,12 @@ import { getProviderLogo } from '@renderer/config/providers'
 import { usePaintings } from '@renderer/hooks/usePaintings'
 import { useAllProviders } from '@renderer/hooks/useProvider'
 import { useRuntime } from '@renderer/hooks/useRuntime'
+import { useSettings } from '@renderer/hooks/useSettings'
 import FileManager from '@renderer/services/FileManager'
 import { useAppDispatch } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
 import { getErrorMessage, uuid } from '@renderer/utils'
+import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import { Avatar, Button, InputNumber, Radio, Select } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
 import type { FC } from 'react'
@@ -58,6 +60,7 @@ const ZhipuPage: FC<{ Options: string[] }> = ({ Options }) => {
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const dispatch = useAppDispatch()
   const { generating } = useRuntime()
+  const { sendMessageShortcut } = useSettings()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -77,6 +80,18 @@ const ZhipuPage: FC<{ Options: string[] }> = ({ Options }) => {
       ...DEFAULT_PAINTING,
       id: uuid(),
       ...params
+    }
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      event.key === 'Enter' &&
+      !event.nativeEvent.isComposing &&
+      isSendMessageKeyPressed(event, sendMessageShortcut) &&
+      !isLoading
+    ) {
+      event.preventDefault()
+      void onGenerate()
     }
   }
 
@@ -440,6 +455,7 @@ const ZhipuPage: FC<{ Options: string[] }> = ({ Options }) => {
               spellCheck={false}
               onChange={(e) => updatePaintingState({ prompt: e.target.value })}
               placeholder={t('paintings.prompt_placeholder')}
+              onKeyDown={handleKeyDown}
             />
             <Toolbar>
               <ToolbarMenu>

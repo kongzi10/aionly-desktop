@@ -8,11 +8,13 @@ import { getProviderLogo } from '@renderer/config/providers'
 import { usePaintings } from '@renderer/hooks/usePaintings'
 import { useAllProviders } from '@renderer/hooks/useProvider'
 import { useRuntime } from '@renderer/hooks/useRuntime'
+import { useSettings } from '@renderer/hooks/useSettings'
 import FileManager from '@renderer/services/FileManager'
 import { useAppDispatch } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
 import type { FileMetadata } from '@renderer/types'
 import { convertToBase64, uuid } from '@renderer/utils'
+import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import type { DmxapiPainting } from '@types'
 import { Avatar, Button, Input, InputNumber, Segmented, Select, Switch, Tooltip } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
@@ -60,6 +62,7 @@ const DmxapiPage: FC<{ Options: string[] }> = ({ Options }) => {
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const dispatch = useAppDispatch()
   const { generating } = useRuntime()
+  const { sendMessageShortcut } = useSettings()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -530,6 +533,18 @@ const DmxapiPage: FC<{ Options: string[] }> = ({ Options }) => {
     }
   }
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      event.key === 'Enter' &&
+      !event.nativeEvent.isComposing &&
+      isSendMessageKeyPressed(event, sendMessageShortcut) &&
+      !isLoading
+    ) {
+      event.preventDefault()
+      void onGenerate()
+    }
+  }
+
   const onGenerate = async () => {
     // 如果已经在生成过程中，直接返回
     if (isLoading) {
@@ -983,6 +998,7 @@ const DmxapiPage: FC<{ Options: string[] }> = ({ Options }) => {
               spellCheck={false}
               onChange={(e) => updatePaintingState({ prompt: e.target.value })}
               placeholder={t('paintings.prompt_placeholder')}
+              onKeyDown={handleKeyDown}
             />
             <Toolbar>
               <ToolbarMenu>

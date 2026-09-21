@@ -25,6 +25,7 @@ import { useAppDispatch } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
 import type { FileMetadata, Painting } from '@renderer/types'
 import { getErrorMessage, uuid } from '@renderer/utils'
+import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import { Button, Input, InputNumber, Radio, Select, Slider, Switch, Tooltip } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
 import { Info } from 'lucide-react'
@@ -289,7 +290,7 @@ const SiliconPage: FC<{ Options: string[] }> = ({ Options }) => {
     setCurrentImageIndex(0)
   }
 
-  const { autoTranslateWithSpace } = useSettings()
+  const { autoTranslateWithSpace, sendMessageShortcut } = useSettings()
   const [spaceClickCount, setSpaceClickCount] = useState(0)
   const [isTranslating, setIsTranslating] = useState(false)
   const spaceClickTimer = useRef<NodeJS.Timeout>(null)
@@ -315,6 +316,17 @@ const SiliconPage: FC<{ Options: string[] }> = ({ Options }) => {
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      event.key === 'Enter' &&
+      !event.nativeEvent.isComposing &&
+      isSendMessageKeyPressed(event, sendMessageShortcut) &&
+      !isLoading
+    ) {
+      event.preventDefault()
+      void onGenerate()
+      return
+    }
+
     if (autoTranslateWithSpace && event.key === ' ') {
       setSpaceClickCount((prev) => prev + 1)
 

@@ -17,6 +17,7 @@ import { useAppDispatch } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
 import type { FileMetadata, OvmsPainting } from '@renderer/types'
 import { getErrorMessage, uuid } from '@renderer/utils'
+import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import { Avatar, Button, Input, InputNumber, Select, Slider, Switch, Tooltip } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
 import { Info } from 'lucide-react'
@@ -73,7 +74,7 @@ const OvmsPage: FC<{ Options: string[] }> = ({ Options }) => {
   const { generating } = useRuntime()
   const navigate = useNavigate()
   const location = useLocation()
-  const { autoTranslateWithSpace } = useSettings()
+  const { autoTranslateWithSpace, sendMessageShortcut } = useSettings()
   const spaceClickTimer = useRef<NodeJS.Timeout>(null)
   const ovmsProvider = providers.find((p) => p.id === 'ovms')!
 
@@ -310,6 +311,17 @@ const OvmsPage: FC<{ Options: string[] }> = ({ Options }) => {
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      event.key === 'Enter' &&
+      !event.nativeEvent.isComposing &&
+      isSendMessageKeyPressed(event, sendMessageShortcut) &&
+      !isLoading
+    ) {
+      event.preventDefault()
+      void onGenerate()
+      return
+    }
+
     if (autoTranslateWithSpace && event.key === ' ') {
       setSpaceClickCount((prev) => prev + 1)
 
