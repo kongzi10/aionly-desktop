@@ -12,6 +12,7 @@ export interface ProfileServiceOperations {
   stopChannels(): Promise<void>
   stopApiServer(): Promise<void>
   cleanupMcp(): Promise<void>
+  stopFileWatcher(): Promise<void>
   closeKnowledge(): Promise<void>
   closeMemory(): Promise<void>
   closeDatabase(): Promise<void>
@@ -90,6 +91,7 @@ export function createProfileRuntime(operations: ProfileServiceOperations): Prof
         () => operations.stopChannels(),
         () => operations.stopApiServer(),
         () => operations.cleanupMcp(),
+        () => operations.stopFileWatcher(),
         () => operations.closeKnowledge(),
         () => operations.closeMemory(),
         () => operations.closeDatabase()

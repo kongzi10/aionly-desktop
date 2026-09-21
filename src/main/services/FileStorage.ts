@@ -136,8 +136,6 @@ const DEFAULT_DIRECTORY_LIST_OPTIONS: Required<DirectoryListOptions> = {
 }
 
 class FileStorage {
-  private storageDir = getFilesDir()
-  private notesDir = getNotesDir()
   private _tempDir = getTempDir()
   private watcher?: FSWatcher
   private watcherSender?: Electron.WebContents
@@ -145,6 +143,14 @@ class FileStorage {
   private debounceTimer?: NodeJS.Timeout
   private watcherConfig: Required<FileWatcherConfig> = DEFAULT_WATCHER_CONFIG
   private isPaused = false
+
+  private get storageDir(): string {
+    return getFilesDir()
+  }
+
+  private get notesDir(): string {
+    return getNotesDir()
+  }
 
   private get tempDir(): string {
     if (!fs.existsSync(this._tempDir)) {

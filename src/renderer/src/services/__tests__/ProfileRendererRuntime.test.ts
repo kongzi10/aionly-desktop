@@ -26,7 +26,9 @@ describe('switchRendererProfile', () => {
         closeDatabase: () => calls.push('close-db'),
         applyProfileStorage: () => calls.push('storage'),
         resetDatabase: () => calls.push('reset-db'),
-        resetStore: () => calls.push('reset-store'),
+        resetStore: () => {
+          calls.push('reset-store')
+        },
         initializeProfile: () => {
           calls.push('initialize')
         },
@@ -46,6 +48,42 @@ describe('switchRendererProfile', () => {
       'notify',
       'navigate'
     ])
+  })
+
+  it('waits for the new profile store to rehydrate before initializing profile data', async () => {
+    const calls: string[] = []
+    let finishRehydration: (() => void) | undefined
+    const rehydrated = new Promise<void>((resolve) => {
+      finishRehydration = resolve
+    })
+
+    const switching = switchRendererProfile(
+      { profileId: '9a4da247945bd930a8911fd0b1526ad0', bootstrap: null },
+      {
+        flushStore: async () => undefined,
+        pauseStore: () => undefined,
+        closeDatabase: () => undefined,
+        applyProfileStorage: () => undefined,
+        resetDatabase: () => undefined,
+        resetStore: () => {
+          calls.push('reset-store')
+          return rehydrated
+        },
+        initializeProfile: () => {
+          calls.push('initialize')
+        },
+        notifyProfileChanged: () => undefined,
+        navigate: () => undefined
+      }
+    )
+
+    await Promise.resolve()
+    expect(calls).toEqual(['reset-store'])
+
+    finishRehydration?.()
+    await switching
+
+    expect(calls).toEqual(['reset-store', 'initialize'])
   })
 
   it('uses the same lifecycle when switching to the logged-out runtime', async () => {

@@ -62,7 +62,7 @@ async function withRendererRuntimePaused(action: (profileId: string) => Promise<
       await action(profileId)
     } finally {
       resetDatabase()
-      resetStore()
+      await resetStore()
       window.dispatchEvent(new Event(PROFILE_RUNTIME_CHANGED_EVENT))
     }
   })().finally(() => {

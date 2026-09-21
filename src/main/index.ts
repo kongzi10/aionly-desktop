@@ -26,6 +26,7 @@ import { analyticsService } from './services/AnalyticsService'
 import { apiServerService } from './services/ApiServerService'
 import { appMenuService } from './services/AppMenuService'
 import { configManager } from './services/ConfigManager'
+import { fileStorage } from './services/FileStorage'
 import { lanTransferClientService } from './services/lanTransfer'
 import mcpService from './services/MCPService'
 import { localTransferService } from './services/LocalTransferService'
@@ -77,6 +78,7 @@ const profileRuntime = createProfileRuntime({
     if (apiServerService.isRunning()) await apiServerService.stop()
   },
   cleanupMcp: () => mcpService.cleanup(),
+  stopFileWatcher: () => fileStorage.stopFileWatcher(),
   closeKnowledge: () => knowledgeService.closeAll(),
   closeMemory: () => MemoryService.getInstance().close(),
   closeDatabase: () => DatabaseManager.close()

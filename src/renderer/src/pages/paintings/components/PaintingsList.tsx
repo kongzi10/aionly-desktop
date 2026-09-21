@@ -31,6 +31,7 @@ const PaintingsList: FC<PaintingsListProps> = ({
   const { t } = useTranslation()
   const [dragging, setDragging] = useState(false)
   const { updatePaintings } = usePaintings()
+  const generatedPaintings = paintings.filter((painting) => painting.files.length > 0)
 
   return (
     <Container style={{ paddingBottom: dragging ? 80 : 10 }}>
@@ -40,7 +41,7 @@ const PaintingsList: FC<PaintingsListProps> = ({
         </NewPaintingButton>
       )}
       <DraggableList
-        list={paintings}
+        list={generatedPaintings}
         onUpdate={(value) => updatePaintings(namespace, value)}
         onDragStart={() => setDragging(true)}
         onDragEnd={() => setDragging(false)}>

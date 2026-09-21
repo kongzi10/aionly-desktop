@@ -125,8 +125,15 @@ function createStoreRuntime() {
   })
   nextStore.dispatch(reloadProfileUserState())
 
-  const nextPersistor = persistStore(nextStore, undefined, () => notifyRendererReady(nextStore))
-  return { store: nextStore, persistor: nextPersistor }
+  let resolveRehydrated: (() => void) | undefined
+  const rehydrated = new Promise<void>((resolve) => {
+    resolveRehydrated = resolve
+  })
+  const nextPersistor = persistStore(nextStore, undefined, () => {
+    notifyRendererReady(nextStore)
+    resolveRehydrated?.()
+  })
+  return { store: nextStore, persistor: nextPersistor, rehydrated }
 }
 
 function notifyRendererReady(currentStore: ReturnType<typeof configureStore>): void {
@@ -152,11 +159,12 @@ const initialRuntime = createStoreRuntime()
 export let store = initialRuntime.store
 export let persistor = initialRuntime.persistor
 
-export function resetStore(): void {
+export function resetStore(): Promise<void> {
   const nextRuntime = createStoreRuntime()
   store = nextRuntime.store
   persistor = nextRuntime.persistor
   window.store = store
+  return nextRuntime.rehydrated
 }
 
 export type RootState = ReturnType<typeof rootReducer>

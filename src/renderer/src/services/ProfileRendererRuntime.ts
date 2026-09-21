@@ -18,7 +18,7 @@ export interface RendererProfileRuntimeDependencies {
   closeDatabase(): void
   applyProfileStorage(profile: RendererProfileSwitch): void
   resetDatabase(): void
-  resetStore(): void
+  resetStore(): void | Promise<void>
   initializeProfile?(): void | Promise<void>
   notifyProfileChanged(): void
   navigate(profileId: string | null): void
@@ -84,7 +84,7 @@ export async function switchRendererProfile(
     dependencies.closeDatabase()
     dependencies.applyProfileStorage(profile)
     dependencies.resetDatabase()
-    dependencies.resetStore()
+    await dependencies.resetStore()
     await dependencies.initializeProfile?.()
     dependencies.notifyProfileChanged()
     dependencies.navigate(profile.profileId)

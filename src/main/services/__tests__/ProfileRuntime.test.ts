@@ -43,6 +43,7 @@ describe('ProfileRuntime', () => {
 
   it('cleans up MCP clients when stopping profile services', async () => {
     const cleanupMcp = vi.fn(async () => undefined)
+    const stopFileWatcher = vi.fn(async () => undefined)
     const runtime = createProfileRuntime({
       bootstrapAgents: async () => undefined,
       startApiServer: async () => undefined,
@@ -54,13 +55,15 @@ describe('ProfileRuntime', () => {
       closeKnowledge: async () => undefined,
       closeMemory: async () => undefined,
       closeDatabase: async () => undefined,
-      cleanupMcp
+      cleanupMcp,
+      stopFileWatcher
     })
 
     await runtime.start()
     await runtime.stop()
 
     expect(cleanupMcp).toHaveBeenCalledOnce()
+    expect(stopFileWatcher).toHaveBeenCalledOnce()
   })
 
   it('continues stopping remaining services after one cleanup fails', async () => {
@@ -81,6 +84,9 @@ describe('ProfileRuntime', () => {
       cleanupMcp: async () => {
         calls.push('mcp')
       },
+      stopFileWatcher: async () => {
+        calls.push('file-watcher')
+      },
       closeKnowledge: async () => {
         calls.push('knowledge')
       },
@@ -94,7 +100,7 @@ describe('ProfileRuntime', () => {
 
     await runtime.start()
     await expect(runtime.stop()).rejects.toThrow('channel cleanup failed')
-    expect(calls).toEqual(['schedulers', 'channels', 'api', 'mcp', 'knowledge', 'memory', 'database'])
+    expect(calls).toEqual(['schedulers', 'channels', 'api', 'mcp', 'file-watcher', 'knowledge', 'memory', 'database'])
   })
 
   it('preserves the start error when rollback cleanup also fails', async () => {
