@@ -28,6 +28,7 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
   const [curTabValue, setCurTabValue] = useState<string>(modelType || 'text_model')
   const [modelList, setModelList] = useState<any[]>([])
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([])
+  const [searchText, setSearchText] = useState('')
   const [loading, setLoading] = useState(false)
   const [confirmLoading, setConfirmLoading] = useState(false)
   const tabOptions: CheckboxGroupProps<string>['options'] = [
@@ -61,7 +62,18 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
     return false
   }
 
-  const filteredModels = modelList.filter((model) => model.modelAttribute === curTabValue)
+  const keyword = searchText.trim().toLowerCase()
+  const filteredModels = modelList.filter(
+    (model) =>
+      model.modelAttribute === curTabValue &&
+      (!keyword ||
+        String(model.modelName || '')
+          .toLowerCase()
+          .includes(keyword) ||
+        String(model.serviceName || '')
+          .toLowerCase()
+          .includes(keyword))
+  )
 
   // 按 serviceName 分组
   const groupedModels = filteredModels.reduce(
@@ -143,12 +155,9 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
 
   const onClose = useCallback(() => resolve({}), [resolve])
 
-  // TODO: 搜索，接口参数还未定义，需要接口定义后才能实现
-  const handleSearch = () => {
-    // const text = e.target.value
-    setSelectedModelIds([])
-    fetchModels()
-  }
+  const handleSearch = useCallback(() => {
+    setSearchText((prev) => prev.trim())
+  }, [])
 
   return (
     <Modal
@@ -188,6 +197,9 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
           />
         </div>
         <Input
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          allowClear
           placeholder={t('settings.models.add.search_placeholder')}
           suffix={<Search size={12} onClick={handleSearch} />}
           onPressEnter={handleSearch}
@@ -208,6 +220,9 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
             </div>
           ) : (
             <CustomCollapseWrapper>
+              {groupModels.length === 0 && (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('common.no_results')} />
+              )}
               {groupModels.map((groupItem: any) => {
                 const groupCheckState = getGroupCheckState(groupItem.models)
                 return (
