@@ -33,6 +33,14 @@ function readStoredUserInfo(): UserInfo {
   }
 }
 
+function readStoredServiceInfo(): Record<string, unknown> {
+  try {
+    return JSON.parse(authStorage.getItem('serviceInfo') || '{}') as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
 export function createInitialUserState(): UserState {
   return {
     token: authStorage.getItem('token') || '',
@@ -44,7 +52,7 @@ export function createInitialUserState(): UserState {
     apiKey: '',
     aiOnlyModels: [],
     // webUrl: webLogo,
-    serviceInfo: {}
+    serviceInfo: readStoredServiceInfo()
   }
 }
 
