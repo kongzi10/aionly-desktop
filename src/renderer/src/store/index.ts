@@ -138,7 +138,9 @@ function createStoreRuntime() {
 
 function notifyRendererReady(currentStore: ReturnType<typeof configureStore>): void {
   const state = currentStore.getState() as RootState
-  if (!state.note.notesPath) {
+  // Only seed the notes path for an active profile; the login window would otherwise
+  // capture the shared fallback directory into the persisted login state.
+  if (getActiveProfileId() && !state.note.notesPath) {
     setTimeout(async () => {
       try {
         const info = await window.api.getAppInfo()

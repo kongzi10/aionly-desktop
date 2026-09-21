@@ -1,4 +1,5 @@
 import { loggerService } from '@logger'
+import { getActiveProfileId } from '@renderer/services/ProfileStorageService'
 import store from '@renderer/store'
 import { setNotesPath } from '@renderer/store/note'
 import type { NotesSortType, NotesTreeNode } from '@renderer/types/note'
@@ -7,7 +8,7 @@ import { getFileDirectory } from '@renderer/utils'
 const logger = loggerService.withContext('NotesService')
 
 const MARKDOWN_EXT = '.md'
-let defaultNotesPathPromise: Promise<string> | null = null
+const defaultNotesPathPromises = new Map<string, Promise<string>>()
 
 export interface UploadResult {
   uploadedNodes: NotesTreeNode[]
@@ -73,17 +74,23 @@ export interface ResolvedNotesPath {
 }
 
 async function getDefaultNotesPath(): Promise<string> {
-  if (!defaultNotesPathPromise) {
-    defaultNotesPathPromise = window.api
+  // Cache per profile so an account switch never reuses the previous account's path.
+  const cacheKey = getActiveProfileId() ?? 'login'
+  let promise = defaultNotesPathPromises.get(cacheKey)
+  if (!promise) {
+    promise = window.api
       .getAppInfo()
       .then((appInfo) => normalizePath(appInfo.notesPath))
       .catch((error) => {
-        defaultNotesPathPromise = null
+        if (defaultNotesPathPromises.get(cacheKey) === promise) {
+          defaultNotesPathPromises.delete(cacheKey)
+        }
         throw error
       })
+    defaultNotesPathPromises.set(cacheKey, promise)
   }
 
-  return defaultNotesPathPromise
+  return promise
 }
 /**
  * Validate and resolve a notes path, including cross-platform restore scenarios.

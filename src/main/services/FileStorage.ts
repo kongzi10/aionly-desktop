@@ -148,33 +148,11 @@ class FileStorage {
     return getFilesDir()
   }
 
-  private get notesDir(): string {
-    return getNotesDir()
-  }
-
   private get tempDir(): string {
     if (!fs.existsSync(this._tempDir)) {
       fs.mkdirSync(this._tempDir, { recursive: true })
     }
     return this._tempDir
-  }
-
-  constructor() {
-    this.initStorageDir()
-  }
-
-  private initStorageDir = (): void => {
-    try {
-      if (!fs.existsSync(this.storageDir)) {
-        fs.mkdirSync(this.storageDir, { recursive: true })
-      }
-      if (!fs.existsSync(this.notesDir)) {
-        fs.mkdirSync(this.notesDir, { recursive: true })
-      }
-    } catch (error) {
-      logger.error('Failed to initialize storage directories:', error as Error)
-      throw error
-    }
   }
 
   // @TraceProperty({ spanName: 'getFileHash', tag: 'FileStorage' })
@@ -801,7 +779,7 @@ class FileStorage {
 
   public clear = async (): Promise<void> => {
     await fs.promises.rm(this.storageDir, { recursive: true })
-    this.initStorageDir()
+    await fs.promises.mkdir(this.storageDir, { recursive: true })
   }
 
   public clearTemp = async (): Promise<void> => {
