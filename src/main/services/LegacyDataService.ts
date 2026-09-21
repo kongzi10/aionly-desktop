@@ -59,10 +59,13 @@ export class LegacyDataService {
       if (hasLegacyRoot || hasLegacyClaude) {
         await fs.rm(stagingRoot, { recursive: true, force: true })
         await fs.rm(rollbackRoot, { recursive: true, force: true })
-        if (hasLegacyRoot) await fs.cp(this.options.legacyRoot, stagingRoot, { recursive: true })
+        if (hasLegacyRoot) await fs.cp(this.options.legacyRoot, stagingRoot, { recursive: true, dereference: true })
         else await fs.mkdir(stagingRoot, { recursive: true })
         if (hasLegacyClaude && this.options.legacyClaudeRoot) {
-          await fs.cp(this.options.legacyClaudeRoot, path.join(stagingRoot, 'ClaudeConfig'), { recursive: true })
+          await fs.cp(this.options.legacyClaudeRoot, path.join(stagingRoot, 'ClaudeConfig'), {
+            recursive: true,
+            dereference: true
+          })
         }
         result.copiedFiles = (await this.fingerprint(stagingRoot)).fileCount
       }
