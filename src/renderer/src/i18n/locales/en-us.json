@@ -4525,6 +4525,8 @@
         "recover_failed": "Failed to recover legacy data",
         "recover_success": "Legacy data recovered",
         "recover_title": "Recover legacy data",
+        "recovering": "Recovering legacy data. Do not close the app or repeat this action.",
+        "recovering_title": "Recovering legacy data",
         "unknown_owner_confirm": "The account that owns this legacy data cannot be identified. Continuing may replace this account's data. Recover anyway?",
         "unknown_owner_title": "Unable to verify data owner"
       },

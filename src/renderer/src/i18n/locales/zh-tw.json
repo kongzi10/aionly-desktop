@@ -4525,6 +4525,8 @@
         "recover_failed": "恢復舊版資料失敗",
         "recover_success": "舊版資料恢復完成",
         "recover_title": "恢復舊版資料",
+        "recovering": "正在恢復舊版資料，請勿關閉應用程式或重複操作。",
+        "recovering_title": "正在恢復舊版資料",
         "unknown_owner_confirm": "無法識別舊版資料所屬帳號，繼續操作可能替換目前帳號的資料。仍要恢復嗎？",
         "unknown_owner_title": "無法驗證資料所屬帳號"
       },

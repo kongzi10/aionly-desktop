@@ -26,12 +26,33 @@ import { SettingDivider, SettingGroup, SettingHelpText, SettingRow, SettingRowTi
 
 const logger = loggerService.withContext('BasicDataSettings')
 
-export async function executeLegacyDataAction(action: () => Promise<unknown>, refresh: () => Promise<unknown>) {
-  await action()
+let isLegacyDataActionRunning = false
+
+interface LegacyDataActionLifecycle {
+  onStart?: () => void
+  onFinish?: () => void
+}
+
+export async function executeLegacyDataAction(
+  action: () => Promise<unknown>,
+  refresh: () => Promise<unknown>,
+  lifecycle?: LegacyDataActionLifecycle
+): Promise<boolean> {
+  if (isLegacyDataActionRunning) return false
+
+  isLegacyDataActionRunning = true
   try {
-    await refresh()
-  } catch (error) {
-    logger.error('Legacy data action succeeded but status refresh failed', error as Error)
+    lifecycle?.onStart?.()
+    await action()
+    try {
+      await refresh()
+    } catch (error) {
+      logger.error('Legacy data action succeeded but status refresh failed', error as Error)
+    }
+    return true
+  } finally {
+    isLegacyDataActionRunning = false
+    lifecycle?.onFinish?.()
   }
 }
 
@@ -68,18 +89,38 @@ const BasicDataSettings: React.FC = () => {
       cancelText: t('common.cancel'),
       centered: true,
       onOk: async () => {
-        setLegacyAction('recover')
+        let loadingModal: ReturnType<typeof window.modal.info> | undefined
+        const lifecycle: LegacyDataActionLifecycle = {
+          onStart: () => {
+            setLegacyAction('recover')
+            loadingModal = window.modal.info({
+              title: t('settings.data.legacy_data.recovering_title'),
+              content: t('settings.data.legacy_data.recovering'),
+              icon: <LoadingOutlined spin />,
+              centered: true,
+              closable: false,
+              maskClosable: false,
+              keyboard: false,
+              okButtonProps: { style: { display: 'none' } }
+            })
+          },
+          onFinish: () => {
+            loadingModal?.destroy()
+            loadingModal = undefined
+            setLegacyAction(null)
+          }
+        }
         try {
-          let allowUnknownOwner = false
           try {
-            await executeLegacyDataAction(() => recoverLegacyData(), refreshLegacyStatus)
+            const executed = await executeLegacyDataAction(() => recoverLegacyData(), refreshLegacyStatus, lifecycle)
+            if (!executed) return
           } catch (error) {
             if (error instanceof Error && error.message === 'LEGACY_DATA_OWNER_MISMATCH') {
               window.toast.error(t('settings.data.legacy_data.owner_mismatch'))
               return
             }
             if (!(error instanceof Error) || error.message !== 'LEGACY_DATA_OWNER_UNKNOWN') throw error
-            allowUnknownOwner = await new Promise<boolean>((resolve) => {
+            const allowUnknownOwner = await new Promise<boolean>((resolve) => {
               window.modal.confirm({
                 title: t('settings.data.legacy_data.unknown_owner_title'),
                 content: t('settings.data.legacy_data.unknown_owner_confirm'),
@@ -91,13 +132,16 @@ const BasicDataSettings: React.FC = () => {
               })
             })
             if (!allowUnknownOwner) return
-            await executeLegacyDataAction(() => recoverLegacyData(true), refreshLegacyStatus)
+            const executed = await executeLegacyDataAction(
+              () => recoverLegacyData(true),
+              refreshLegacyStatus,
+              lifecycle
+            )
+            if (!executed) return
           }
           window.toast.success(t('settings.data.legacy_data.recover_success'))
         } catch (error) {
           window.toast.error(`${t('settings.data.legacy_data.recover_failed')}: ${String(error)}`)
-        } finally {
-          setLegacyAction(null)
         }
       }
     })

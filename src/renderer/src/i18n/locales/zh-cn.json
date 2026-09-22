@@ -4525,6 +4525,8 @@
         "recover_failed": "恢复旧版数据失败",
         "recover_success": "旧版数据恢复完成",
         "recover_title": "恢复旧版数据",
+        "recovering": "正在恢复旧版数据，请勿关闭应用或重复操作。",
+        "recovering_title": "正在恢复旧版数据",
         "unknown_owner_confirm": "无法识别旧版数据所属账号，继续操作可能替换当前账号的数据。仍要恢复吗？",
         "unknown_owner_title": "无法验证数据所属账号"
       },
