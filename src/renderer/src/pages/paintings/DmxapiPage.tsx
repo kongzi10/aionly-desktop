@@ -40,7 +40,7 @@ import {
   STYLE_TYPE_OPTIONS,
   TOP_UP_URL
 } from './config/DmxapiConfig'
-import { checkProviderEnabled } from './utils'
+import { checkProviderEnabled, fileMetadataToFile } from './utils'
 
 const generateRandomSeed = () => Math.floor(Math.random() * 1000000).toString()
 
@@ -299,7 +299,7 @@ const DmxapiPage: FC<{ Options: string[] }> = ({ Options }) => {
     return false // 阻止默认上传行为
   }
 
-  const onGenerationModeChange = (v: generationModeType) => {
+  const onGenerationModeChange = async (v: generationModeType) => {
     if (isLoading) {
       return
     }
@@ -326,6 +326,18 @@ const DmxapiPage: FC<{ Options: string[] }> = ({ Options }) => {
         image_size,
         priceModel,
         extend_params
+      })
+    }
+
+    // 切换到编辑/合并模式时，自动把当前生成的图片作为待编辑图片
+    if ([generationModeType.EDIT, generationModeType.MERGE].includes(v) && painting.files.length > 0) {
+      const files = (await Promise.all(painting.files.map((file, index) => fileMetadataToFile(file, index)))).filter(
+        (file): file is File => file !== null
+      )
+
+      setFileMap({
+        imageFiles: files as unknown as FileMetadata[],
+        paths: files.map((file) => URL.createObjectURL(file))
       })
     }
   }

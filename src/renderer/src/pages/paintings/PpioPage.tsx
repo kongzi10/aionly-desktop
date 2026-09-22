@@ -16,7 +16,7 @@ import { translateText } from '@renderer/services/TranslateService'
 import { useAppDispatch } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
 import type { FileMetadata, PaintingsState, PpioPainting } from '@renderer/types'
-import { getErrorMessage, uuid } from '@renderer/utils'
+import { convertToBase64, getErrorMessage, uuid } from '@renderer/utils'
 import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import type { UploadFile } from 'antd'
 import { Button, Input, Segmented, Select, Switch, Tooltip, Upload } from 'antd'
@@ -40,7 +40,7 @@ import {
   type PpioConfigItem,
   type PpioMode
 } from './config/ppioConfig'
-import { checkProviderEnabled } from './utils'
+import { checkProviderEnabled, fileMetadataToFile, findPaintingByFiles } from './utils'
 import PpioService from './utils/PpioService'
 
 const logger = loggerService.withContext('PpioPage')
@@ -175,9 +175,37 @@ const PpioPage: FC<{ Options: string[] }> = ({ Options }) => {
     navigate(`/paintings/${providerId}`, { replace: true })
   }
 
-  const handleModeChange = (value: string) => {
+  const handleModeChange = async (value: string) => {
     const newMode = value as PpioMode
     setMode(newMode)
+
+    // 从绘画切到编辑模式时，自动把当前生成的图片作为待编辑图片
+    if (newMode === 'ppio_edit' && mode === 'ppio_draw' && painting.files.length > 0) {
+      const existingEditPainting = findPaintingByFiles(ppio_edit, 'ppio', painting.files)
+
+      if (existingEditPainting) {
+        setPainting(existingEditPainting)
+        return
+      }
+
+      const file = await fileMetadataToFile(painting.files[currentImageIndex], currentImageIndex)
+
+      if (file) {
+        const seededPainting: PpioPainting = {
+          ...getDefaultPainting('ppio_edit'),
+          prompt: painting.prompt,
+          files: painting.files,
+          urls: painting.urls,
+          providerId: 'ppio',
+          imageFile: (await convertToBase64(file)) as string
+        }
+
+        addPainting('ppio_edit', seededPainting)
+        setPainting(seededPainting)
+        return
+      }
+    }
+
     if (paintings[newMode] && paintings[newMode].length > 0) {
       setPainting(paintings[newMode][0])
     } else {

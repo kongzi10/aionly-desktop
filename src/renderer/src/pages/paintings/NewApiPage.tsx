@@ -57,7 +57,7 @@ import SendMessageButton from '../home/Inputbar/SendMessageButton'
 // import { SettingTitle } from '../settings'
 import Artboard from './components/Artboard'
 import FilesCard from './components/FilesCard'
-import { checkProviderEnabled, findPaintingByFiles } from './utils'
+import { checkProviderEnabled, fileMetadataToFile, findPaintingByFiles } from './utils'
 
 const logger = loggerService.withContext('NewApiPage')
 
@@ -131,28 +131,12 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
         return
       }
 
-      try {
-        const files = await Promise.all(
-          painting.files.map(async (file, index) => {
-            const { data, mime } = await window.api.file.binaryImage(file.id + file.ext)
-            const fileName = file.name || `image_${index + 1}${file.ext}`
+      const files = (await Promise.all(painting.files.map((file, index) => fileMetadataToFile(file, index)))).filter(
+        (file): file is File => file !== null
+      )
 
-            return new File([data], fileName, {
-              type: mime,
-              lastModified: new Date(file.created_at).getTime()
-            })
-          })
-        )
-
-        if (isActive) {
-          setEditImageFiles(files)
-        }
-      } catch (error) {
-        logger.error('Failed to sync edit images from selected painting:', error as Error)
-
-        if (isActive) {
-          setEditImageFiles([])
-        }
+      if (isActive) {
+        setEditImageFiles(files)
       }
     }
 

@@ -37,7 +37,7 @@ import Artboard from './components/Artboard'
 import PaintingsList from './components/PaintingsList'
 import ProviderSelect from './components/ProviderSelect'
 import { type ConfigItem, createModeConfigs, DEFAULT_PAINTING } from './config/aihubmixConfig'
-import { checkProviderEnabled } from './utils'
+import { checkProviderEnabled, fileMetadataToFile, findPaintingByFiles } from './utils'
 
 const logger = loggerService.withContext('AihubmixPage')
 
@@ -688,10 +688,48 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
   }
 
   // 处理模式切换
-  const handleModeChange = (value: string) => {
-    setMode(value as keyof PaintingsState)
-    if (paintings[value as keyof PaintingsState] && paintings[value as keyof PaintingsState].length > 0) {
-      setPainting(paintings[value as keyof PaintingsState][0])
+  const handleModeChange = async (value: string) => {
+    const nextMode = value as keyof PaintingsState
+    setMode(nextMode)
+
+    // 从绘画切到重绘/高清放大模式时，自动把当前生成的图片作为输入图片
+    if (
+      (nextMode === 'aihubmix_image_remix' || nextMode === 'aihubmix_image_upscale') &&
+      mode === 'aihubmix_image_generate' &&
+      painting.files.length > 0
+    ) {
+      const existingPainting = findPaintingByFiles(paintings[nextMode] || [], aihubmixProvider.id, painting.files)
+
+      if (existingPainting) {
+        setPainting(existingPainting)
+        return
+      }
+
+      const file = await fileMetadataToFile(painting.files[currentImageIndex], currentImageIndex)
+
+      if (file) {
+        const path = URL.createObjectURL(file)
+        setFileMap((prev) => ({ ...prev, [path]: file as unknown as FileMetadata }))
+
+        const seededPainting: PaintingAction = {
+          ...DEFAULT_PAINTING,
+          model: 'V_3',
+          prompt: painting.prompt,
+          files: painting.files,
+          urls: painting.urls,
+          providerId: aihubmixProvider.id,
+          id: uuid(),
+          imageFile: path
+        }
+
+        addPainting(nextMode, seededPainting)
+        setPainting(seededPainting)
+        return
+      }
+    }
+
+    if (paintings[nextMode] && paintings[nextMode].length > 0) {
+      setPainting(paintings[nextMode][0])
     } else {
       setPainting(DEFAULT_PAINTING)
     }
