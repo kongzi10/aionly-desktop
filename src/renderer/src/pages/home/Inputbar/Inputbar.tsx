@@ -246,18 +246,25 @@ const InputbarInner: FC<InputbarInnerProps> = ({
       })
 
   const sendMessage = useCallback(async () => {
-    if (mode === 'roundtable') {
-      if (!canSendRoundtableMessage(mentionedModels)) {
-        message.warning(t('roundtable.minimum_models'))
-        return
-      }
-      // 会员身份直接读取用户资料字段（memberFlag/memberStatus/memberDate）
-      const hasMembership = isRoundtableMember(userInfo)
-      const maxModels = getRoundtableMaxModels(hasMembership)
-      if (mentionedModels.length > maxModels) {
-        message.warning(hasMembership ? t('roundtable.max_models_member') : t('roundtable.max_models_free'))
-        return
-      }
+    if (mode === 'roundtable' && !canSendRoundtableMessage(mentionedModels)) {
+      message.warning(t('roundtable.minimum_models'))
+      return
+    }
+
+    // 模型数量上限：圆桌对话与对话模块的多智能体回复共用（会员身份直接读取用户资料字段 memberFlag/memberStatus/memberDate）
+    const hasMembership = isRoundtableMember(userInfo)
+    const maxModels = getRoundtableMaxModels(hasMembership)
+    if (mentionedModels.length > maxModels) {
+      message.warning(
+        mode === 'roundtable'
+          ? hasMembership
+            ? t('roundtable.max_models_member')
+            : t('roundtable.max_models_free')
+          : hasMembership
+            ? t('chat.max_models_member')
+            : t('chat.max_models_free')
+      )
+      return
     }
 
     if (checkRateLimit(assistant)) {

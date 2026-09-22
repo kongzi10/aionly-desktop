@@ -1335,6 +1335,8 @@
         "settings": "网络搜索设置"
       }
     },
+    "max_models_free": "多智能体回复最多支持选择 2 个模型，开通会员可选择 4 个",
+    "max_models_member": "多智能体回复最多支持选择 4 个模型",
     "mcp": {
       "error": {
         "parse_tool_call": "无法转换为有效的工具调用格式：{{toolCall}}"

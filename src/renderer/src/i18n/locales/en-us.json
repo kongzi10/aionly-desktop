@@ -1335,6 +1335,8 @@
         "settings": "Web Search Settings"
       }
     },
+    "max_models_free": "Multi-agent reply supports up to 2 models. Become a member to select up to 4",
+    "max_models_member": "Multi-agent reply supports up to 4 models",
     "mcp": {
       "error": {
         "parse_tool_call": "Unable to convert to a valid tool call format: {{toolCall}}"

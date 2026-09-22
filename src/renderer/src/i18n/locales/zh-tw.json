@@ -1335,6 +1335,8 @@
         "settings": "網路搜尋設定"
       }
     },
+    "max_models_free": "多智慧體回覆最多支援選擇 2 個模型，開通會員可選擇 4 個",
+    "max_models_member": "多智慧體回覆最多支援選擇 4 個模型",
     "mcp": {
       "error": {
         "parse_tool_call": "無法轉換為有效的工具呼叫格式：{{toolCall}}"
