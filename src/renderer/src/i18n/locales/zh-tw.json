@@ -4063,6 +4063,8 @@
   },
   "roundtable": {
     "add_model": "添加模型",
+    "max_models_free": "圓桌對話最多支持選擇 2 個模型，開通會員可選擇 4 個",
+    "max_models_member": "圓桌對話最多支持選擇 4 個模型",
     "minimum_models": "圓桌對話至少需要選擇兩個模型",
     "title": "圓桌",
     "welcome": "準備好開始了嗎？"

@@ -1,4 +1,7 @@
+import { loggerService } from '@logger'
 import Dexie from 'dexie'
+
+const logger = loggerService.withContext('ProfileDataMigrationService')
 
 export const PROFILE_RENDERER_MIGRATION_PREFIX = 'aionly:renderer-migration:'
 const LEGACY_PROFILE_DATA_MIGRATION_ENABLED = true
@@ -18,6 +21,43 @@ export const LEGACY_PROFILE_KEYS = [
   'memory_currentUserId',
   'cacheUpdatedModels'
 ]
+
+interface PersistedAssistant {
+  id?: unknown
+  workspace?: unknown
+  topics?: Array<{ id?: unknown }>
+}
+
+function summarizePersistedAssistants(value: unknown) {
+  try {
+    const assistantsState = typeof value === 'string' ? JSON.parse(value) : value
+    if (!assistantsState || typeof assistantsState !== 'object') return { assistantCount: 0, topicCount: 0 }
+
+    const state = assistantsState as {
+      defaultAssistant?: PersistedAssistant
+      assistants?: PersistedAssistant[]
+    }
+    const assistants = [state.defaultAssistant, ...(Array.isArray(state.assistants) ? state.assistants : [])].filter(
+      (assistant): assistant is PersistedAssistant => Boolean(assistant)
+    )
+    const topicIds = assistants.flatMap((assistant) =>
+      Array.isArray(assistant.topics)
+        ? assistant.topics.map((topic) => topic.id).filter((id): id is string => typeof id === 'string')
+        : []
+    )
+
+    return {
+      assistantCount: assistants.length,
+      chatAssistantCount: assistants.filter((assistant) => assistant.workspace !== 'roundtable').length,
+      roundtableAssistantCount: assistants.filter((assistant) => assistant.workspace === 'roundtable').length,
+      topicCount: topicIds.length,
+      topicIds: topicIds.slice(0, 50),
+      topicIdsTruncated: topicIds.length > 50
+    }
+  } catch (error) {
+    return { assistantCount: 0, topicCount: 0, parseError: String(error) }
+  }
+}
 
 export function migrateLegacyReduxState(storage: Storage, profileId: string): boolean {
   const targetKey = `persist:aionly:${profileId}`
@@ -51,6 +91,20 @@ export function replaceLegacyReduxState(storage: Storage, profileId: string): bo
     delete restoredState.user
     if (currentState?.user !== undefined) restoredState.user = currentState.user
     storage.setItem(targetKey, JSON.stringify(restoredState))
+    logger.info(
+      'Legacy Redux state replaced',
+      {
+        profileId,
+        sourceKey: LEGACY_REDUX_KEY,
+        targetKey,
+        sourceBytes: legacyState.length,
+        restoredSlices: Object.keys(restoredState),
+        assistants: summarizePersistedAssistants(restoredState.assistants)
+      },
+      { logToMain: true }
+    )
+  } else {
+    logger.warn('Legacy Redux state was not found during recovery', { profileId, sourceKey: LEGACY_REDUX_KEY })
   }
 
   const hasLegacyProfileStorage = LEGACY_PROFILE_KEYS.some((key) => storage.getItem(key) !== null)
@@ -184,7 +238,10 @@ export async function replaceLegacyIndexedDb(
 ): Promise<void> {
   const legacyName = options.legacyName ?? 'AiOnly'
   const targetName = options.targetName ?? `AiOnly-${profileId}`
-  if (!(await Dexie.exists(legacyName))) return
+  if (!(await Dexie.exists(legacyName))) {
+    logger.warn('Legacy IndexedDB was not found during recovery', { profileId, legacyName, targetName })
+    return
+  }
 
   const legacy = new Dexie(legacyName)
   let target: Dexie | null = null
@@ -195,6 +252,24 @@ export async function replaceLegacyIndexedDb(
     await legacy.open()
     const snapshots = new Map<string, unknown[]>()
     for (const table of legacy.tables) snapshots.set(table.name, await table.toArray())
+
+    const sourceCounts = Object.fromEntries([...snapshots].map(([tableName, records]) => [tableName, records.length]))
+    const sourceTopicIds = ((snapshots.get('topics') ?? []) as Array<{ id?: unknown }>)
+      .map((topic) => topic.id)
+      .filter((id): id is string => typeof id === 'string')
+    logger.info(
+      'Legacy IndexedDB snapshot loaded',
+      {
+        profileId,
+        legacyName,
+        targetName,
+        legacyVersion: legacy.verno,
+        sourceCounts,
+        sourceTopicIds: sourceTopicIds.slice(0, 50),
+        sourceTopicIdsTruncated: sourceTopicIds.length > 50
+      },
+      { logToMain: true }
+    )
 
     if (await Dexie.exists(targetName)) {
       const previous = new Dexie(targetName)
@@ -216,6 +291,34 @@ export async function replaceLegacyIndexedDb(
     for (const [tableName, records] of snapshots) {
       if (records.length) await target.table(tableName).bulkAdd(records)
     }
+
+    const targetCounts = Object.fromEntries(
+      await Promise.all(target.tables.map(async (table) => [table.name, await table.count()]))
+    )
+    const restoredTopicIds = sourceTopicIds.length
+      ? await target
+          .table('topics')
+          .bulkGet(sourceTopicIds)
+          .then((topics) =>
+            topics
+              .map((topic) => (topic as { id?: unknown } | undefined)?.id)
+              .filter((id): id is string => typeof id === 'string')
+          )
+      : []
+    logger.info(
+      'Legacy IndexedDB replacement completed',
+      {
+        profileId,
+        legacyName,
+        targetName,
+        sourceCounts,
+        targetCounts,
+        sourceTopicCount: sourceTopicIds.length,
+        restoredTopicCount: restoredTopicIds.length,
+        missingTopicIds: sourceTopicIds.filter((id) => !restoredTopicIds.includes(id)).slice(0, 50)
+      },
+      { logToMain: true }
+    )
   } catch (error) {
     target?.close()
     await Dexie.delete(targetName)

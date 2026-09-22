@@ -32,6 +32,7 @@ import { estimateTextTokens as estimateTxtTokens, estimateUserPromptUsage } from
 import WebSearchService from '@renderer/services/WebSearchService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { sendMessage as _sendMessage } from '@renderer/store/thunk/messageThunk'
+import { selectUserInfo } from '@renderer/store/user'
 import {
   type Assistant,
   type FileMetadata,
@@ -51,7 +52,7 @@ import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useStat
 import { useTranslation } from 'react-i18next'
 
 import RoundtableModelBar from '../../roundtable/RoundtableModelBar'
-import { canSendRoundtableMessage } from '../../roundtable/roundtablePolicy'
+import { canSendRoundtableMessage, getRoundtableMaxModels, isRoundtableMember } from '../../roundtable/roundtablePolicy'
 import { InputbarCore } from './components/InputbarCore'
 import InputbarTools from './InputbarTools'
 import KnowledgeBaseInput from './KnowledgeBaseInput'
@@ -182,6 +183,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   const isGenerateImageAssistant = useMemo(() => isGenerateImageModel(model), [model])
   const { setTimeoutTimer } = useTimer()
   const isMultiSelectMode = useAppSelector((state) => state.runtime.chat.isMultiSelectMode)
+  const userInfo: any = useAppSelector(selectUserInfo)
 
   const isVisionSupported = useMemo(
     () =>
@@ -244,9 +246,18 @@ const InputbarInner: FC<InputbarInnerProps> = ({
       })
 
   const sendMessage = useCallback(async () => {
-    if (mode === 'roundtable' && !canSendRoundtableMessage(mentionedModels)) {
-      message.warning(t('roundtable.minimum_models'))
-      return
+    if (mode === 'roundtable') {
+      if (!canSendRoundtableMessage(mentionedModels)) {
+        message.warning(t('roundtable.minimum_models'))
+        return
+      }
+      // 会员身份直接读取用户资料字段（memberFlag/memberStatus/memberDate）
+      const hasMembership = isRoundtableMember(userInfo)
+      const maxModels = getRoundtableMaxModels(hasMembership)
+      if (mentionedModels.length > maxModels) {
+        message.warning(hasMembership ? t('roundtable.max_models_member') : t('roundtable.max_models_free'))
+        return
+      }
     }
 
     if (checkRateLimit(assistant)) {
@@ -302,6 +313,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
     resizeTextArea,
     focusTextarea,
     mode,
+    userInfo,
     t
   ])
 

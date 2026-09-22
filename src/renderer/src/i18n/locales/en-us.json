@@ -4063,6 +4063,8 @@
   },
   "roundtable": {
     "add_model": "Add model",
+    "max_models_free": "A roundtable conversation supports up to 2 models. Upgrade to membership to select up to 4",
+    "max_models_member": "A roundtable conversation supports up to 4 models",
     "minimum_models": "Select at least two models for a roundtable conversation",
     "title": "Roundtable",
     "welcome": "Ready to get started?"

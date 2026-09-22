@@ -4063,6 +4063,8 @@
   },
   "roundtable": {
     "add_model": "添加模型",
+    "max_models_free": "圆桌对话最多支持选择 2 个模型，开通会员可选择 4 个",
+    "max_models_member": "圆桌对话最多支持选择 4 个模型",
     "minimum_models": "圆桌对话至少需要选择两个模型",
     "title": "圆桌",
     "welcome": "准备好开始了吗？"
