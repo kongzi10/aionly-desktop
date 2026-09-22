@@ -219,7 +219,7 @@ export const useMinappPopup = () => {
       supportedRegions: ['CN', 'Global'],
       url: config?.url ?? rechargeConfig.url
     }
-    openMinappKeepAlive(app)
+    openSmartMinapp(app, true)
   }
 
   // 账单
@@ -232,7 +232,7 @@ export const useMinappPopup = () => {
       supportedRegions: ['CN', 'Global'],
       url: config?.url ?? billsConfig.url
     }
-    openMinappKeepAlive(app)
+    openSmartMinapp(app, true)
   }
 
   return {
