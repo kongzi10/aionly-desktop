@@ -576,8 +576,11 @@ const DmxapiPage: FC<{ Options: string[] }> = ({ Options }) => {
       // 检查提供者状态
       checkProviderStatus()
 
-      // 处理已有文件
-      if (painting.files.length > 0 && !painting.autoCreate) {
+      // 处理已有文件（编辑/合并模式结果追加，不覆盖，无需确认）
+      const isImageInputMode =
+        painting.generationMode === generationModeType.EDIT || painting.generationMode === generationModeType.MERGE
+
+      if (painting.files.length > 0 && !painting.autoCreate && !isImageInputMode) {
         const confirmed = await window.modal.confirm({
           content: t('paintings.regenerate.confirm'),
           centered: true
@@ -608,6 +611,23 @@ const DmxapiPage: FC<{ Options: string[] }> = ({ Options }) => {
             // 保存文件并更新状态
             await FileManager.addFiles(validFiles)
             getNewPaintingPanel({ files: validFiles, urls })
+          } else if (isImageInputMode) {
+            // 编辑/合并模式下结果追加到已有图片之后（不覆盖源图），并展示第一张新图
+            await FileManager.addFiles(validFiles)
+            updatePaintingState({
+              files: [...painting.files, ...validFiles],
+              urls: [...(painting.urls || []), ...urls]
+            })
+            setCurrentImageIndex(painting.files.length)
+
+            // 编辑输入始终取最新一张图（追加生成后即为最新结果）
+            const latestFile = await fileMetadataToFile(validFiles[0], 0)
+            if (latestFile) {
+              setFileMap({
+                imageFiles: [latestFile as unknown as FileMetadata],
+                paths: [URL.createObjectURL(latestFile)]
+              })
+            }
           } else {
             // 删除之前的图片
             await FileManager.deleteFiles(painting.files)

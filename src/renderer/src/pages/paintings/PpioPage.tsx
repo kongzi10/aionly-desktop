@@ -253,8 +253,8 @@ const PpioPage: FC<{ Options: string[] }> = ({ Options }) => {
       return
     }
 
-    // 检查是否需要重新生成
-    if (painting.files && painting.files.length > 0) {
+    // 检查是否需要重新生成（编辑模式结果追加，不覆盖，无需确认）
+    if (mode === 'ppio_draw' && painting.files && painting.files.length > 0) {
       const confirmed = await window.modal.confirm({
         content: t('paintings.regenerate.confirm'),
         centered: true
@@ -320,13 +320,26 @@ const PpioPage: FC<{ Options: string[] }> = ({ Options }) => {
 
         await FileManager.addFiles(validFiles)
 
+        // 编辑模式下结果追加到已有图片之后（不覆盖源图），并展示第一张新图
+        const isEditMode = mode === 'ppio_edit'
+
+        // 编辑输入始终取最新一张图（追加生成后即为最新结果）
+        let nextImageFile: string | undefined
+        if (isEditMode && validFiles.length > 0) {
+          const file = await fileMetadataToFile(validFiles[0], 0)
+          if (file) {
+            nextImageFile = (await convertToBase64(file)) as string
+          }
+        }
+
         updatePaintingState({
-          files: validFiles,
-          urls: imageUrls,
-          ppioStatus: 'succeeded'
+          files: isEditMode ? [...painting.files, ...validFiles] : validFiles,
+          urls: isEditMode ? [...(painting.urls || []), ...imageUrls] : imageUrls,
+          ppioStatus: 'succeeded',
+          ...(nextImageFile ? { imageFile: nextImageFile } : {})
         })
 
-        setCurrentImageIndex(0)
+        setCurrentImageIndex(isEditMode ? painting.files.length : 0)
       }
     } catch (error) {
       logger.error('Image generation failed', error as Error)

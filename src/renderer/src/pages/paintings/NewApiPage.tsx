@@ -57,7 +57,7 @@ import SendMessageButton from '../home/Inputbar/SendMessageButton'
 // import { SettingTitle } from '../settings'
 import Artboard from './components/Artboard'
 import FilesCard from './components/FilesCard'
-import { checkProviderEnabled, fileMetadataToFile, findPaintingByFiles } from './utils'
+import { checkProviderEnabled, fileMetadataToFile } from './utils'
 
 const logger = loggerService.withContext('NewApiPage')
 
@@ -102,9 +102,44 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
   const { getUserEnabledPlan } = useUserTokenPlan(userInfo?.userId)
   const userTokenPlan: any = getUserEnabledPlan()
 
-  const filteredPaintings = useMemo(
-    () => (newApiPaintings[mode] || []).filter((p) => p.providerId === newApiProvider.id),
-    [newApiPaintings, mode, newApiProvider.id]
+  // 绘画/编辑共享右边栏列表：显示层合并两个命名空间（不改存储），按最新图片时间倒序
+  const filteredPaintings = useMemo(() => {
+    const merged = [
+      ...(newApiPaintings.openai_image_generate || []),
+      ...(newApiPaintings.openai_image_edit || [])
+    ].filter((p) => p.providerId === newApiProvider.id)
+    const latestTimestamp = (p: PaintingAction) => {
+      const latestFile = p.files[p.files.length - 1]
+      return (latestFile && new Date(latestFile.created_at).getTime()) || 0
+    }
+    merged.sort((a, b) => latestTimestamp(b) - latestTimestamp(a))
+
+    // 历史版本切 tab 时会复制出副本卡（文件引用相同，副本可能又追加了编辑结果）。
+    // 展示时去重：文件序列是另一卡片前缀（或相同）的视为副本，仅保留更完整（或更新）的那张
+    return merged.filter((p) => {
+      if (p.files.length === 0) return true
+      return !merged.some((other) => {
+        if (other.id === p.id || other.files.length < p.files.length) return false
+        const isPrefix = other.files.slice(0, p.files.length).every((f, i) => f.id === p.files[i].id)
+        if (!isPrefix) return false
+        // 完全相同时保留排序靠前（更新）的那张
+        return other.files.length > p.files.length || merged.indexOf(other) < merged.indexOf(p)
+      })
+    })
+  }, [newApiPaintings, newApiProvider.id])
+
+  // 反查卡片所属命名空间：绘画/编辑各自持久化，更新/删除必须写回原命名空间（找不到时回落到当前 mode）
+  const namespaceOf = useCallback(
+    (p: PaintingAction): keyof PaintingsState => {
+      if (newApiPaintings.openai_image_generate?.some((item) => item.id === p.id)) {
+        return 'openai_image_generate'
+      }
+      if (newApiPaintings.openai_image_edit?.some((item) => item.id === p.id)) {
+        return 'openai_image_edit'
+      }
+      return mode
+    },
+    [mode, newApiPaintings]
   )
   const [painting, setPainting] = useState<PaintingAction>({ ...DEFAULT_PAINTING, providerId: newApiProvider.id })
 
@@ -131,12 +166,13 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
         return
       }
 
-      const files = (await Promise.all(painting.files.map((file, index) => fileMetadataToFile(file, index)))).filter(
-        (file): file is File => file !== null
-      )
+      // 编辑输入跟随画布当前选中的图片：多图卡片在中间切换到哪张就编辑哪张
+      const index = Math.min(Math.max(currentImageIndex, 0), painting.files.length - 1)
+      const selectedFile = painting.files[index]
+      const converted = await fileMetadataToFile(selectedFile, index)
 
       if (isActive) {
-        setEditImageFiles(files)
+        setEditImageFiles(converted ? [converted] : [])
       }
     }
 
@@ -145,15 +181,17 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
     return () => {
       isActive = false
     }
-  }, [mode, painting.files])
+  }, [mode, painting.files, currentImageIndex])
 
   const updatePaintingState = useCallback(
     (updates: Partial<PaintingAction>) => {
+      // 卡片可能来自另一模式的命名空间，写回时按其自身归属路由
+      const namespace = namespaceOf(painting)
       const updatedPainting = { ...painting, providerId: newApiProvider.id, ...updates }
       setPainting(updatedPainting)
-      updatePainting(mode, updatedPainting)
+      updatePainting(namespace, updatedPainting)
     },
-    [painting, newApiProvider.id, mode, updatePainting]
+    [painting, newApiProvider.id, namespaceOf, updatePainting]
   )
 
   // ---------------- Model Related Configurations ----------------
@@ -315,7 +353,8 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
 
     await checkProviderEnabled(newApiProvider, t)
 
-    if (painting.files.length > 0) {
+    // 编辑模式不覆盖已有图片（结果会追加），无需确认；也不能删除源图文件（绘画模式的绘画仍引用）
+    if (painting.files.length > 0 && mode !== 'openai_image_edit') {
       const confirmed = await window.modal.confirm({
         content: t('paintings.regenerate.confirm'),
         centered: true
@@ -425,6 +464,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
             images: await Promise.all(editImages.map((file) => getFileBase64(file)))
           },
           parameters: {
+            n: painting.n || 1,
             size: formatSizeForModel(painting.model, painting.size), // size 格式因模型而异：百炼系 width*height，其余 widthxheight
             quality: painting.quality || 'auto',
             moderation: painting.moderation || 'auto'
@@ -454,10 +494,29 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
         ?.filter((item) => item.b64_json || item.base64)
         .map((item) => item.b64_json || item.base64)
 
+      // 编辑模式下结果作为新卡片加入右边栏（源卡片保持不变），并选中新卡片继续下一次编辑
+      const isEditMode = mode === 'openai_image_edit'
+      const saveEditResult = (files: FileMetadata[], resultUrls: string[]) => {
+        const resultPainting: PaintingAction = {
+          ...getNewPainting(),
+          prompt: painting.prompt,
+          files,
+          urls: resultUrls
+        }
+        addPainting(mode, resultPainting)
+        updatePainting(mode, resultPainting)
+        setPainting(resultPainting)
+        setCurrentImageIndex(0)
+      }
+
       if (urls?.length > 0) {
         const validFiles = await downloadImages(urls)
         await FileManager.addFiles(validFiles)
-        updatePaintingState({ files: validFiles, urls })
+        if (isEditMode) {
+          saveEditResult(validFiles, urls)
+        } else {
+          updatePaintingState({ files: validFiles, urls })
+        }
       }
 
       if (base64s?.length > 0) {
@@ -467,7 +526,11 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
           })
         )
         await FileManager.addFiles(validFiles)
-        updatePaintingState({ files: validFiles, urls: [] })
+        if (isEditMode) {
+          saveEditResult(validFiles, [])
+        } else {
+          updatePaintingState({ files: validFiles, urls: [] })
+        }
       }
     } catch (error: unknown) {
       handleError(error)
@@ -521,7 +584,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
       }
     }
 
-    void removePainting(mode, paintingToDelete)
+    void removePainting(namespaceOf(paintingToDelete), paintingToDelete)
   }
 
   const translate = async () => {
@@ -583,38 +646,9 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
     }
   }*/
 
-  // 处理模式切换
+  // 处理模式切换：绘画/编辑共享右边栏列表，切换后保留当前选中卡片（下方同步 effect 会保持选中）
   const handleModeChange = (e: RadioChangeEvent) => {
-    const value = e.target.value
-    const nextMode = value as keyof PaintingsState
-
-    setMode(nextMode)
-
-    if (nextMode === 'openai_image_edit' && mode === 'openai_image_generate' && painting.files.length > 0) {
-      const existingEditPainting = findPaintingByFiles(
-        newApiPaintings.openai_image_edit || [],
-        newApiProvider.id,
-        painting.files
-      )
-
-      if (existingEditPainting) {
-        setPainting(existingEditPainting)
-        return
-      }
-
-      const seededPainting = {
-        ...painting,
-        id: uuid(),
-        providerId: newApiProvider.id
-      }
-
-      addPainting(nextMode, seededPainting)
-      setPainting(seededPainting)
-      return
-    }
-
-    const list = (newApiPaintings[nextMode] || []).filter((p) => p.providerId === newApiProvider.id)
-    setPainting(list[0] || { ...DEFAULT_PAINTING, providerId: newApiProvider.id })
+    setMode(e.target.value as keyof PaintingsState)
   }
 
   // 渲染配置项的函数
@@ -994,6 +1028,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
           onSelectPainting={onSelectPainting}
           onDeletePainting={onDeletePainting}
           onNewPainting={handleAddPainting}
+          sortable={false}
         />
       </ContentContainer>
     </Container>

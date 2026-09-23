@@ -18,6 +18,8 @@ interface PaintingsListProps {
   onDeletePainting: (painting: Painting) => void
   onNewPainting: () => void
   namespace: keyof PaintingsState
+  /** 跨命名空间合并的列表按时间排序，拖拽排序会与时间序冲突，需禁用 */
+  sortable?: boolean
 }
 
 const PaintingsList: FC<PaintingsListProps> = ({
@@ -26,12 +28,35 @@ const PaintingsList: FC<PaintingsListProps> = ({
   onSelectPainting,
   onDeletePainting,
   onNewPainting,
-  namespace
+  namespace,
+  sortable = true
 }) => {
   const { t } = useTranslation()
   const [dragging, setDragging] = useState(false)
   const { updatePaintings } = usePaintings()
   const generatedPaintings = paintings.filter((painting) => painting.files.length > 0)
+
+  const renderItem = (item: Painting) => (
+    <CanvasWrapper key={item.id}>
+      <Canvas
+        className={classNames(selectedPainting.id === item.id && 'selected')}
+        onClick={() => onSelectPainting(item)}>
+        {/* 缩略图取最新生成的图片（编辑模式结果追加后即为最新结果） */}
+        {item.files.length > 0 && (
+          <ThumbnailImage src={FileManager.getFileUrl(item.files[item.files.length - 1])} alt="" />
+        )}
+      </Canvas>
+      <DeleteButton>
+        <Popconfirm
+          title={t('paintings.button.delete.image.confirm')}
+          onConfirm={() => onDeletePainting(item)}
+          okButtonProps={{ danger: true }}
+          placement="left">
+          <DeleteOutlined />
+        </Popconfirm>
+      </DeleteButton>
+    </CanvasWrapper>
+  )
 
   return (
     <Container style={{ paddingBottom: dragging ? 80 : 10 }}>
@@ -40,30 +65,17 @@ const PaintingsList: FC<PaintingsListProps> = ({
           <PlusOutlined />
         </NewPaintingButton>
       )}
-      <DraggableList
-        list={generatedPaintings}
-        onUpdate={(value) => updatePaintings(namespace, value)}
-        onDragStart={() => setDragging(true)}
-        onDragEnd={() => setDragging(false)}>
-        {(item: Painting) => (
-          <CanvasWrapper key={item.id}>
-            <Canvas
-              className={classNames(selectedPainting.id === item.id && 'selected')}
-              onClick={() => onSelectPainting(item)}>
-              {item.files[0] && <ThumbnailImage src={FileManager.getFileUrl(item.files[0])} alt="" />}
-            </Canvas>
-            <DeleteButton>
-              <Popconfirm
-                title={t('paintings.button.delete.image.confirm')}
-                onConfirm={() => onDeletePainting(item)}
-                okButtonProps={{ danger: true }}
-                placement="left">
-                <DeleteOutlined />
-              </Popconfirm>
-            </DeleteButton>
-          </CanvasWrapper>
-        )}
-      </DraggableList>
+      {sortable ? (
+        <DraggableList
+          list={generatedPaintings}
+          onUpdate={(value) => updatePaintings(namespace, value)}
+          onDragStart={() => setDragging(true)}
+          onDragEnd={() => setDragging(false)}>
+          {renderItem}
+        </DraggableList>
+      ) : (
+        <StaticList>{generatedPaintings.map(renderItem)}</StaticList>
+      )}
     </Container>
   )
 }
@@ -89,6 +101,16 @@ const CanvasWrapper = styled.div`
     .delete-button {
       opacity: 1;
     }
+  }
+`
+
+const StaticList = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  & > ${CanvasWrapper} {
+    margin-bottom: 8px;
   }
 `
 

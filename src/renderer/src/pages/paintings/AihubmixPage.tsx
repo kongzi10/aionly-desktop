@@ -107,6 +107,33 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
     updatePainting(mode, updatedPainting)
   }
 
+  // 重绘/放大模式以图片为输入，生成结果追加到已有图片之后（不覆盖源图）
+  const isImageInputMode = mode === 'aihubmix_image_remix' || mode === 'aihubmix_image_upscale'
+
+  // 保存生成结果，并展示第一张新图
+  const saveResultFiles = async (validFiles: FileMetadata[], urls: string[]) => {
+    // 重绘/放大模式的编辑输入始终取最新一张图（追加生成后即为最新结果）
+    let imageFile = painting.imageFile
+    if (isImageInputMode && validFiles.length > 0) {
+      const file = await fileMetadataToFile(validFiles[0], 0)
+      if (file) {
+        const path = URL.createObjectURL(file)
+        setFileMap((prev) => ({ ...prev, [path]: file as unknown as FileMetadata }))
+        imageFile = path
+      }
+    }
+
+    updatePaintingState({
+      files: isImageInputMode ? [...painting.files, ...validFiles] : validFiles,
+      urls: isImageInputMode ? [...painting.urls, ...urls] : urls,
+      ...(imageFile ? { imageFile } : {})
+    })
+
+    if (isImageInputMode) {
+      setCurrentImageIndex(painting.files.length)
+    }
+  }
+
   const handleError = (error: unknown) => {
     if (error instanceof Error && error.name !== 'AbortError') {
       window.modal.error({
@@ -145,7 +172,8 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
   const onGenerate = async () => {
     await checkProviderEnabled(aihubmixProvider, t)
 
-    if (painting.files.length > 0) {
+    // 重绘/放大模式不覆盖已有图片（结果会追加），无需确认；也不能删除源图文件
+    if (painting.files.length > 0 && !isImageInputMode) {
       const confirmed = await window.modal.confirm({
         content: t('paintings.regenerate.confirm'),
         centered: true
@@ -199,7 +227,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
               })
             )
             await FileManager.addFiles(validFiles)
-            updatePaintingState({ files: validFiles, urls: [] })
+            saveResultFiles(validFiles, [])
           }
           return
         } else if (painting.model === 'gemini-3-pro-image-preview') {
@@ -267,7 +295,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
               })
             )
             await FileManager.addFiles(validFiles)
-            updatePaintingState({ files: validFiles, urls: [] })
+            saveResultFiles(validFiles, [])
           }
           return
         } else if (painting.model === 'V_3') {
@@ -351,7 +379,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
             if (urls.length > 0) {
               const validFiles = await downloadImages(urls)
               await FileManager.addFiles(validFiles)
-              updatePaintingState({ files: validFiles, urls })
+              saveResultFiles(validFiles, urls)
             }
             return
           } catch (error: unknown) {
@@ -480,7 +508,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
           if (urls.length > 0) {
             const validFiles = await downloadImages(urls)
             await FileManager.addFiles(validFiles)
-            updatePaintingState({ files: validFiles, urls })
+            saveResultFiles(validFiles, urls)
           }
           return
         } else {
@@ -552,7 +580,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
             })
           )
           await FileManager.addFiles(validFiles)
-          updatePaintingState({ files: validFiles, urls: [] })
+          saveResultFiles(validFiles, [])
           return
         }
         const urls = data.data.filter((item) => item.url).map((item) => item.url)
@@ -561,7 +589,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
         if (urls.length > 0) {
           const validFiles = await downloadImages(urls)
           await FileManager.addFiles(validFiles)
-          updatePaintingState({ files: validFiles, urls })
+          saveResultFiles(validFiles, urls)
         }
 
         if (base64s?.length > 0) {
@@ -571,7 +599,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
             })
           )
           await FileManager.addFiles(validFiles)
-          updatePaintingState({ files: validFiles, urls: [] })
+          saveResultFiles(validFiles, [])
         }
       }
     } catch (error: unknown) {
