@@ -21,6 +21,7 @@ import { useCallback } from 'react'
 import { useNavbarPosition } from './useSettings'
 
 let minAppsCache: LRUCache<string, MinAppType>
+let minAppsCacheDispatch: ReturnType<typeof useAppDispatch> | undefined
 
 /**
  * Usage:
@@ -68,8 +69,9 @@ export const useMinappPopup = () => {
   }, [dispatch, maxKeepAliveMinapps])
 
   // 缓存不存在
-  if (!minAppsCache) {
+  if (!minAppsCache || minAppsCacheDispatch !== dispatch) {
     minAppsCache = createLRUCache()
+    minAppsCacheDispatch = dispatch
   }
 
   // 缓存数量大小发生了改变
@@ -79,6 +81,7 @@ export const useMinappPopup = () => {
       // LRU cache 机制，后 set 的会被放到前面，所以需要反转一下
       const oldEntries = Array.from(minAppsCache.entries()).reverse()
       minAppsCache = createLRUCache()
+      minAppsCacheDispatch = dispatch
       oldEntries.forEach(([key, value]) => {
         minAppsCache.set(key, value)
       })
@@ -155,6 +158,7 @@ export const useMinappPopup = () => {
     // minAppsCache.clear 会多次调用 dispose 方法
     // 重新创建一个 LRU Cache 替换
     minAppsCache = createLRUCache()
+    minAppsCacheDispatch = dispatch
     dispatch(setOpenedKeepAliveMinapps([]))
     dispatch(setOpenedOneOffMinapp(null))
     dispatch(setCurrentMinappId(''))

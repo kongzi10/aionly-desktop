@@ -40,6 +40,7 @@ import nutstore from './nutstore'
 import ocr from './ocr'
 import openclaw from './openclaw'
 import paintings from './paintings'
+import { PROFILE_PERSIST_BLACKLIST, PROFILE_PERSIST_VERSION } from './persistence'
 import preprocess from './preprocess'
 import runtime from './runtime'
 import selectionStore from './selectionStore'
@@ -104,8 +105,11 @@ function createStoreRuntime() {
     {
       key: persistKey,
       storage,
-      version: 207,
-      blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
+      version: PROFILE_PERSIST_VERSION,
+      // Authentication is stored separately in profile-scoped localStorage.
+      // Persisting the user slice as well can restore the previous account's token
+      // after a profile switch and make the new account send stale credentials.
+      blacklist: [...PROFILE_PERSIST_BLACKLIST],
       migrate
     },
     rootReducer
@@ -130,6 +134,9 @@ function createStoreRuntime() {
     resolveRehydrated = resolve
   })
   const nextPersistor = persistStore(nextStore, undefined, () => {
+    // Rehydration may contain a legacy persisted user slice. Always make the
+    // active profile's authentication storage the source of truth.
+    nextStore.dispatch(reloadProfileUserState())
     notifyRendererReady(nextStore)
     resolveRehydrated?.()
   })
