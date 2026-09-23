@@ -1,5 +1,6 @@
 import '@renderer/databases'
 
+import { ensureAiOnlyModelsLoaded } from '@renderer/hooks/useAiOnlyModels'
 import { PROFILE_RUNTIME_CHANGED_EVENT } from '@renderer/services/ProfileRendererRuntime'
 import { persistor, store } from '@renderer/store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -42,6 +43,11 @@ function ProfileApp(): React.ReactElement {
   )
 
   useEffect(() => () => queryClient.clear(), [queryClient])
+
+  // 重启/profile 切换后已登录但模型列表为空时，补拉一次模型列表
+  useEffect(() => {
+    void ensureAiOnlyModelsLoaded()
+  }, [])
 
   return (
     <Provider store={store}>

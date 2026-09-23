@@ -4,7 +4,7 @@ import { pageListApi } from '@renderer/api/openManagement'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
 import { readUserEnabledPlan } from '@renderer/hooks/useUserTokenPlan'
 import { store, useAppSelector } from '@renderer/store'
-import { selectUserInfo, setAiOnlyModels } from '@renderer/store/user'
+import { selectAiOnlyModels, selectToken, selectUserInfo, setAiOnlyModels } from '@renderer/store/user'
 import { getDefaultEndpointTypeById } from '@renderer/tools'
 import type { ApiModel, Model, Provider } from '@renderer/types'
 import { isModelPackageActive } from '@renderer/utils/model'
@@ -510,6 +510,50 @@ async function fetchAndSetupModels(options: FetchAndSetupModelsOptions): Promise
 }
 
 /**
+ * 为当前登录用户执行完整的"获取→过滤→转换→存储→设置默认"流程
+ * 供 useFetchAndSetupModels hook 与启动时补拉（ensureAiOnlyModelsLoaded）共用
+ */
+async function setupModelsForCurrentUser(pageSize = 10, explicitUserId?: string): Promise<void> {
+  const userInfo: any = selectUserInfo(store.getState())
+  const userId = explicitUserId ?? userInfo?.userId
+  const { setDefaultModel, setQuickModel, setTranslateModel } = createCurrentStoreModelSetters(store.dispatch)
+  await fetchAndSetupModels({
+    pageSize,
+    dispatch: store.dispatch,
+    getUserEnabledPlan: () => (userId ? readUserEnabledPlan(userId) : null),
+    setAiOnlyModelsAction: setAiOnlyModels,
+    setDefaultModel,
+    setQuickModel,
+    setTranslateModel
+  })
+}
+
+// 防止并发重复拉取（如多个组件同时挂载触发）
+let ensuringModelsPromise: Promise<void> | null = null
+
+/**
+ * 启动/profile 切换时补拉模型列表：
+ * 已登录（有 token）但内存中的 aiOnlyModels 为空时才请求，避免重启后显示"暂无可用模型"
+ */
+export async function ensureAiOnlyModelsLoaded(pageSize = 10): Promise<void> {
+  if (ensuringModelsPromise) return ensuringModelsPromise
+
+  const state = store.getState()
+  const token = selectToken(state)
+  const models = selectAiOnlyModels(state)
+  if (!token || models.length > 0) return
+
+  ensuringModelsPromise = setupModelsForCurrentUser(pageSize)
+    .catch((error) => {
+      logger.error('Failed to ensure AiOnly models loaded', { error })
+    })
+    .finally(() => {
+      ensuringModelsPromise = null
+    })
+  return ensuringModelsPromise
+}
+
+/**
  * 封装完整的"获取→过滤→转换→存储→设置默认"流程的 Hook
  *
  * @example
@@ -522,16 +566,7 @@ export function useFetchAndSetupModels() {
   const userInfo: any = useAppSelector(selectUserInfo)
   return useCallback(
     async (pageSize = 10, explicitUserId: string | undefined = userInfo?.userId) => {
-      const { setDefaultModel, setQuickModel, setTranslateModel } = createCurrentStoreModelSetters(store.dispatch)
-      await fetchAndSetupModels({
-        pageSize,
-        dispatch: store.dispatch,
-        getUserEnabledPlan: () => (explicitUserId ? readUserEnabledPlan(explicitUserId) : null),
-        setAiOnlyModelsAction: setAiOnlyModels,
-        setDefaultModel,
-        setQuickModel,
-        setTranslateModel
-      })
+      await setupModelsForCurrentUser(pageSize, explicitUserId)
     },
     [userInfo?.userId]
   )
