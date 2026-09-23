@@ -1,12 +1,8 @@
-import type { QuickPanelListItem, QuickPanelReservedSymbol } from '@renderer/components/QuickPanel'
-import { useQuickPanel } from '@renderer/components/QuickPanel'
 import { getModelLogo } from '@renderer/config/models'
 import { useInputbarTools } from '@renderer/pages/home/Inputbar/context/InputbarToolsProvider'
 import { useMentionModelsPanel } from '@renderer/pages/home/Inputbar/tools/components/useMentionModelsPanel'
-import type { ToolQuickPanelApi } from '@renderer/pages/home/Inputbar/types'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import { Button } from 'antd'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -16,24 +12,13 @@ import RoundtableModelChip from './RoundtableModelChip'
 const RoundtableModelBar = () => {
   const { t } = useTranslation()
   const tools = useInputbarTools()
-  const quickPanelController = useQuickPanel()
-  const quickPanel = useMemo<ToolQuickPanelApi>(
-    () => ({
-      registerRootMenu: (entries: QuickPanelListItem[]) => tools.toolsRegistry.registerRootMenu('roundtable', entries),
-      registerTrigger: (symbol: QuickPanelReservedSymbol, handler: (payload?: unknown) => void) =>
-        tools.toolsRegistry.registerTrigger('roundtable', symbol, handler)
-    }),
-    [tools.toolsRegistry]
-  )
 
-  const { handleOpenQuickPanel } = useMentionModelsPanel({
-    quickPanel,
-    quickPanelController,
+  const { handleOpenModelPopup } = useMentionModelsPanel({
     mentionedModels: tools.mentionedModels,
     setMentionedModels: tools.setMentionedModels,
     couldMentionNotVisionModel: tools.couldMentionNotVisionModel,
-    files: tools.files,
-    setText: tools.onTextChange
+    setText: tools.onTextChange,
+    mode: 'roundtable'
   })
 
   return (
@@ -45,7 +30,7 @@ const RoundtableModelBar = () => {
             logo={getModelLogo(model)}
             name={model.name}
             removeLabel={t('common.delete')}
-            onOpen={handleOpenQuickPanel}
+            onOpen={handleOpenModelPopup}
             onRemove={() =>
               tools.setMentionedModels((models) =>
                 models.filter((candidate) => getModelUniqId(candidate) !== getModelUniqId(model))
@@ -53,7 +38,7 @@ const RoundtableModelBar = () => {
             }
           />
         ))}
-        <AddModelButton type="primary" icon={<RoundtableCompareIcon />} onClick={handleOpenQuickPanel}>
+        <AddModelButton type="primary" icon={<RoundtableCompareIcon />} onClick={handleOpenModelPopup}>
           {t('roundtable.add_model')}
         </AddModelButton>
       </Models>

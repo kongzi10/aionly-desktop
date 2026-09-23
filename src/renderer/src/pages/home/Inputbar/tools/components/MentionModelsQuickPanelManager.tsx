@@ -1,5 +1,4 @@
 import type { ToolActionKey, ToolRenderContext, ToolStateKey } from '@renderer/pages/home/Inputbar/types'
-import type React from 'react'
 
 import { useMentionModelsPanel } from './useMentionModelsPanel'
 
@@ -7,22 +6,20 @@ interface ManagerProps {
   context: ToolRenderContext<readonly ToolStateKey[], readonly ToolActionKey[]>
 }
 
+/** 注册 @ 输入触发器和 QuickPanel 根菜单，把模型选择入口指到 SelectMultiModelsPopup 弹窗 */
 const MentionModelsQuickPanelManager = ({ context }: ManagerProps) => {
   const {
     quickPanel,
-    quickPanelController,
-    state: { mentionedModels, files, couldMentionNotVisionModel },
+    state: { mentionedModels, couldMentionNotVisionModel },
     actions: { setMentionedModels, onTextChange }
   } = context
 
   useMentionModelsPanel(
     {
       quickPanel,
-      quickPanelController,
-      mentionedModels: mentionedModels,
-      setMentionedModels: setMentionedModels,
+      mentionedModels,
+      setMentionedModels,
       couldMentionNotVisionModel,
-      files: files,
       setText: onTextChange as React.Dispatch<React.SetStateAction<string>>
     },
     'manager'
