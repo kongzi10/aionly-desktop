@@ -719,7 +719,6 @@
     "configNeedsAttention": "[to be translated]:Configuration needs attention",
     "configNeedsAttentionDescription": "[to be translated]:Select a valid WorkBuddy models.json file to continue.",
     "configReady": "[to be translated]:Ready to manage",
-    "configReadyDescription": "[to be translated]:AiOnly can safely update the WorkBuddy model configuration.",
     "confirmCloseSameModel": "Модели с ID {{modelIds}} включены. Перезаписать их?",
     "confirmOverwriteModelId": "Модель с этим ID включена. Перезаписать её?",
     "confirmRemoveSelected": "[to be translated]:Remove the selected routes from the WorkBuddy configuration?",

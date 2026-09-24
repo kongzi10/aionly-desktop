@@ -756,7 +756,6 @@
     "configNeedsAttention": "配置需要处理",
     "configNeedsAttentionDescription": "请选择该目标的有效配置文件后继续。",
     "configReady": "配置已就绪",
-    "configReadyDescription": "AiOnly 可以安全更新该目标的配置。",
     "confirmCloseSameModel": "模型ID：{{modelIds}} 已启用，是否要覆盖？",
     "confirmOverwriteModelId": "该模型ID已启用，是否要覆盖？",
     "confirmRemoveSelected": "确认从 WorkBuddy 配置中删除所选路由？",

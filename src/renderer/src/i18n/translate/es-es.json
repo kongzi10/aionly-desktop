@@ -719,7 +719,6 @@
     "configNeedsAttention": "[to be translated]:Configuration needs attention",
     "configNeedsAttentionDescription": "[to be translated]:Select a valid WorkBuddy models.json file to continue.",
     "configReady": "[to be translated]:Ready to manage",
-    "configReadyDescription": "[to be translated]:AiOnly can safely update the WorkBuddy model configuration.",
     "confirmCloseSameModel": "Los ID de modelo {{modelIds}} están activados. ¿Quieres sobrescribirlos?",
     "confirmOverwriteModelId": "Este ID de modelo está activado. ¿Quieres sobrescribirlo?",
     "confirmRemoveSelected": "[to be translated]:Remove the selected routes from the WorkBuddy configuration?",

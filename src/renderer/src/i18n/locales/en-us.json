@@ -756,7 +756,6 @@
     "configNeedsAttention": "Configuration needs attention",
     "configNeedsAttentionDescription": "Select a valid configuration file for this target to continue.",
     "configReady": "Ready to manage",
-    "configReadyDescription": "AiOnly can safely update this target's configuration.",
     "confirmCloseSameModel": "Model IDs: {{modelIds}} are enabled. Overwrite them?",
     "confirmOverwriteModelId": "This model ID is enabled. Overwrite it?",
     "confirmRemoveSelected": "Remove the selected routes from the WorkBuddy configuration?",

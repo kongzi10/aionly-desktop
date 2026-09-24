@@ -756,7 +756,6 @@
     "configNeedsAttention": "設定需要處理",
     "configNeedsAttentionDescription": "請選擇此目標的有效設定檔後繼續。",
     "configReady": "設定已就緒",
-    "configReadyDescription": "AiOnly 可以安全更新此目標的設定。",
     "confirmCloseSameModel": "模型 ID：{{modelIds}} 已啟用，是否要覆蓋？",
     "confirmOverwriteModelId": "該模型 ID 已啟用，是否要覆蓋？",
     "confirmRemoveSelected": "[to be translated]:Remove the selected routes from the WorkBuddy configuration?",
