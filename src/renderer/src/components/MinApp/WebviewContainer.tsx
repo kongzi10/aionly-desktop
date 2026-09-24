@@ -4,9 +4,12 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import { authStorage, getProfileWebviewPartition } from '@renderer/services/ProfileStorageService'
 import { USER_UI_HOST, WEB_UI_HOST } from '@shared/config/constant'
 import type { WebviewTag } from 'electron'
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 const logger = loggerService.withContext('WebviewContainer')
+
+/** Hosts allowed to receive app-config in the webview. Keep in sync with WebviewService. */
+const ALLOWED_WEBVIEW_HOSTS = [USER_UI_HOST, WEB_UI_HOST, 'http://localhost:7023']
 
 /**
  * WebviewContainer is a component that renders a webview element.
@@ -31,6 +34,18 @@ const WebviewContainer = memo(
     const { enableSpellCheck, minappsOpenLinkExternal } = useSettings()
     const [preloadPath, setPreloadPath] = useState<string>('')
     const { theme } = useTheme()
+
+    // Latest values for the listeners registered in the [appid, url] effect below.
+    // That effect can't list them as dependencies (it assigns webview.src, so re-running
+    // it would reload the page), which means its handlers would otherwise close over
+    // mount-time values — and every later `dom-ready` would push a stale openLinkExternal
+    // value back to the main process, undoing the user's toggle.
+    const latestSettingsRef = useRef({ enableSpellCheck, minappsOpenLinkExternal })
+    const latestOnLoadedCallbackRef = useRef(onLoadedCallback)
+    useEffect(() => {
+      latestSettingsRef.current = { enableSpellCheck, minappsOpenLinkExternal }
+      latestOnLoadedCallbackRef.current = onLoadedCallback
+    })
 
     // Fetch preload path from main process
     useEffect(() => {
@@ -71,7 +86,7 @@ const WebviewContainer = memo(
           // Small delay to ensure content is actually visible
           setTimeout(() => {
             logger.debug(`Calling onLoadedCallback for app: ${appid}`)
-            onLoadedCallback(appid)
+            latestOnLoadedCallbackRef.current(appid)
           }, 100)
         }
       }
@@ -82,7 +97,7 @@ const WebviewContainer = memo(
         if (!loadCallbackFired) {
           loadCallbackFired = true
           logger.debug(`Calling onLoadedCallback from ready-to-show for app: ${appid}`)
-          onLoadedCallback(appid)
+          latestOnLoadedCallbackRef.current(appid)
         }
       }
 
@@ -114,9 +129,10 @@ const WebviewContainer = memo(
       const handleDomReady = () => {
         const webviewId = webviewRef.current?.getWebContentsId()
         if (webviewId) {
-          void window.api?.webview?.setSpellCheckEnabled?.(webviewId, enableSpellCheck)
+          const settings = latestSettingsRef.current
+          void window.api?.webview?.setSpellCheckEnabled?.(webviewId, settings.enableSpellCheck)
           // Set link opening behavior for this webview
-          void window.api?.webview?.setOpenLinkExternal?.(webviewId, minappsOpenLinkExternal)
+          void window.api?.webview?.setOpenLinkExternal?.(webviewId, settings.minappsOpenLinkExternal)
         }
       }
 
@@ -208,33 +224,33 @@ const WebviewContainer = memo(
       }
     }, [appid, minappsOpenLinkExternal, enableSpellCheck])
 
-    // TODO: 临时处理，待优化
-    useEffect(() => {
-      const allows = [USER_UI_HOST, WEB_UI_HOST, 'http://localhost:7023']
-
-      // 只允许以 allows 中地址开头的 URL
-      if (!allows.some((allowedUrl) => url.startsWith(allowedUrl))) {
-        return
-      }
-
-      const target_path = url.split('?')[1]
-
-      // console.log('url', url)
-
-      if (!webviewRef.current) return
-
-      const path = target_path?.includes('redirect=') ? target_path.split('=')[1] : undefined
-      // console.log('path', path)
-
-      // 发送初始化消息给目标页面
-      const sendInitData = () => {
-        const configData = {
+    const buildAppConfig = useCallback(
+      (url: string) => {
+        const target_path = url.split('?')[1]
+        const path = target_path?.includes('redirect=') ? target_path.split('=')[1] : undefined
+        return {
           appId: appid,
           token: authStorage.getItem('token'),
           path,
           clientId: import.meta.env.VITE_APP_CLIENT_ID,
           config: { theme }
         }
+      },
+      [appid, theme]
+    )
+
+    // TODO: 临时处理，待优化
+    useEffect(() => {
+      // 只允许以 allows 中地址开头的 URL
+      if (!ALLOWED_WEBVIEW_HOSTS.some((allowedUrl) => url.startsWith(allowedUrl))) {
+        return
+      }
+
+      if (!webviewRef.current) return
+
+      // 发送初始化消息给目标页面
+      const sendInitData = () => {
+        const configData = buildAppConfig(url)
 
         logger.warn(`[WebviewContainer] Sending app-config to webview ${appid}`, {
           hasToken: !!configData.token,
@@ -251,7 +267,24 @@ const WebviewContainer = memo(
       return () => {
         webviewRef.current?.removeEventListener('dom-ready', sendInitData)
       }
-    }, [url, appid, theme])
+    }, [url, appid, buildAppConfig])
+
+    // Popups opened by this webview (e.g. the payment /payResult window) share the session but
+    // have no preload bridge of their own. When the main process reports one on an allowed host,
+    // push the same app-config so the SPA boot carries the auth token instead of logging out.
+    useEffect(() => {
+      const { onPopupNeedsAppConfig, sendAppConfigToPopup } = window.api?.webview ?? {}
+      if (!onPopupNeedsAppConfig || !sendAppConfigToPopup) return
+
+      const unsubscribe = onPopupNeedsAppConfig(({ webviewId, popupId, url: popupUrl }) => {
+        const currentId = webviewRef.current?.getWebContentsId()
+        if (!currentId || currentId !== webviewId) return
+        if (!ALLOWED_WEBVIEW_HOSTS.some((allowedUrl) => popupUrl.startsWith(allowedUrl))) return
+        sendAppConfigToPopup(popupId, buildAppConfig(popupUrl))
+      })
+
+      return unsubscribe
+    }, [appid, buildAppConfig])
 
     const WebviewStyle: React.CSSProperties = {
       width: '100%',

@@ -70,6 +70,8 @@ export enum IpcChannel {
   Webview_SearchHotkey = 'webview:search-hotkey',
   Webview_PrintToPDF = 'webview:print-to-pdf',
   Webview_SaveAsHTML = 'webview:save-as-html',
+  Webview_PopupNeedsAppConfig = 'webview:popup-needs-app-config',
+  Webview_SendAppConfigToPopup = 'webview:send-app-config-to-popup',
 
   // Open
   Open_Path = 'open:path',

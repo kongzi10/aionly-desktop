@@ -1186,6 +1186,23 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     return await saveWebviewAsHTML(webviewId)
   })
 
+  // Forward the app-config (auth token) built by the main renderer to a payment popup
+  // that was opened by a webview on an allowed host. Popups share the webview session but
+  // have no renderer bridge of their own, so the token must be pushed via IPC.
+  ipcMain.handle(
+    IpcChannel.Webview_SendAppConfigToPopup,
+    (event, payload: { popupId: number; config: Record<string, unknown> }) => {
+      // Only the main window renderer (sender type 'window') may target popups.
+      // Webview guests (type 'webview') and payment popups get no bridge and are rejected here.
+      if (event.sender.getType() !== 'window') return
+      const { popupId, config } = payload ?? {}
+      if (!Number.isInteger(popupId) || !config || typeof config !== 'object') return
+      const popup = webContents.fromId(popupId)
+      if (!popup || popup.isDestroyed()) return
+      popup.send('app-config', config)
+    }
+  )
+
   // store sync
   storeSyncService.registerIpcHandler()
 

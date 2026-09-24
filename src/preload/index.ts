@@ -83,6 +83,9 @@ import type {
 import { createProfileRendererReadyNotifier } from './profileLifecycle'
 
 const isTrustedAppRenderer = process.argv.includes('--aionly-main-renderer')
+// Payment/popup windows opened by the maas webview: they share the webview session but must not
+// expose the full renderer API to whatever page they navigate to. Only the app-config listener is active.
+const isAionlyPaymentPopup = process.argv.includes('--aionly-payment-popup')
 const ACTIVE_PROFILE_STORAGE_KEY = 'aionly:active-profile-id'
 const profileStartup = (isTrustedAppRenderer ? ipcRenderer.sendSync(IpcChannel.Profile_GetBootstrap) : null) as {
   profileId: string | null
@@ -659,7 +662,21 @@ const api = {
       return () => {
         ipcRenderer.off(IpcChannel.Webview_SearchHotkey, listener)
       }
-    }
+    },
+    onPopupNeedsAppConfig: (callback: (payload: { webviewId: number; popupId: number; url: string }) => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { webviewId: number; popupId: number; url: string }
+      ) => {
+        callback(payload)
+      }
+      ipcRenderer.on(IpcChannel.Webview_PopupNeedsAppConfig, listener)
+      return () => {
+        ipcRenderer.off(IpcChannel.Webview_PopupNeedsAppConfig, listener)
+      }
+    },
+    sendAppConfigToPopup: (popupId: number, config: unknown) =>
+      ipcRenderer.invoke(IpcChannel.Webview_SendAppConfigToPopup, { popupId, config })
   },
   storeSync: {
     subscribe: () => ipcRenderer.invoke(IpcChannel.StoreSync_Subscribe),
@@ -1012,20 +1029,24 @@ const api = {
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
 // just add to the DOM global.
-if (process.contextIsolated) {
-  try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
-    contextBridge.exposeInMainWorld('api', api)
-  } catch (error) {
-    console.error('[Preload]Failed to expose APIs via contextBridge:', error as Error)
-    // Fallback: directly assign to window (for webview environment)
+// Payment popups (--aionly-payment-popup) intentionally get no API bridge — only the
+// app-config listener below, so third-party payment pages never see window.api.
+if (!isAionlyPaymentPopup) {
+  if (process.contextIsolated) {
+    try {
+      contextBridge.exposeInMainWorld('electron', electronAPI)
+      contextBridge.exposeInMainWorld('api', api)
+    } catch (error) {
+      console.error('[Preload]Failed to expose APIs via contextBridge:', error as Error)
+      // Fallback: directly assign to window (for webview environment)
+      window.electron = electronAPI
+      window.api = api
+      console.log('[Preload] Fallback: APIs exposed via direct assignment')
+    }
+  } else {
     window.electron = electronAPI
     window.api = api
-    console.log('[Preload] Fallback: APIs exposed via direct assignment')
   }
-} else {
-  window.electron = electronAPI
-  window.api = api
 }
 
 // ===== Webview Support: Auto-listen for app-config messages =====
