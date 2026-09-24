@@ -32,4 +32,23 @@ describe('TargetStatusCard', () => {
     expect(screen.queryByText(target.configPath)).not.toBeInTheDocument()
     expect(document.body.textContent).not.toContain('C:\\Users\\kongz')
   })
+
+  it('can hide managed and external entry counts for profile-based targets', () => {
+    const target: TargetSnapshot = {
+      targetId: 'claude-code',
+      configPath: 'C:\\Users\\kongz\\.claude\\settings.json',
+      exists: true,
+      readable: true,
+      writable: true,
+      detectionState: 'detected',
+      managedEntryCount: 3,
+      externalEntryCount: 2,
+      issues: []
+    }
+
+    render(<TargetStatusCard target={target} onSelect={vi.fn()} showEntryCounts={false} />)
+
+    expect(screen.queryByText('agentRouter.managedEntries')).not.toBeInTheDocument()
+    expect(screen.queryByText('agentRouter.externalEntries')).not.toBeInTheDocument()
+  })
 })

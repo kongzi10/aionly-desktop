@@ -525,3 +525,415 @@ describe('AgentRouterService WorkBuddy routes', () => {
     ])
   })
 })
+
+describe('AgentRouterService Claude Code routes', () => {
+  let root: string
+  let configPath: string
+  let service: AgentRouterService
+
+  beforeEach(async () => {
+    root = join(process.cwd(), '.tmp', `claude-code-router-${crypto.randomUUID()}`)
+    configPath = join(root, '.claude', 'settings.json')
+    await mkdir(join(root, '.claude'), { recursive: true })
+    service = new AgentRouterService({ dataRoot: join(root, 'data') })
+  })
+
+  afterEach(async () => rm(root, { recursive: true, force: true }))
+
+  it('creates and applies a three-model profile to a missing settings file', async () => {
+    const saved = await service.saveClaudeCodeProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'sk-claude-secret',
+      models: { opus: 'opus-route', sonnet: 'sonnet-route', haiku: 'haiku-route' }
+    })
+    const snapshot = await service.inspectClaudeCodeTarget(configPath, 'account-a')
+    expect(snapshot).toMatchObject({ targetId: 'claude-code', exists: false, detectionState: 'notFound' })
+
+    const preview = await service.previewClaudeCodeRoute(configPath, {
+      accountId: 'account-a',
+      profileId: saved.id,
+      expectedRevision: snapshot.revision!,
+      apiUrl: 'https://api.aionly.com'
+    })
+    expect(JSON.stringify(preview)).not.toContain('sk-claude-secret')
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+
+    expect(JSON.parse(await readFile(configPath, 'utf8'))).toMatchObject({
+      env: {
+        ANTHROPIC_BASE_URL: 'https://api.aionly.com',
+        ANTHROPIC_AUTH_TOKEN: 'sk-claude-secret',
+        ANTHROPIC_DEFAULT_OPUS_MODEL: 'opus-route',
+        ANTHROPIC_DEFAULT_SONNET_MODEL: 'sonnet-route',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'haiku-route',
+        CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: '1'
+      }
+    })
+    expect(await service.inspectClaudeCodeTarget(configPath, 'account-a')).toMatchObject({
+      managedEntryCount: 0,
+      issues: []
+    })
+  })
+
+  it('overwrites existing routing fields without a takeover prompt', async () => {
+    await writeFile(configPath, '{"env":{"ANTHROPIC_BASE_URL":"https://elsewhere.example","DEBUG":"1"}}\n', 'utf8')
+    const saved = await service.saveClaudeCodeProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'secret',
+      models: { opus: 'opus-route', sonnet: 'sonnet-route', haiku: 'haiku-route' }
+    })
+    const snapshot = await service.inspectClaudeCodeTarget(configPath, 'account-a')
+    expect(snapshot.issues).toEqual([])
+
+    const preview = await service.previewClaudeCodeRoute(configPath, {
+      accountId: 'account-a',
+      profileId: saved.id,
+      expectedRevision: snapshot.revision!,
+      apiUrl: 'https://api.aionly.com'
+    })
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+
+    expect(JSON.parse(await readFile(configPath, 'utf8'))).toMatchObject({
+      env: { ANTHROPIC_BASE_URL: 'https://api.aionly.com', DEBUG: '1' }
+    })
+  })
+
+  it('deleting the active profile leaves the Claude Code configuration untouched', async () => {
+    await writeFile(configPath, '{"env":{"DEBUG":"1"}}\n', 'utf8')
+    const saved = await service.saveClaudeCodeProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'secret',
+      models: { opus: 'opus-route', sonnet: 'sonnet-route', haiku: 'haiku-route' }
+    })
+    const initial = await service.inspectClaudeCodeTarget(configPath, 'account-a')
+    const preview = await service.previewClaudeCodeRoute(configPath, {
+      accountId: 'account-a',
+      profileId: saved.id,
+      expectedRevision: initial.revision!,
+      apiUrl: 'https://api.aionly.com'
+    })
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+
+    const contentBeforeRemoval = await readFile(configPath, 'utf8')
+    await service.deleteClaudeCodeProfile(configPath, 'account-a', saved.id)
+
+    expect(await readFile(configPath, 'utf8')).toBe(contentBeforeRemoval)
+    await expect(service.listClaudeCodeProfiles('account-a')).resolves.toEqual({ version: 2, profiles: [] })
+  })
+
+  it('retains a Claude Code credential snapshot while another profile references it', async () => {
+    const first = await service.saveClaudeCodeProfile('account-a', {
+      name: 'First',
+      accessMode: 'api',
+      apiKey: 'shared-secret',
+      models: { sonnet: 's1' }
+    })
+    const second = await service.saveClaudeCodeProfile('account-a', {
+      name: 'Second',
+      accessMode: 'api',
+      apiKey: 'different-secret',
+      models: { sonnet: 's2' }
+    })
+    const library = await service.listClaudeCodeProfiles('account-a')
+    await service['claudeCodeProfiles'].save('account-a', {
+      ...library,
+      profiles: [library.profiles[0], { ...library.profiles[1], credentialId: first.credentialId }]
+    })
+
+    await service.deleteClaudeCodeProfile(configPath, 'account-a', second.id)
+
+    await expect(service['credentialSnapshots'].resolve('account-a', 'claude-code', first.credentialId)).resolves.toBe(
+      'shared-secret'
+    )
+  })
+
+  it('deleting a non-active profile leaves the Claude Code configuration untouched', async () => {
+    const first = await service.saveClaudeCodeProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'secret',
+      models: { opus: 'opus-route', sonnet: 'sonnet-route', haiku: 'haiku-route' }
+    })
+    const second = await service.saveClaudeCodeProfile('account-a', {
+      name: 'Plan profile',
+      accessMode: 'api',
+      apiKey: 'secret-2',
+      models: { opus: 'plan-opus' }
+    })
+    const initial = await service.inspectClaudeCodeTarget(configPath, 'account-a')
+    const preview = await service.previewClaudeCodeRoute(configPath, {
+      accountId: 'account-a',
+      profileId: first.id,
+      expectedRevision: initial.revision!,
+      apiUrl: 'https://api.aionly.com'
+    })
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+    const contentBeforeRemoval = await readFile(configPath, 'utf8')
+
+    await service.deleteClaudeCodeProfile(configPath, 'account-a', second.id)
+
+    expect(await readFile(configPath, 'utf8')).toBe(contentBeforeRemoval)
+    await expect(service.listClaudeCodeProfiles('account-a')).resolves.toMatchObject({
+      profiles: [expect.objectContaining({ id: first.id })]
+    })
+  })
+
+  it('stores multiple profiles without applying and switches the active profile on apply', async () => {
+    const first = await service.saveClaudeCodeProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'sk-api',
+      models: { opus: 'api-opus', sonnet: 'api-sonnet', haiku: 'api-haiku' }
+    })
+    const second = await service.saveClaudeCodeProfile('account-a', {
+      name: 'Plan profile',
+      accessMode: 'tokenPlan',
+      tokenPlanId: 'plan-a',
+      apiKey: 'sk-plan',
+      models: { opus: 'plan-opus', sonnet: 'plan-sonnet', haiku: 'plan-haiku' }
+    })
+
+    expect((await service.listClaudeCodeProfiles('account-a')).profiles.map(({ id }) => id)).toEqual([
+      first.id,
+      second.id
+    ])
+    await expect(readFile(configPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+
+    const snapshot = await service.inspectClaudeCodeTarget(configPath, 'account-a')
+    const preview = await service.previewClaudeCodeRoute(configPath, {
+      accountId: 'account-a',
+      profileId: second.id,
+      expectedRevision: snapshot.revision!,
+      apiUrl: 'https://api.aionly.com'
+    })
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+
+    expect((await service.listClaudeCodeProfiles('account-a')).activeProfileId).toBe(second.id)
+    expect(JSON.parse(await readFile(configPath, 'utf8')).env.ANTHROPIC_DEFAULT_OPUS_MODEL).toBe('plan-opus')
+  })
+
+  it('rolls back the target when persisting active profile state fails after write', async () => {
+    await writeFile(configPath, '{"env":{"DEBUG":"1"}}\n', 'utf8')
+    const saved = await service.saveClaudeCodeProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'secret',
+      models: { opus: 'opus-route', sonnet: 'sonnet-route', haiku: 'haiku-route' }
+    })
+    const snapshot = await service.inspectClaudeCodeTarget(configPath, 'account-a')
+    const preview = await service.previewClaudeCodeRoute(configPath, {
+      accountId: 'account-a',
+      profileId: saved.id,
+      expectedRevision: snapshot.revision!,
+      apiUrl: 'https://api.aionly.com'
+    })
+    vi.spyOn((service as any).claudeCodeProfiles, 'save').mockRejectedValueOnce(new Error('disk full'))
+
+    await expect(
+      service.apply({
+        accountId: 'account-a',
+        previewToken: preview.previewToken,
+        expectedRevision: preview.expectedRevision
+      })
+    ).rejects.toThrow('disk full')
+    expect(JSON.parse(await readFile(configPath, 'utf8'))).toEqual({ env: { DEBUG: '1' } })
+  })
+
+  it('keeps an updated profile usable when obsolete credential cleanup fails', async () => {
+    const first = await service.saveClaudeCodeProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'old-secret',
+      models: { opus: 'old-opus', sonnet: 'old-sonnet', haiku: 'old-haiku' }
+    })
+    vi.spyOn((service as any).credentialSnapshots, 'remove').mockRejectedValueOnce(new Error('locked'))
+
+    const updated = await service.saveClaudeCodeProfile('account-a', {
+      profileId: first.id,
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'new-secret',
+      models: { opus: 'new-opus', sonnet: 'new-sonnet', haiku: 'new-haiku' }
+    })
+    const snapshot = await service.inspectClaudeCodeTarget(configPath, 'account-a')
+    await expect(
+      service.previewClaudeCodeRoute(configPath, {
+        accountId: 'account-a',
+        profileId: updated.id,
+        expectedRevision: snapshot.revision!,
+        apiUrl: 'https://api.aionly.com'
+      })
+    ).resolves.toMatchObject({ targetId: 'claude-code' })
+  })
+})
+
+describe('AgentRouterService Codex routes', () => {
+  let root: string
+  let configPath: string
+  let authPath: string
+  let service: AgentRouterService
+
+  beforeEach(async () => {
+    root = join(process.cwd(), '.tmp', `codex-router-${crypto.randomUUID()}`)
+    configPath = join(root, '.codex', 'config.toml')
+    authPath = join(root, '.codex', 'auth.json')
+    await mkdir(join(root, '.codex'), { recursive: true })
+    await writeFile(configPath, '', 'utf8')
+    await writeFile(authPath, '{}\n', 'utf8')
+    service = new AgentRouterService({ dataRoot: join(root, 'data') })
+  })
+
+  afterEach(async () => rm(root, { recursive: true, force: true }))
+
+  it('deleting the active profile leaves Codex configuration files untouched', async () => {
+    const saved = await service.saveCodexProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'secret',
+      model: 'gpt-5-codex'
+    })
+    const initial = await service.inspectCodexTarget(configPath, authPath, 'account-a')
+    const preview = await service.previewCodexRoute(configPath, authPath, {
+      accountId: 'account-a',
+      profileId: saved.id,
+      expectedRevision: initial.revision!,
+      apiUrl: 'https://api.aionly.com/v1'
+    })
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+
+    const beforeRemoval = await Promise.all([readFile(configPath, 'utf8'), readFile(authPath, 'utf8')])
+    await service.deleteCodexProfile(configPath, authPath, 'account-a', saved.id)
+
+    await expect(Promise.all([readFile(configPath, 'utf8'), readFile(authPath, 'utf8')])).resolves.toEqual(
+      beforeRemoval
+    )
+    await expect(service.listCodexProfiles('account-a')).resolves.toEqual({ version: 1, profiles: [] })
+  })
+
+  it('restores both Codex files when persisting active profile state fails after apply', async () => {
+    const originalConfig = 'approval_policy = "on-request"\n'
+    const originalAuth = '{"OPENAI_API_KEY":"old-key"}\n'
+    await writeFile(configPath, originalConfig, 'utf8')
+    await writeFile(authPath, originalAuth, 'utf8')
+    const saved = await service.saveCodexProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'new-key',
+      model: 'gpt-5-codex'
+    })
+    const snapshot = await service.inspectCodexTarget(configPath, authPath, 'account-a')
+    const preview = await service.previewCodexRoute(configPath, authPath, {
+      accountId: 'account-a',
+      profileId: saved.id,
+      expectedRevision: snapshot.revision!,
+      apiUrl: 'https://api.aionly.com/v1'
+    })
+    vi.spyOn((service as any).codexProfiles, 'save').mockRejectedValueOnce(new Error('disk full'))
+
+    await expect(
+      service.apply({
+        accountId: 'account-a',
+        previewToken: preview.previewToken,
+        expectedRevision: preview.expectedRevision
+      })
+    ).rejects.toThrow('disk full')
+
+    await expect(Promise.all([readFile(configPath, 'utf8'), readFile(authPath, 'utf8')])).resolves.toEqual([
+      originalConfig,
+      originalAuth
+    ])
+  })
+
+  it('retains a Codex credential snapshot while another profile references it', async () => {
+    const first = await service.saveCodexProfile('account-a', {
+      name: 'First',
+      accessMode: 'api',
+      apiKey: 'shared-secret',
+      model: 'model-a'
+    })
+    const second = await service.saveCodexProfile('account-a', {
+      name: 'Second',
+      accessMode: 'api',
+      apiKey: 'different-secret',
+      model: 'model-b'
+    })
+    const library = await service.listCodexProfiles('account-a')
+    await service['codexProfiles'].save('account-a', {
+      ...library,
+      profiles: [library.profiles[0], { ...library.profiles[1], credentialId: first.credentialId }]
+    })
+
+    await service.deleteCodexProfile(configPath, authPath, 'account-a', second.id)
+
+    await expect(service['credentialSnapshots'].resolve('account-a', 'codex', first.credentialId)).resolves.toBe(
+      'shared-secret'
+    )
+  })
+
+  it('deleting a non-active profile leaves Codex configuration files untouched', async () => {
+    const first = await service.saveCodexProfile('account-a', {
+      name: 'API profile',
+      accessMode: 'api',
+      apiKey: 'secret',
+      model: 'gpt-5-codex'
+    })
+    const second = await service.saveCodexProfile('account-a', {
+      name: 'Plan profile',
+      accessMode: 'api',
+      apiKey: 'secret-2',
+      model: 'qwen3-max'
+    })
+    const initial = await service.inspectCodexTarget(configPath, authPath, 'account-a')
+    const preview = await service.previewCodexRoute(configPath, authPath, {
+      accountId: 'account-a',
+      profileId: first.id,
+      expectedRevision: initial.revision!,
+      apiUrl: 'https://api.aionly.com/v1'
+    })
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+    const [configBeforeRemoval, authBeforeRemoval] = await Promise.all([
+      readFile(configPath, 'utf8'),
+      readFile(authPath, 'utf8')
+    ])
+
+    await service.deleteCodexProfile(configPath, authPath, 'account-a', second.id)
+
+    await expect(Promise.all([readFile(configPath, 'utf8'), readFile(authPath, 'utf8')])).resolves.toEqual([
+      configBeforeRemoval,
+      authBeforeRemoval
+    ])
+    await expect(service.listCodexProfiles('account-a')).resolves.toMatchObject({
+      profiles: [expect.objectContaining({ id: first.id })]
+    })
+  })
+})

@@ -26,7 +26,13 @@ import type {
   AgentRouterTargetId,
   CreateAgentRouteRequest,
   CreateAgentRouteTemplateRequest,
+  DeleteClaudeCodeProfileRequest,
+  DeleteCodexProfileRequest,
   NamedAgentRouterCredential,
+  PreviewClaudeCodeRouteRequest,
+  PreviewCodexRouteRequest,
+  SaveClaudeCodeProfileRequest,
+  SaveCodexProfileRequest,
   UpdateAgentRouteRequest
 } from '@shared/agentRouter'
 import type { UpgradeChannel } from '@shared/config/constant'
@@ -50,6 +56,7 @@ import { BrowserWindow, dialog, ipcMain, session, shell, systemPreferences, webC
 import fontList from 'font-list'
 
 import { AgentRouterService } from './services/agentRouter'
+import { getTargetDetector } from './services/agentRouter/TargetRegistry'
 import { agentMessageRepository } from './services/agents/database'
 import { skillService } from './services/agents/skills/SkillService'
 import { analyticsService } from './services/AnalyticsService'
@@ -145,36 +152,86 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   }
 
   let workBuddyConfigPath = path.join(homedir(), '.workbuddy', 'models.json')
-  const configWatcher = new ConfigFileWatcher(() => {
+  let claudeCodeConfigPath = getTargetDetector('claude-code').defaultConfigPaths()[0]
+  const [codexDefaultConfigPath, codexDefaultAuthPath] = getTargetDetector('codex').defaultConfigPaths()
+  let codexConfigPath = codexDefaultConfigPath
+  let codexAuthPath = codexDefaultAuthPath ?? path.join(path.dirname(codexDefaultConfigPath), 'auth.json')
+  const backupConfigPathFor = (targetId: AgentRouterTargetId): string =>
+    targetId === 'claude-code' ? claudeCodeConfigPath : targetId === 'codex' ? codexConfigPath : workBuddyConfigPath
+  const workBuddyConfigWatcher = new ConfigFileWatcher(() => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send(IpcChannel.AgentRouter_TargetChanged, 'workbuddy')
     }
   })
+  const claudeCodeConfigWatcher = new ConfigFileWatcher(() => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IpcChannel.AgentRouter_TargetChanged, 'claude-code')
+    }
+  })
+  const codexConfigWatcher = new ConfigFileWatcher(() => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IpcChannel.AgentRouter_TargetChanged, 'codex')
+    }
+  })
   const watchWorkBuddyConfig = () => {
-    if (!configWatcher.watch(workBuddyConfigPath)) {
+    if (!workBuddyConfigWatcher.watch(workBuddyConfigPath)) {
       logger.warn(`Unable to watch WorkBuddy config directory: ${path.dirname(workBuddyConfigPath)}`)
     }
   }
+  const watchClaudeCodeConfig = () => {
+    if (!claudeCodeConfigWatcher.watch(claudeCodeConfigPath)) {
+      logger.warn(`Unable to watch Claude Code config directory: ${path.dirname(claudeCodeConfigPath)}`)
+    }
+  }
+  const watchCodexConfig = () => {
+    if (!codexConfigWatcher.watch(codexConfigPath)) {
+      logger.warn(`Unable to watch Codex config directory: ${path.dirname(codexConfigPath)}`)
+    }
+  }
   watchWorkBuddyConfig()
-  mainWindow.once('closed', () => configWatcher.close())
+  watchClaudeCodeConfig()
+  watchCodexConfig()
+  mainWindow.once('closed', () => {
+    workBuddyConfigWatcher.close()
+    claudeCodeConfigWatcher.close()
+    codexConfigWatcher.close()
+  })
 
   ipcMain.handle(IpcChannel.AgentRouter_SelectConfig, async (_, targetId: AgentRouterTargetId) => {
-    if (targetId !== 'workbuddy') return null
+    if (targetId !== 'workbuddy' && targetId !== 'claude-code' && targetId !== 'codex') return null
+    const isClaudeCode = targetId === 'claude-code'
+    const isCodex = targetId === 'codex'
+    const currentPath = isCodex ? codexConfigPath : isClaudeCode ? claudeCodeConfigPath : workBuddyConfigPath
     const result = await dialog.showOpenDialog(mainWindow, {
-      title: 'Select WorkBuddy models.json',
+      title: isCodex
+        ? 'Select Codex config.toml'
+        : isClaudeCode
+          ? 'Select Claude Code settings.json'
+          : 'Select WorkBuddy models.json',
       properties: ['openFile'],
-      defaultPath: workBuddyConfigPath,
-      filters: [{ name: 'JSON', extensions: ['json'] }]
+      defaultPath: currentPath,
+      filters: isCodex ? [{ name: 'TOML', extensions: ['toml'] }] : [{ name: 'JSON', extensions: ['json'] }]
     })
     if (result.canceled || !result.filePaths[0]) return null
     const configPath = path.resolve(result.filePaths[0])
-    workBuddyConfigPath = configPath
-    watchWorkBuddyConfig()
+    if (isCodex) {
+      codexConfigPath = configPath
+      codexAuthPath = path.join(path.dirname(configPath), 'auth.json')
+      watchCodexConfig()
+    } else if (isClaudeCode) {
+      claudeCodeConfigPath = configPath
+      watchClaudeCodeConfig()
+    } else {
+      workBuddyConfigPath = configPath
+      watchWorkBuddyConfig()
+    }
     return configPath
   })
   ipcMain.handle(IpcChannel.AgentRouter_InspectTarget, (_, targetId: AgentRouterTargetId, accountId?: string) => {
-    if (targetId !== 'workbuddy') return null
-    return getAgentRouter().inspectTarget('workbuddy', workBuddyConfigPath, accountId)
+    if (targetId === 'workbuddy') return getAgentRouter().inspectTarget('workbuddy', workBuddyConfigPath, accountId)
+    if (targetId === 'claude-code') return getAgentRouter().inspectClaudeCodeTarget(claudeCodeConfigPath, accountId)
+    if (targetId === 'codex') return getAgentRouter().inspectCodexTarget(codexConfigPath, codexAuthPath, accountId)
+    return null
   })
   ipcMain.handle(IpcChannel.AgentRouter_IdentifyConfig, (_, filePath: string) =>
     getAgentRouter().identifyConfig(filePath)
@@ -228,14 +285,46 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.AgentRouter_PreviewWorkBuddyRoutes, (_, request) =>
     getAgentRouter().previewWorkBuddyRoutes(workBuddyConfigPath, request)
   )
-  ipcMain.handle(IpcChannel.AgentRouter_Apply, (_, request) => getAgentRouter().apply(request))
-  ipcMain.handle(IpcChannel.AgentRouter_ListBackups, () => getAgentRouter().listBackups(workBuddyConfigPath))
+  ipcMain.handle(IpcChannel.AgentRouter_ListClaudeCodeProfiles, (_, accountId: string) =>
+    getAgentRouter().listClaudeCodeProfiles(accountId)
+  )
+  ipcMain.handle(
+    IpcChannel.AgentRouter_SaveClaudeCodeProfile,
+    (_, accountId: string, request: SaveClaudeCodeProfileRequest) =>
+      getAgentRouter().saveClaudeCodeProfile(accountId, request)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_DeleteClaudeCodeProfile, (_, request: DeleteClaudeCodeProfileRequest) =>
+    getAgentRouter().deleteClaudeCodeProfile(claudeCodeConfigPath, request.accountId, request.profileId)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_PreviewClaudeCodeRoute, (_, request: PreviewClaudeCodeRouteRequest) =>
+    getAgentRouter().previewClaudeCodeRoute(claudeCodeConfigPath, request)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_ListCodexProfiles, (_, accountId: string) =>
+    getAgentRouter().listCodexProfiles(accountId)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_SaveCodexProfile, (_, accountId: string, request: SaveCodexProfileRequest) =>
+    getAgentRouter().saveCodexProfile(accountId, request)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_DeleteCodexProfile, (_, request: DeleteCodexProfileRequest) =>
+    getAgentRouter().deleteCodexProfile(codexConfigPath, codexAuthPath, request.accountId, request.profileId)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_PreviewCodexRoute, (_, request: PreviewCodexRouteRequest) =>
+    getAgentRouter().previewCodexRoute(codexConfigPath, codexAuthPath, request)
+  )
+  ipcMain.handle(IpcChannel.AgentRouter_Apply, async (_, request) => {
+    const result = await getAgentRouter().apply(request)
+    if (result.targetId === 'claude-code') watchClaudeCodeConfig()
+    else if (result.targetId === 'codex') watchCodexConfig()
+    else watchWorkBuddyConfig()
+    return result
+  })
+  ipcMain.handle(IpcChannel.AgentRouter_ListBackups, (_, targetId: AgentRouterTargetId) =>
+    getAgentRouter().listBackups(backupConfigPathFor(targetId))
+  )
   ipcMain.handle(
     IpcChannel.AgentRouter_Rollback,
     (_, targetId: AgentRouterTargetId, backupId: string, expectedRevision: string) =>
-      targetId === 'workbuddy'
-        ? getAgentRouter().rollback(workBuddyConfigPath, backupId, expectedRevision)
-        : Promise.reject(Object.assign(new Error('Target is not available'), { code: 'TARGET_NOT_FOUND' }))
+      getAgentRouter().rollback(targetId, backupConfigPathFor(targetId), backupId, expectedRevision)
   )
   const appUpdater = new AppUpdater()
   const notificationService = new NotificationService()

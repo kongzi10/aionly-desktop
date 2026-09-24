@@ -1,9 +1,10 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import type { AgentRouteModel } from '@shared/agentRouter'
+import type { AgentRouteModel, ClaudeCodeRouteProfile } from '@shared/agentRouter'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { ClaudeCodeProfileStore } from '../ClaudeCodeProfileStore'
 import { RouteRecordStore } from '../RouteRecordStore'
 
 const createModel = (modelId: string): AgentRouteModel => ({
@@ -13,6 +14,119 @@ const createModel = (modelId: string): AgentRouteModel => ({
   enabled: true,
   modelTypes: ['function_calling'],
   routedAt: '2026-08-27T10:00:00+08:00'
+})
+
+describe('ClaudeCodeProfileStore', () => {
+  let root: string
+
+  beforeEach(async () => {
+    root = join(process.cwd(), '.tmp', `claude-code-profile-${crypto.randomUUID()}`)
+    await mkdir(root, { recursive: true })
+  })
+
+  afterEach(async () => rm(root, { recursive: true, force: true }))
+
+  const profile: ClaudeCodeRouteProfile = {
+    id: 'profile-a',
+    targetId: 'claude-code',
+    name: 'API profile',
+    credentialId: 'credential-a',
+    accessMode: 'api',
+    models: { opus: 'opus-route', sonnet: 'sonnet-route', haiku: 'haiku-route' },
+    managedAt: '2026-09-18T08:00:00.000Z'
+  }
+
+  it('migrates the legacy single profile into one active default profile', async () => {
+    const store = new ClaudeCodeProfileStore(root)
+    const filePath = store.getFilePath('account-a')
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(
+      filePath,
+      `${JSON.stringify({ profile, ownership: { signatures: { model: 'digest' } } })}\n`,
+      'utf8'
+    )
+
+    const library = await store.get('account-a')
+
+    expect(library).toEqual({
+      version: 2,
+      profiles: [
+        expect.objectContaining({
+          id: expect.any(String),
+          name: 'Default',
+          credentialId: 'credential-a'
+        })
+      ],
+      activeProfileId: library?.profiles[0].id
+    })
+  })
+
+  it('persists multiple profiles and validates the active profile reference', async () => {
+    const store = new ClaudeCodeProfileStore(root)
+    const apiProfile = { ...profile, id: 'profile-api', name: 'API' }
+    const tokenPlanProfile = {
+      ...profile,
+      id: 'profile-plan',
+      name: 'Plan',
+      accessMode: 'tokenPlan' as const,
+      tokenPlanId: 'plan-a'
+    }
+
+    await store.save('account-a', {
+      version: 2,
+      profiles: [apiProfile, tokenPlanProfile],
+      activeProfileId: apiProfile.id
+    } as never)
+
+    expect(((await store.get('account-a')) as any)?.profiles).toEqual([apiProfile, tokenPlanProfile])
+    await expect(
+      store.save('account-a', {
+        version: 2,
+        profiles: [apiProfile],
+        activeProfileId: 'missing'
+      } as never)
+    ).rejects.toThrow('active profile')
+  })
+
+  it('persists profiles without plaintext credentials and drops legacy ownership on read', async () => {
+    const store = new ClaudeCodeProfileStore(root)
+    await store.save('account-a', {
+      version: 2,
+      profiles: [profile],
+      activeProfileId: profile.id
+    })
+
+    await expect(store.get('account-a')).resolves.toEqual({
+      version: 2,
+      profiles: [profile],
+      activeProfileId: profile.id
+    })
+    expect(await readFile(store.getFilePath('account-a'), 'utf8')).not.toContain('apiKey')
+  })
+
+  it('persists optional model mappings with the default fallback model', async () => {
+    const store = new ClaudeCodeProfileStore(root)
+    const minimal = { ...profile, models: { default: 'glm-5.3' } }
+
+    await store.save('account-a', { version: 2, profiles: [minimal] })
+    await expect(store.get('account-a')).resolves.toEqual({ version: 2, profiles: [minimal] })
+  })
+
+  it('persists a profile without any model mapping', async () => {
+    const store = new ClaudeCodeProfileStore(root)
+    const minimal = { ...profile, models: {} }
+
+    await store.save('account-a', { version: 2, profiles: [minimal] })
+    await expect(store.get('account-a')).resolves.toEqual({ version: 2, profiles: [minimal] })
+  })
+
+  it('removes the persisted profile', async () => {
+    const store = new ClaudeCodeProfileStore(root)
+    await store.save('account-a', { version: 2, profiles: [profile] })
+    await store.remove('account-a')
+
+    await expect(store.get('account-a')).resolves.toBeUndefined()
+  })
 })
 
 describe('RouteRecordStore', () => {

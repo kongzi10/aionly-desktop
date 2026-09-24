@@ -81,5 +81,6 @@ describe('useTokenPlanModels', () => {
     rerender({ credential: second })
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.models).toEqual([])
+    expect(result.current.error).toBe(true)
   })
 })

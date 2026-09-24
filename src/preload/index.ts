@@ -10,8 +10,14 @@ import type {
   AgentRouterTargetId,
   CreateAgentRouteRequest,
   CreateAgentRouteTemplateRequest,
+  DeleteClaudeCodeProfileRequest,
+  DeleteCodexProfileRequest,
   NamedAgentRouterCredential,
+  PreviewClaudeCodeRouteRequest,
+  PreviewCodexRouteRequest,
   PreviewWorkBuddyRoutesRequest,
+  SaveClaudeCodeProfileRequest,
+  SaveCodexProfileRequest,
   UpdateAgentRouteRequest
 } from '@shared/agentRouter'
 import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
@@ -206,6 +212,21 @@ const api = {
     listAppliedWorkBuddyRoutes: () => ipcRenderer.invoke(IpcChannel.AgentRouter_ListAppliedWorkBuddyRoutes),
     previewWorkBuddyRoutes: (request: PreviewWorkBuddyRoutesRequest) =>
       ipcRenderer.invoke(IpcChannel.AgentRouter_PreviewWorkBuddyRoutes, request),
+    listClaudeCodeProfiles: (accountId: string) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_ListClaudeCodeProfiles, accountId),
+    saveClaudeCodeProfile: (accountId: string, request: SaveClaudeCodeProfileRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_SaveClaudeCodeProfile, accountId, request),
+    deleteClaudeCodeProfile: (request: DeleteClaudeCodeProfileRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_DeleteClaudeCodeProfile, request),
+    previewClaudeCodeRoute: (request: PreviewClaudeCodeRouteRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_PreviewClaudeCodeRoute, request),
+    listCodexProfiles: (accountId: string) => ipcRenderer.invoke(IpcChannel.AgentRouter_ListCodexProfiles, accountId),
+    saveCodexProfile: (accountId: string, request: SaveCodexProfileRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_SaveCodexProfile, accountId, request),
+    deleteCodexProfile: (request: DeleteCodexProfileRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_DeleteCodexProfile, request),
+    previewCodexRoute: (request: PreviewCodexRouteRequest) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_PreviewCodexRoute, request),
     apply: (request: AgentRouterApplyRequest) => ipcRenderer.invoke(IpcChannel.AgentRouter_Apply, request),
     listBackups: (targetId: AgentRouterTargetId) => ipcRenderer.invoke(IpcChannel.AgentRouter_ListBackups, targetId),
     rollback: (targetId: AgentRouterTargetId, backupId: string, expectedRevision: string) =>

@@ -151,6 +151,8 @@ export const useAgentRouterSources = () => {
   return useMemo(
     () => ({
       accountId,
+      /** Claude Code 使用不带 /v1 的基础地址（SDK 自己拼接路径） */
+      apiHost: APP_API_HOST.replace(/\/$/, ''),
       apiUrl: `${APP_API_HOST.replace(/\/$/, '')}/v1`,
       apiModels,
       // 列表为空时回退到 Redux 中的账号基础密钥，保证 API 类别始终可用

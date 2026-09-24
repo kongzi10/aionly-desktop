@@ -1,28 +1,52 @@
 import { PlusOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons'
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
-import { Button, message } from 'antd'
+import { formatErrorMessageWithPrefix } from '@renderer/utils/error'
+import { Button, message, Modal } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import claudeCodeLogo from './assets/claude-code.svg'
+import codexLogo from './assets/codex.svg'
+import workbuddyLogo from './assets/workbuddy.svg'
 import { AddRouteModal } from './components/AddRouteModal'
+import { ClaudeCodeProfileList } from './components/ClaudeCodeProfileList'
+import { ClaudeCodeProfileModal } from './components/ClaudeCodeProfileModal'
+import { CodexProfileList } from './components/CodexProfileList'
+import { CodexProfileModal } from './components/CodexProfileModal'
 import { CreateGlobalTemplateModal } from './components/CreateGlobalTemplateModal'
 import { GlobalTemplateList } from './components/GlobalTemplateList'
 import { RouteList } from './components/RouteList'
 import { TargetStatusCard } from './components/TargetStatusCard'
 import { useAgentRouter } from './hooks/useAgentRouter'
+import { useClaudeCodeRouter } from './hooks/useClaudeCodeRouter'
+import { useCodexRouter } from './hooks/useCodexRouter'
 
 const AgentRouterPage = () => {
   const { t } = useTranslation()
+  const [messageApi, contextHolder] = message.useMessage()
+  const [modalApi, modalContextHolder] = Modal.useModal()
+  const onError = (error: unknown) =>
+    messageApi.error(formatErrorMessageWithPrefix(error, t('agentRouter.actionFailed')))
   const router = useAgentRouter()
+  const claudeCode = useClaudeCodeRouter({ onError })
+  const codex = useCodexRouter({ onError })
   const [adding, setAdding] = useState(false)
   const [creatingTemplate, setCreatingTemplate] = useState(false)
   const [activeTab, setActiveTab] = useState<'routes' | 'global'>('routes')
-  const [messageApi, contextHolder] = message.useMessage()
+  const [activeTarget, setActiveTarget] = useState<'workbuddy' | 'claude-code' | 'codex'>('workbuddy')
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
+  const [profileModalNew, setProfileModalNew] = useState(false)
+
+  const openProfileModal = (isNew: boolean) => {
+    setProfileModalNew(isNew)
+    setProfileModalOpen(true)
+  }
 
   return (
     <Page className="page-container">
       {contextHolder}
+      {modalContextHolder}
       <Navbar>
         <NavbarCenter style={{ borderRight: 'none' }}>{t('agentRouter.title')}</NavbarCenter>
       </Navbar>
@@ -70,12 +94,30 @@ const AgentRouterPage = () => {
                   icon={<ReloadOutlined spin={router.refreshing} />}
                   aria-label={t('agentRouter.refresh')}
                   title={t('agentRouter.refresh')}
-                  onClick={router.refresh}
-                  disabled={router.refreshing}
+                  onClick={
+                    activeTarget === 'workbuddy'
+                      ? router.refresh
+                      : activeTarget === 'claude-code'
+                        ? claudeCode.refresh
+                        : codex.refresh
+                  }
+                  disabled={
+                    activeTarget === 'workbuddy'
+                      ? router.refreshing
+                      : activeTarget === 'claude-code'
+                        ? claudeCode.refreshing
+                        : codex.refreshing
+                  }
                 />
               </TargetSectionTitle>
-              <TargetPill type="button" $active aria-pressed="true">
-                <TargetLogo>W</TargetLogo>
+              <TargetPill
+                type="button"
+                $active={activeTarget === 'workbuddy'}
+                aria-pressed={activeTarget === 'workbuddy'}
+                onClick={() => setActiveTarget('workbuddy')}>
+                <TargetLogo>
+                  <img src={workbuddyLogo} alt={t('agentRouter.target.workbuddy.label')} />
+                </TargetLogo>
                 <div>
                   <TargetNameRow>
                     <strong>{t('agentRouter.target.workbuddy.label')}</strong>
@@ -89,47 +131,193 @@ const AgentRouterPage = () => {
                   </TargetNameRow>
                 </div>
               </TargetPill>
-              <TargetPill type="button" $disabled disabled>
-                <TargetLogo>C</TargetLogo>
+              <TargetPill
+                type="button"
+                $active={activeTarget === 'codex'}
+                aria-pressed={activeTarget === 'codex'}
+                onClick={() => setActiveTarget('codex')}>
+                <TargetLogo>
+                  <img src={codexLogo} alt={t('agentRouter.target.codex.label')} />
+                </TargetLogo>
                 <div>
                   <TargetNameRow>
                     <strong>{t('agentRouter.target.codex.label')}</strong>
-                    <StatusTag $tone="warning">{t('agentRouter.inDevelopment')}</StatusTag>
+                    <StatusTag $tone={codex.target && codex.target.detectionState !== 'notFound' ? 'success' : 'muted'}>
+                      {t(
+                        codex.target && codex.target.detectionState !== 'notFound'
+                          ? 'agentRouter.detected'
+                          : 'agentRouter.notDetected'
+                      )}
+                    </StatusTag>
+                  </TargetNameRow>
+                </div>
+              </TargetPill>
+              <TargetPill
+                type="button"
+                $active={activeTarget === 'claude-code'}
+                aria-pressed={activeTarget === 'claude-code'}
+                onClick={() => setActiveTarget('claude-code')}>
+                <TargetLogo>
+                  <img src={claudeCodeLogo} alt={t('agentRouter.target.claudeCode.label')} />
+                </TargetLogo>
+                <div>
+                  <TargetNameRow>
+                    <strong>{t('agentRouter.target.claudeCode.label')}</strong>
+                    <StatusTag
+                      $tone={
+                        claudeCode.target && claudeCode.target.detectionState !== 'notFound' ? 'success' : 'muted'
+                      }>
+                      {t(
+                        claudeCode.target && claudeCode.target.detectionState !== 'notFound'
+                          ? 'agentRouter.detected'
+                          : 'agentRouter.notDetected'
+                      )}
+                    </StatusTag>
                   </TargetNameRow>
                 </div>
               </TargetPill>
             </TargetList>
-            <MainContent data-testid="workbuddy-target-page">
-              <RouteSectionHeading>
-                <HeadingCopy>
-                  <strong>{t('agentRouter.target.workbuddy.label')}</strong>
-                </HeadingCopy>
-                <Actions>
-                  <Button icon={<SettingOutlined />} onClick={router.selectConfig}>
-                    {t('agentRouter.changeConfig')}
-                  </Button>
-                  <Button type="primary" icon={<PlusOutlined />} onClick={() => setAdding(true)}>
-                    {t('agentRouter.addRoute')}
-                  </Button>
-                </Actions>
-              </RouteSectionHeading>
-              <TargetStatusCard target={router.target} onSelect={router.selectConfig} />
-              <RoutesPanel data-testid="routes-panel">
-                <RouteList
-                  routes={router.routes}
-                  credentials={router.credentialSummaries}
-                  apiCredentials={router.apiCredentials}
-                  tokenPlanCredentials={router.tokenPlanCredentials}
-                  apiModels={router.apiModels}
-                  onRemove={(route) => void router.removeRoute(route)}
-                  onUpdateRoute={router.updateAgentRoute}
-                  onRevealCredential={router.revealAgentRouteCredential}
-                  onEnabledChange={(route, enabled) => void router.setRouteEnabled(route, enabled)}
-                  busy={router.busy}
-                  routeTogglesDisabled={router.target?.detectionState !== 'detected'}
+            {activeTarget === 'workbuddy' ? (
+              <MainContent data-testid="workbuddy-target-page">
+                <RouteSectionHeading>
+                  <HeadingCopy>
+                    <strong>{t('agentRouter.target.workbuddy.label')}</strong>
+                  </HeadingCopy>
+                  <Actions>
+                    <Button icon={<SettingOutlined />} onClick={router.selectConfig}>
+                      {t('agentRouter.changeConfig')}
+                    </Button>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setAdding(true)}>
+                      {t('agentRouter.addRoute')}
+                    </Button>
+                  </Actions>
+                </RouteSectionHeading>
+                <TargetStatusCard target={router.target} onSelect={router.selectConfig} />
+                <RoutesPanel data-testid="routes-panel">
+                  <RouteList
+                    routes={router.routes}
+                    credentials={router.credentialSummaries}
+                    apiCredentials={router.apiCredentials}
+                    tokenPlanCredentials={router.tokenPlanCredentials}
+                    apiModels={router.apiModels}
+                    onRemove={(route) => void router.removeRoute(route)}
+                    onUpdateRoute={router.updateAgentRoute}
+                    onRevealCredential={router.revealAgentRouteCredential}
+                    onEnabledChange={(route, enabled) => void router.setRouteEnabled(route, enabled)}
+                    busy={router.busy}
+                    routeTogglesDisabled={router.target?.detectionState !== 'detected'}
+                  />
+                </RoutesPanel>
+              </MainContent>
+            ) : activeTarget === 'claude-code' ? (
+              <MainContent data-testid="claude-code-target-page">
+                <RouteSectionHeading>
+                  <HeadingCopy>
+                    <strong>{t('agentRouter.target.claudeCode.label')}</strong>
+                  </HeadingCopy>
+                  <Actions>
+                    <Button icon={<SettingOutlined />} onClick={() => void claudeCode.selectConfig()}>
+                      {t('agentRouter.changeConfig')}
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={() => {
+                        claudeCode.newProfile()
+                        openProfileModal(true)
+                      }}>
+                      {t('agentRouter.claudeCode.newProfile')}
+                    </Button>
+                  </Actions>
+                </RouteSectionHeading>
+                <TargetStatusCard
+                  target={claudeCode.target}
+                  onSelect={() => void claudeCode.selectConfig()}
+                  showEntryCounts={false}
                 />
-              </RoutesPanel>
-            </MainContent>
+                <RoutesPanel>
+                  <ClaudeCodeProfileList
+                    profiles={claudeCode.library.profiles}
+                    credentials={[...claudeCode.apiCredentials, ...claudeCode.tokenPlanCredentials]}
+                    activeProfileId={claudeCode.library.activeProfileId}
+                    busy={claudeCode.busy}
+                    onEdit={(profileId) => {
+                      claudeCode.selectProfile(profileId)
+                      openProfileModal(false)
+                    }}
+                    onToggle={(profile) => {
+                      claudeCode.selectProfile(profile.id)
+                      modalApi.confirm({
+                        title: t('agentRouter.overwriteWarningTitle'),
+                        content: t('agentRouter.overwriteWarning'),
+                        okText: t('agentRouter.apply'),
+                        cancelText: t('common.cancel'),
+                        onOk: () => claudeCode.applyProfile(profile.id)
+                      })
+                    }}
+                    onRemove={(profile) => void claudeCode.removeSelected(profile.id)}
+                    onNew={() => {
+                      claudeCode.newProfile()
+                      openProfileModal(true)
+                    }}
+                  />
+                </RoutesPanel>
+              </MainContent>
+            ) : (
+              <MainContent data-testid="codex-target-page">
+                <RouteSectionHeading>
+                  <HeadingCopy>
+                    <strong>{t('agentRouter.target.codex.label')}</strong>
+                  </HeadingCopy>
+                  <Actions>
+                    <Button icon={<SettingOutlined />} onClick={() => void codex.selectConfig()}>
+                      {t('agentRouter.changeConfig')}
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={() => {
+                        codex.newProfile()
+                        openProfileModal(true)
+                      }}>
+                      {t('agentRouter.codex.newProfile')}
+                    </Button>
+                  </Actions>
+                </RouteSectionHeading>
+                <TargetStatusCard
+                  target={codex.target}
+                  onSelect={() => void codex.selectConfig()}
+                  showEntryCounts={false}
+                />
+                <RoutesPanel>
+                  <CodexProfileList
+                    profiles={codex.library.profiles}
+                    credentials={[...codex.apiCredentials, ...codex.tokenPlanCredentials]}
+                    activeProfileId={codex.library.activeProfileId}
+                    busy={codex.busy}
+                    onEdit={(profileId) => {
+                      codex.selectProfile(profileId)
+                      openProfileModal(false)
+                    }}
+                    onToggle={(profile) => {
+                      codex.selectProfile(profile.id)
+                      modalApi.confirm({
+                        title: t('agentRouter.overwriteWarningTitle'),
+                        content: t('agentRouter.overwriteWarning'),
+                        okText: t('agentRouter.apply'),
+                        cancelText: t('common.cancel'),
+                        onOk: () => codex.applyProfile(profile.id)
+                      })
+                    }}
+                    onRemove={(profile) => void codex.removeSelected(profile.id)}
+                    onNew={() => {
+                      codex.newProfile()
+                      openProfileModal(true)
+                    }}
+                  />
+                </RoutesPanel>
+              </MainContent>
+            )}
           </WorkArea>
         )}
       </Content>
@@ -159,6 +347,50 @@ const AgentRouterPage = () => {
           }
         }}
       />
+      <ClaudeCodeProfileModal
+        open={profileModalOpen && activeTarget === 'claude-code'}
+        isNew={profileModalNew}
+        profile={claudeCode.profile}
+        apiCredentials={claudeCode.apiCredentials}
+        tokenPlanCredentials={claudeCode.tokenPlanCredentials}
+        apiModels={claudeCode.apiModels}
+        busy={claudeCode.busy}
+        onSave={(value) => {
+          const shouldReapply = value.profileId === claudeCode.library.activeProfileId
+          void claudeCode
+            .saveDraft(value)
+            .then(async (savedProfileId) => {
+              if (!shouldReapply || (await claudeCode.applyProfile(savedProfileId))) setProfileModalOpen(false)
+            })
+            .catch((error) =>
+              messageApi.error(formatErrorMessageWithPrefix(error, t('agentRouter.claudeCode.saveFailed')))
+            )
+        }}
+        onCancel={() => setProfileModalOpen(false)}
+      />
+      <CodexProfileModal
+        open={profileModalOpen && activeTarget === 'codex'}
+        isNew={profileModalNew}
+        profile={codex.profile}
+        apiCredentials={codex.apiCredentials}
+        tokenPlanCredentials={codex.tokenPlanCredentials}
+        apiModels={codex.apiModels}
+        busy={codex.busy}
+        onSave={(value) => {
+          const shouldReapply = value.profileId === codex.library.activeProfileId
+          void codex
+            .saveDraft(value)
+            .then(async (savedProfileId) => {
+              if (!shouldReapply || (await codex.applyProfile(savedProfileId))) setProfileModalOpen(false)
+            })
+            .catch((error) => messageApi.error(formatErrorMessageWithPrefix(error, t('agentRouter.codex.saveFailed'))))
+        }}
+        onRemove={() => {
+          setProfileModalOpen(false)
+          void codex.removeSelected()
+        }}
+        onCancel={() => setProfileModalOpen(false)}
+      />
     </Page>
   )
 }
@@ -178,7 +410,20 @@ const TargetPill = styled.button<{
   $active?: boolean
   $disabled?: boolean
 }>`min-height:48px;padding:7px 10px;display:flex;align-items:center;gap:9px;border:0;border-radius:9px;text-align:left;color:${({ $active }) => ($active ? 'var(--color-primary)' : 'var(--color-text-1)')};background:${({ $active }) => ($active ? 'color-mix(in srgb,var(--color-primary) 10%,transparent)' : 'transparent')};opacity:${({ $disabled }) => ($disabled ? 0.55 : 1)};>div:last-child{flex:1;min-width:0;display:flex;flex-direction:column}span{color:var(--color-text-3);font-size:9px}`
-const TargetLogo = styled.div`width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--color-border);border-radius:8px;font-weight:750;`
+const TargetLogo = styled.div`
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+
+  img {
+    width: 24px;
+    height: 24px;
+    display: block;
+    object-fit: contain;
+  }
+`
 const TargetNameRow = styled.div`display:flex;align-items:center;justify-content:space-between;gap:6px;`
 const StatusTag = styled.span<{
   $tone: 'success' | 'muted' | 'warning'

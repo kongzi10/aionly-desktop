@@ -1,9 +1,11 @@
 import type { AgentRouterTargetId } from '@shared/agentRouter'
 
+import { ClaudeCodeDetector } from './adapters/ClaudeCodeDetector'
+import { CodexDetector } from './adapters/CodexDetector'
 import { WorkBuddyDetector } from './adapters/WorkBuddyDetector'
 import type { TargetDetector } from './TargetAdapter'
 
-const detectors: TargetDetector[] = [new WorkBuddyDetector()]
+const detectors: TargetDetector[] = [new WorkBuddyDetector(), new ClaudeCodeDetector(), new CodexDetector()]
 
 export const listTargetDetectors = (): TargetDetector[] => detectors
 

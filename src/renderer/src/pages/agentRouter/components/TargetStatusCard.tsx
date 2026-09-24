@@ -4,7 +4,15 @@ import { Button } from 'antd'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
-export const TargetStatusCard = ({ target, onSelect }: { target: TargetSnapshot | null; onSelect: () => void }) => {
+export const TargetStatusCard = ({
+  target,
+  onSelect,
+  showEntryCounts = true
+}: {
+  target: TargetSnapshot | null
+  onSelect: () => void
+  showEntryCounts?: boolean
+}) => {
   const { t } = useTranslation()
   const ready = Boolean(target?.exists && target.readable && target.writable)
   return (
@@ -16,17 +24,19 @@ export const TargetStatusCard = ({ target, onSelect }: { target: TargetSnapshot 
           {ready ? t('agentRouter.configReadyDescription') : t('agentRouter.configNeedsAttentionDescription')}
         </span>
       </Copy>
-      <Facts>
-        <Fact>
-          <b>{target?.managedEntryCount ?? 0}</b>
-          <span>{t('agentRouter.managedEntries')}</span>
-        </Fact>
-        <Divider />
-        <Fact>
-          <b>{target?.externalEntryCount ?? 0}</b>
-          <span>{t('agentRouter.externalEntries')}</span>
-        </Fact>
-      </Facts>
+      {showEntryCounts ? (
+        <Facts>
+          <Fact>
+            <b>{target?.managedEntryCount ?? 0}</b>
+            <span>{t('agentRouter.managedEntries')}</span>
+          </Fact>
+          <Divider />
+          <Fact>
+            <b>{target?.externalEntryCount ?? 0}</b>
+            <span>{t('agentRouter.externalEntries')}</span>
+          </Fact>
+        </Facts>
+      ) : null}
       {!ready ? (
         <Button size="small" onClick={onSelect}>
           {t('agentRouter.changeConfig')}

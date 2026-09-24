@@ -13,12 +13,12 @@ export const useTokenPlanModels = (credential?: AgentRouterCredential) => {
   const subscriptionId = credential?.kind === 'tokenPlan' ? credential.subscriptionId : undefined
   const planId = credential?.kind === 'tokenPlan' ? credential.planId : undefined
   const requestKey = subscriptionId && planId ? JSON.stringify([credential?.id, subscriptionId, planId]) : ''
-  const [result, setResult] = useState({ key: '', models: EMPTY_MODELS, loading: false })
+  const [result, setResult] = useState({ key: '', models: EMPTY_MODELS, loading: false, error: false })
 
   useEffect(() => {
     if (!requestKey) return
     let active = true
-    setResult({ key: requestKey, models: EMPTY_MODELS, loading: true })
+    setResult({ key: requestKey, models: EMPTY_MODELS, loading: true, error: false })
     void selectTokenPlanHourlyDayUsageApi({ subscribeId: subscriptionId, planId })
       .then((response: { rows?: Record<string, unknown>[] }) => {
         if (!active) return
@@ -36,12 +36,12 @@ export const useTokenPlanModels = (credential?: AgentRouterCredential) => {
           } as Model
           models.set(id, { id, name: model.name, modelTypes: resolveAgentRouteModelTypes(model) })
         }
-        setResult({ key: requestKey, models: [...models.values()], loading: false })
+        setResult({ key: requestKey, models: [...models.values()], loading: false, error: false })
       })
       .catch(() => {
         if (!active) return
         logger.warn('Failed to load models for the selected TokenPlan subscription')
-        setResult({ key: requestKey, models: EMPTY_MODELS, loading: false })
+        setResult({ key: requestKey, models: EMPTY_MODELS, loading: false, error: true })
       })
     return () => {
       active = false
@@ -50,6 +50,7 @@ export const useTokenPlanModels = (credential?: AgentRouterCredential) => {
 
   return {
     models: requestKey && result.key === requestKey ? result.models : EMPTY_MODELS,
-    loading: Boolean(requestKey) && (result.key !== requestKey || result.loading)
+    loading: Boolean(requestKey) && (result.key !== requestKey || result.loading),
+    error: Boolean(requestKey) && result.key === requestKey && result.error
   }
 }
