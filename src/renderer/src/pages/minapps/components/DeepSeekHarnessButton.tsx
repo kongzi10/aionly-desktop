@@ -34,51 +34,65 @@ const DeepSeekHarnessButton: FC = () => {
 
   // 组件挂载时检查是否有未完成的安装
   useEffect(() => {
+    let disposed = false
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+
     const checkInstallStatus = async () => {
-      const isInstalling = localStorage.getItem(INSTALL_STATUS_KEY) === 'true'
-      if (!isInstalling) return
+      if (localStorage.getItem(INSTALL_STATUS_KEY) !== 'true') return
 
-      // 检查是否已经安装完成
-      const installed = await window.api.codeTools.isInstalled(codeTools.deepseekHarness)
-      if (installed) {
-        // 已安装完成，清除标记
-        localStorage.removeItem(INSTALL_STATUS_KEY)
-        window.toast.success(t('minapp.deepseek_harness.install_success'))
-        return
-      }
+      try {
+        const installed = await window.api.codeTools.isInstalled(codeTools.deepseekHarness)
+        if (disposed) return
 
-      // 仍在安装中，显示 loading
-      setBusy(true)
-      window.toast.info(t('minapp.deepseek_harness.installing'))
-
-      // 每 5 秒检查一次，最多等待 5 分钟
-      let checkCount = 0
-      const maxChecks = 60 // 5 分钟 / 5 秒
-      const intervalId = setInterval(async () => {
-        checkCount++
-        const nowInstalled = await window.api.codeTools.isInstalled(codeTools.deepseekHarness)
-
-        if (nowInstalled) {
-          clearInterval(intervalId)
+        if (installed) {
           localStorage.removeItem(INSTALL_STATUS_KEY)
-          setBusy(false)
           window.toast.success(t('minapp.deepseek_harness.install_success'))
-        } else if (checkCount >= maxChecks) {
-          // 超时
-          clearInterval(intervalId)
-          localStorage.removeItem(INSTALL_STATUS_KEY)
-          setBusy(false)
-          window.toast.error(t('minapp.deepseek_harness.install_timeout'))
+          return
         }
-      }, 5000)
 
-      // 组件卸载时清理定时器
-      return () => clearInterval(intervalId)
+        setBusy(true)
+        window.toast.info(t('minapp.deepseek_harness.installing'))
+
+        const maxChecks = 60 // 5 minutes, checking every 5 seconds
+        const poll = async (checkCount: number): Promise<void> => {
+          if (disposed) return
+
+          try {
+            const nowInstalled = await window.api.codeTools.isInstalled(codeTools.deepseekHarness)
+            if (disposed) return
+
+            if (nowInstalled) {
+              localStorage.removeItem(INSTALL_STATUS_KEY)
+              setBusy(false)
+              window.toast.success(t('minapp.deepseek_harness.install_success'))
+              return
+            }
+          } catch (error) {
+            logger.warn('Failed to check DeepSeek Harness installation status:', error as Error)
+          }
+
+          if (checkCount >= maxChecks) {
+            localStorage.removeItem(INSTALL_STATUS_KEY)
+            setBusy(false)
+            window.toast.error(t('minapp.deepseek_harness.install_timeout'))
+            return
+          }
+
+          timeoutId = setTimeout(() => void poll(checkCount + 1), 5000)
+        }
+
+        await poll(1)
+      } catch (error) {
+        logger.warn('Failed to check DeepSeek Harness installation status:', error as Error)
+      }
     }
 
-    checkInstallStatus()
+    void checkInstallStatus()
+    return () => {
+      disposed = true
+      if (timeoutId) clearTimeout(timeoutId)
+    }
   }, [t])
-
   const handleClick = useCallback(async () => {
     if (busy) return
 

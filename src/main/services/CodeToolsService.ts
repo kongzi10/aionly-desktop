@@ -24,6 +24,7 @@ import {
 import type { CodeToolsRunResult } from '@shared/config/types'
 import { getFunctionalKeys, parseJSONC, sanitizeEnvForLogging } from '@shared/utils'
 import { type ChildProcess, exec, spawn } from 'child_process'
+import { safeStorage } from 'electron'
 import semver from 'semver'
 import { promisify } from 'util'
 
@@ -35,6 +36,38 @@ interface VersionInfo {
   latest: string | null
   needsUpdate: boolean
 }
+
+interface DshWebSession {
+  pid: number
+  url: string
+}
+
+const getValidatedDshUrl = (value: string): URL | null => {
+  try {
+    const url = new URL(value)
+    if (!['http:', 'https:'].includes(url.protocol)) return null
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname.toLowerCase())) return null
+    if (url.username || url.password || url.hash || url.pathname !== '/') return null
+    return url
+  } catch {
+    return null
+  }
+}
+
+const findDshWebUrl = (output: string): URL | null => {
+  const ansiEscape = String.fromCharCode(27)
+  const plainOutput = output.replace(new RegExp(`${ansiEscape}\\[[0-?]*[ -/]*[@-~]`, 'g'), '')
+  const matches = [...plainOutput.matchAll(/dsh web:\s*(https?:\/\/[^\s"'<>]+)/gi)]
+  const value = matches.at(-1)?.[1]
+  return value ? getValidatedDshUrl(value.replace(/[),.;]+$/, '')) : null
+}
+
+const redactDshTokens = (output: string): string => output.replace(/([?&]token=)[^&#\s]+/gi, '$1[redacted]')
+
+const redactInstallerOutput = (output: string): string =>
+  redactDshTokens(output)
+    .replace(/(https?:\/\/)[^/@\s:]+:[^/@\s]+@/gi, '$1[redacted]@')
+    .replace(/((?:authorization|(?:api[_-]?)?token|password|_authToken)\s*[:=]\s*)[^\s,;]+/gi, '$1[redacted]')
 
 class CodeToolsService {
   // Static properties for cleanup management (avoid listener accumulation)
@@ -53,6 +86,8 @@ class CodeToolsService {
   private openCodeConfigBackups: Map<string, string | null> = new Map() // Store raw backup content of opencode.json
   private dshWebProcess: ChildProcess | null = null // Managed `dsh web` process (null when not started by us)
   private dshWebUrl: string | null = null // Access URL of the running dsh Web UI
+  private dshWebSpawnError: string | null = null
+  private dshWebStartPromise: Promise<{ success: boolean; url: string | null; message: string }> | null = null
   private installingPackages: Map<string, Promise<{ success: boolean; message: string }>> = new Map() // Track ongoing installation promises
 
   constructor() {
@@ -699,12 +734,77 @@ class CodeToolsService {
     const binDir = path.join(os.homedir(), HOME_APP_DIR, 'bin')
     const executablePath = path.join(binDir, executableName + (isWin ? '.exe' : ''))
 
-    // Ensure bin directory exists
-    if (!fs.existsSync(binDir)) {
-      fs.mkdirSync(binDir, { recursive: true })
+    if (!fs.existsSync(executablePath)) return false
+
+    if (cliTool === codeTools.deepseekHarness) {
+      // A Bun global shim can remain after a partial install or when its Node runtime
+      // is unavailable. Require the CLI itself to print a valid version before calling
+      // the package installed.
+      if (!(await this.hasDeepSeekHarnessPackage())) return false
+      return this.checkDeepSeekHarnessExecutable(executablePath)
     }
 
-    return fs.existsSync(executablePath)
+    return true
+  }
+
+  private async hasDeepSeekHarnessPackage(): Promise<boolean> {
+    const packageJsonPath = path.join(
+      os.homedir(),
+      HOME_APP_DIR,
+      'install',
+      'global',
+      'node_modules',
+      '@deepseek-ai',
+      'dsh',
+      'package.json'
+    )
+
+    try {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')) as { name?: string; version?: string }
+      return (
+        packageJson.name === '@deepseek-ai/dsh' &&
+        typeof packageJson.version === 'string' &&
+        semver.valid(packageJson.version) !== null
+      )
+    } catch {
+      return false
+    }
+  }
+
+  private checkDeepSeekHarnessExecutable(executablePath: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      let output = ''
+      let settled = false
+
+      let child: ChildProcess
+      try {
+        child = spawn(executablePath, ['--version'], {
+          stdio: ['ignore', 'pipe', 'ignore'],
+          windowsHide: true
+        })
+      } catch {
+        resolve(false)
+        return
+      }
+
+      const finish = (result: boolean) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeoutId)
+        resolve(result)
+      }
+
+      const timeoutId = setTimeout(() => {
+        child.kill()
+        finish(false)
+      }, 5000)
+
+      child.stdout?.on('data', (chunk: Buffer | string) => {
+        if (output.length < 256) output += chunk.toString()
+      })
+      child.once('error', () => finish(false))
+      child.once('close', (code) => finish(code === 0 && semver.valid(output.trim()) !== null))
+    })
   }
 
   /**
@@ -847,6 +947,7 @@ class CodeToolsService {
     timeout: number,
     action: 'update' | 'install'
   ): Promise<{ success: boolean; message: string }> {
+    let logPath = ''
     try {
       const packageName = await this.getPackageName(cliTool)
       const bunPath = await this.getBunPath()
@@ -855,11 +956,10 @@ class CodeToolsService {
 
       // Log the registry URL being used
       logger.info(`Using npm registry: ${registryUrl}`)
-      console.log(`[CodeToolsService] Using npm registry: ${registryUrl}`)
 
       // Get logs directory for install/update output redirection
       const logsDir = loggerService.getLogsDir()
-      const logPath = path.join(logsDir, logFileName).replace(/\\/g, '/')
+      logPath = path.join(logsDir, logFileName).replace(/\\/g, '/')
 
       // Bun-specific registry configuration
       // Set multiple mirror environment variables for better compatibility
@@ -867,8 +967,32 @@ class CodeToolsService {
         ? `set "BUN_INSTALL=${bunInstallPath}" && set "BUN_CONFIG_REGISTRY=${registryUrl}" && set "NPM_CONFIG_REGISTRY=${registryUrl}" &&`
         : `export BUN_INSTALL="${bunInstallPath}" && export BUN_CONFIG_REGISTRY="${registryUrl}" && export NPM_CONFIG_REGISTRY="${registryUrl}" &&`
 
-      // Use > to truncate log file on each run
-      const installCommand = `${installEnvPrefix} "${bunPath}" install -g ${packageName} > "${logPath}" 2>&1`
+      const installSteps: string[] = []
+      if (cliTool === codeTools.deepseekHarness) {
+        // Older Bun versions fail to resolve DSH's prerelease dependency ranges,
+        // even when those package versions exist in the configured registry.
+        installSteps.push(`"${bunPath}" upgrade --stable`)
+      }
+      installSteps.push(`"${bunPath}" install -g ${packageName}`)
+
+      if (cliTool === codeTools.deepseekHarness) {
+        // DSH needs these lifecycle scripts for its node-pty helper and native bindings.
+        // Run trust from Bun's global project root. Bun returns nonzero when scripts are
+        // already trusted or unavailable, so verify the installed CLI before failing.
+        const globalInstallDir = path.join(bunInstallPath, 'install', 'global')
+        const dshPath = path.join(
+          bunInstallPath,
+          'bin',
+          `${await this.getCliExecutableName(cliTool)}${isWin ? '.exe' : ''}`
+        )
+        const trustCommand = isWin
+          ? `cd /d "${globalInstallDir}" && "${bunPath}" pm trust @deepseek-ai/dsh-subprocess-local node-pty koffi`
+          : `cd "${globalInstallDir}" && "${bunPath}" pm trust @deepseek-ai/dsh-subprocess-local node-pty koffi`
+        installSteps.push(`(${trustCommand} || "${dshPath}" --version)`)
+      }
+
+      // Redirect the whole command chain so upgrade and install diagnostics are in one log.
+      const installCommand = `${installEnvPrefix} ( ${installSteps.join(' && ')} ) > "${logPath}" 2>&1`
       logger.info(`Executing ${action} command: ${installCommand}`)
 
       // windowsHide: packaged GUI app has no console — without this flag cmd.exe
@@ -888,9 +1012,25 @@ class CodeToolsService {
         message: successMessage
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      const failureMessage = `Failed to ${action} ${cliTool}: ${errorMessage}`
-      logger.error(failureMessage, error as Error)
+      const commandError = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null }
+      const logTail = logPath
+        ? await fs.promises
+            .readFile(logPath, 'utf8')
+            .then((log) => redactInstallerOutput(log.slice(-2000)).trim())
+            .catch(() => '')
+        : ''
+      const timeoutMinutes = Math.round(timeout / 60_000)
+      const timedOut = commandError.killed || commandError.signal === 'SIGTERM' || commandError.code === 'ETIMEDOUT'
+      const errorSummary = timedOut
+        ? `Timed out after ${timeoutMinutes} minutes`
+        : `Installer exited with ${commandError.code ?? commandError.signal ?? 'an error'}`
+      const failureMessage = [
+        `Failed to ${action} ${cliTool}: ${errorSummary}.`,
+        logTail ? `Last installer output:\n${logTail}` : logPath ? `See installer log: ${logPath}` : ''
+      ]
+        .filter(Boolean)
+        .join('\n')
+      logger.error(failureMessage)
       return {
         success: false,
         message: failureMessage
@@ -916,7 +1056,8 @@ class CodeToolsService {
     // Create installation promise
     const installPromise = (async () => {
       try {
-        const result = await this.runBunGlobalInstall(cliTool, 'cli-tools-install.log', 5 * 60 * 1000, 'install')
+        const timeout = cliTool === codeTools.deepseekHarness ? 15 * 60 * 1000 : 5 * 60 * 1000
+        const result = await this.runBunGlobalInstall(cliTool, 'cli-tools-install.log', timeout, 'install')
         return result
       } finally {
         // Always remove from installing map
@@ -933,22 +1074,24 @@ class CodeToolsService {
   /**
    * Start the DeepSeek Harness Web UI (`dsh web`).
    *
-   * Reuses an already-running instance when possible (managed child alive, or the
-   * default port 3080 already serving — e.g. started manually or surviving an app
-   * restart), otherwise spawns a detached `dsh web` process and waits until it
-   * advertises its access URL (printed to stdout, captured in logs/dsh-web.log).
+   * Reuses a managed instance only when its authenticated URL is available. A
+   * process from a previous app launch is reused only when its encrypted session
+   * record still points to a live process and its port is accepting connections.
    */
   public async startDeepSeekHarnessWeb(): Promise<{ success: boolean; url: string | null; message: string }> {
-    const { HOST: dshHost, PORT: dshPort } = DSH_WEB_DEFAULTS
-    const dshDefaultUrl = `http://${dshHost}:${dshPort}`
+    if (this.dshWebStartPromise) return this.dshWebStartPromise
 
-    // Ensure dsh is installed first
-    if (!(await this.isPackageInstalled(codeTools.deepseekHarness))) {
-      const installResult = await this.installPackage(codeTools.deepseekHarness)
-      if (!installResult.success) {
-        return { success: false, url: null, message: installResult.message }
-      }
+    const startPromise = this.startDeepSeekHarnessWebInternal()
+    this.dshWebStartPromise = startPromise
+    try {
+      return await startPromise
+    } finally {
+      if (this.dshWebStartPromise === startPromise) this.dshWebStartPromise = null
     }
+  }
+
+  private async startDeepSeekHarnessWebInternal(): Promise<{ success: boolean; url: string | null; message: string }> {
+    const { HOST: dshHost, PORT: defaultDshPort } = DSH_WEB_DEFAULTS
 
     // Already running: our managed child is still alive
     if (this.dshWebProcess && this.dshWebProcess.exitCode === null && this.dshWebUrl) {
@@ -956,20 +1099,60 @@ class CodeToolsService {
       return { success: true, url: this.dshWebUrl, message: 'dsh web is already running' }
     }
 
-    // Already running: an instance is serving on the default port
-    if (await this.isPortOpen(dshPort, dshHost)) {
-      this.dshWebUrl = dshDefaultUrl
-      logger.info('dsh web already running (default port in use)')
-      return { success: true, url: dshDefaultUrl, message: 'dsh web is already running' }
+    // Install only when the managed package is absent. A present but unhealthy
+    // package should produce a useful error instead of repeatedly reinstalling.
+    if (!(await this.hasDeepSeekHarnessPackage())) {
+      const installResult = await this.installPackage(codeTools.deepseekHarness)
+      if (!installResult.success) {
+        return { success: false, url: null, message: installResult.message }
+      }
     }
 
-    // Resolve the dsh executable installed under the app's managed bin dir
-    const executableName = await this.getCliExecutableName(codeTools.deepseekHarness)
-    const dshPath = path.join(os.homedir(), HOME_APP_DIR, 'bin', executableName + (isWin ? '.exe' : ''))
-    if (!fs.existsSync(dshPath)) {
-      const message = `dsh executable not found at ${dshPath}`
+    if (!(await this.isPackageInstalled(codeTools.deepseekHarness))) {
+      const message =
+        'DeepSeek Harness is installed but could not run `dsh --version`. Check the Node.js runtime and reinstall the package.'
       logger.error(message)
       return { success: false, url: null, message }
+    }
+
+    const executableName = await this.getCliExecutableName(codeTools.deepseekHarness)
+    const dshPath = path.join(os.homedir(), HOME_APP_DIR, 'bin', executableName + (isWin ? '.exe' : ''))
+
+    const logsDir = loggerService.getLogsDir()
+    fs.mkdirSync(logsDir, { recursive: true })
+    const logPath = path.join(logsDir, 'dsh-web.log')
+    const sessionPath = path.join(logsDir, 'dsh-web-session.bin')
+
+    // Reuse a process started by this app before its last restart.
+    const session = this.readDshWebSession(sessionPath)
+    if (session) {
+      const sessionUrl = getValidatedDshUrl(session.url)
+      const sessionPort = sessionUrl ? Number(sessionUrl.port || (sessionUrl.protocol === 'https:' ? 443 : 80)) : NaN
+      if (
+        sessionUrl &&
+        this.isProcessAlive(session.pid) &&
+        Number.isInteger(sessionPort) &&
+        (await this.isPortOpen(sessionPort, sessionUrl.hostname.replace(/^\[|\]$/g, '')))
+      ) {
+        this.dshWebUrl = sessionUrl.href
+        logger.info('Reusing a previously managed dsh web process')
+        return { success: true, url: sessionUrl.href, message: 'dsh web is already running' }
+      }
+      this.clearDshWebSession(sessionPath)
+    }
+
+    // If the default port belongs to an older or manually started DSH process,
+    // leave it alone and launch this webview session on another loopback port.
+    let dshPort = defaultDshPort
+    if (await this.isPortOpen(dshPort, dshHost)) {
+      const availablePort = await this.findAvailableDshPort(dshPort + 1, dshHost)
+      if (!availablePort) {
+        const message = `No free local port is available for DeepSeek Harness (checked ${dshPort + 1}-${Math.min(dshPort + 25, 65_535)}).`
+        logger.error(message)
+        return { success: false, url: null, message }
+      }
+      dshPort = availablePort
+      logger.warn(`Port ${defaultDshPort} is occupied; starting dsh web on port ${dshPort}`)
     }
 
     // Spawn so the Web UI keeps running independently of this app.
@@ -978,13 +1161,10 @@ class CodeToolsService {
     // VISIBLE console window. windowsHide: true gives dsh an invisible console
     // that its children inherit instead. Windows children survive parent exit
     // regardless, so dsh web keeps running after the app quits either way.
-    const logsDir = loggerService.getLogsDir()
-    fs.mkdirSync(logsDir, { recursive: true })
-    const logPath = path.join(logsDir, 'dsh-web.log')
     const logFd = fs.openSync(logPath, 'w')
     let child: ReturnType<typeof spawn>
     try {
-      child = spawn(dshPath, ['web'], {
+      child = spawn(dshPath, ['web', '--no-open', '--port', String(dshPort)], {
         cwd: os.homedir(),
         detached: !isWin,
         stdio: ['ignore', logFd, logFd],
@@ -1000,19 +1180,99 @@ class CodeToolsService {
     fs.closeSync(logFd)
     this.dshWebProcess = child
     this.dshWebUrl = null
+    this.dshWebSpawnError = null
     logger.info(`Launched dsh web (pid ${child.pid}), log: ${logPath}`)
 
-    // Wait for the Web UI to come up: dsh prints its access URL to stdout
+    child.once('error', (error) => {
+      this.dshWebSpawnError = error.message
+      logger.error('dsh web process failed to start', error)
+    })
+    child.once('exit', (code, signal) => {
+      if (!this.dshWebUrl) {
+        this.dshWebSpawnError = `process exited ${code === null ? `after ${signal}` : `with code ${code}`}`
+      }
+      if (this.dshWebProcess !== child) return
+      this.dshWebProcess = null
+      this.dshWebUrl = null
+      this.clearDshWebSession(sessionPath)
+    })
+
+    // DSH prints a tokenized URL; preserve it for the webview, but redact the
+    // token from the diagnostic log as soon as startup completes.
     const url = await this.waitForDshWeb(logPath, 90 * 1000)
-    if (url) {
+    this.redactDshWebLog(logPath)
+    if (url && child.exitCode === null) {
       this.dshWebUrl = url
-      logger.info(`dsh web is up at ${url}`)
+      this.persistDshWebSession(sessionPath, { pid: child.pid ?? -1, url })
+      logger.info('dsh web is ready')
       return { success: true, url, message: 'dsh web started' }
     }
 
-    const message = 'Timed out waiting for dsh web to start. See logs/dsh-web.log for details'
+    child.kill()
+    if (this.dshWebProcess === child) {
+      this.dshWebProcess = null
+      this.dshWebUrl = null
+    }
+    this.clearDshWebSession(sessionPath)
+    const message = this.dshWebSpawnError
+      ? `Failed to start dsh web: ${this.dshWebSpawnError}`
+      : 'Timed out waiting for dsh web to start. See logs/dsh-web.log for details'
     logger.error(message)
     return { success: false, url: null, message }
+  }
+
+  private readDshWebSession(sessionPath: string): DshWebSession | null {
+    try {
+      if (!safeStorage.isEncryptionAvailable() || !fs.existsSync(sessionPath)) return null
+      const session = JSON.parse(safeStorage.decryptString(fs.readFileSync(sessionPath))) as Partial<DshWebSession>
+      if (!Number.isInteger(session.pid) || !session.url || !getValidatedDshUrl(session.url)) return null
+      return { pid: session.pid as number, url: session.url }
+    } catch {
+      return null
+    }
+  }
+
+  private persistDshWebSession(sessionPath: string, session: DshWebSession): void {
+    try {
+      if (!safeStorage.isEncryptionAvailable() || session.pid < 0) return
+      fs.writeFileSync(sessionPath, safeStorage.encryptString(JSON.stringify(session)), { mode: 0o600 })
+    } catch (error) {
+      logger.warn('Could not persist the encrypted dsh web session', error as Error)
+    }
+  }
+
+  private clearDshWebSession(sessionPath: string): void {
+    try {
+      fs.rmSync(sessionPath, { force: true })
+    } catch (error) {
+      logger.warn('Could not remove the dsh web session', error as Error)
+    }
+  }
+
+  private isProcessAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code === 'EPERM'
+    }
+  }
+
+  private async findAvailableDshPort(startPort: number, host: string): Promise<number | null> {
+    const endPort = Math.min(startPort + 24, 65_535)
+    for (let port = startPort; port <= endPort; port++) {
+      if (!(await this.isPortOpen(port, host, 250))) return port
+    }
+    return null
+  }
+
+  private redactDshWebLog(logPath: string): void {
+    try {
+      const log = fs.readFileSync(logPath, 'utf8')
+      fs.writeFileSync(logPath, redactDshTokens(log), 'utf8')
+    } catch (error) {
+      logger.warn('Could not redact the dsh web startup token from its log', error as Error)
+    }
   }
 
   /** Check whether a TCP port is accepting connections on localhost */
@@ -1033,31 +1293,26 @@ class CodeToolsService {
   }
 
   /**
-   * Wait for `dsh web` readiness: poll the log for an advertised URL
-   * (http://127.0.0.1:<port>) and probe the default port as a fallback.
+   * Wait until DSH prints its complete loopback URL and that URL's port accepts connections.
    */
   private async waitForDshWeb(logPath: string, timeoutMs: number): Promise<string | null> {
-    const { HOST: dshHost, PORT: dshPort } = DSH_WEB_DEFAULTS
-    const urlRe = /https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\]):\d+/
     const deadline = Date.now() + timeoutMs
 
     while (Date.now() < deadline) {
       // Process died before becoming ready
+      if (this.dshWebSpawnError) return null
       if (this.dshWebProcess && this.dshWebProcess.exitCode !== null) {
         logger.error(`dsh web exited with code ${this.dshWebProcess.exitCode}`)
         return null
       }
 
       const log = await fs.promises.readFile(logPath, 'utf8').catch(() => '')
-      const match = log.match(urlRe)
-      if (match) {
-        const url = match[0]
-        const port = Number.parseInt(url.slice(url.lastIndexOf(':') + 1).match(/\d+/)?.[0] ?? '', 10)
-        if (Number.isInteger(port) && (await this.isPortOpen(port))) {
-          return url
+      const url = findDshWebUrl(log)
+      if (url) {
+        const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80))
+        if (Number.isInteger(port) && (await this.isPortOpen(port, url.hostname.replace(/^\[|\]$/g, '')))) {
+          return url.href
         }
-      } else if (await this.isPortOpen(dshPort, dshHost)) {
-        return `http://${dshHost}:${dshPort}`
       }
 
       await new Promise((resolve) => setTimeout(resolve, 600))
@@ -1070,7 +1325,8 @@ class CodeToolsService {
    */
   public async updatePackage(cliTool: string): Promise<{ success: boolean; message: string }> {
     logger.info(`Starting update process for ${cliTool}`)
-    return this.runBunGlobalInstall(cliTool, 'cli-tools-update.log', 60000, 'update')
+    const timeout = cliTool === codeTools.deepseekHarness ? 15 * 60 * 1000 : 60000
+    return this.runBunGlobalInstall(cliTool, 'cli-tools-update.log', timeout, 'update')
   }
 
   async run(

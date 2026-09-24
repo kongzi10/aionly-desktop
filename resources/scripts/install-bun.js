@@ -7,7 +7,7 @@ const { downloadWithRedirects } = require('./download')
 
 // Base URL for downloading bun binaries (npmmirror binary CDN, mirrors official bun releases)
 const BUN_RELEASE_BASE_URL = 'https://registry.npmmirror.com/-/binary/bun'
-const DEFAULT_BUN_VERSION = '1.3.1' // Default fallback version
+const DEFAULT_BUN_VERSION = '1.4.2' // Supports resolving DSH's prerelease dependency ranges
 
 // Mapping of platform+arch to binary package name
 const BUN_PACKAGES = {
