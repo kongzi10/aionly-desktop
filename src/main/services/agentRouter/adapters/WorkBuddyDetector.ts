@@ -11,7 +11,7 @@ export class WorkBuddyDetector implements TargetDetector {
   private readonly adapter = new WorkBuddyAdapter()
 
   defaultConfigPaths(): string[] {
-    return [join(homedir(), '.workbuddy', 'models.json')]
+    return [join(homedir(), '.workbuddy', 'models.json'), join(homedir(), '.workbuddy-ai', 'models.json')]
   }
 
   identify(content: string): boolean {

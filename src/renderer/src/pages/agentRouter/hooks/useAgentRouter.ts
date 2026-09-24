@@ -5,7 +5,8 @@ import type {
   CreateAgentRouteTemplateRequest,
   RedactedCredentialSummary,
   TargetSnapshot,
-  UpdateAgentRouteRequest
+  UpdateAgentRouteRequest,
+  WorkBuddyEdition
 } from '@shared/agentRouter'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -256,6 +257,15 @@ export const useAgentRouter = () => {
     if (await window.api.agentRouter.selectConfig('workbuddy')) await refresh()
   }
 
+  const switchWorkBuddyEdition = async (edition: WorkBuddyEdition) => {
+    await window.api.agentRouter.setWorkBuddyEdition(edition)
+    await refresh()
+  }
+
+  const workBuddyEdition: WorkBuddyEdition = target?.configPath.toLowerCase().includes('.workbuddy-ai')
+    ? 'overseas'
+    : 'domestic'
+
   return {
     ...sources,
     target,
@@ -286,6 +296,8 @@ export const useAgentRouter = () => {
     revealAgentRouteCredential,
     listWorkBuddyRoutes,
     setRouteEnabled,
+    workBuddyEdition,
+    switchWorkBuddyEdition,
     selectConfig,
     refresh
   }

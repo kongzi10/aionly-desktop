@@ -33,7 +33,8 @@ import type {
   PreviewCodexRouteRequest,
   SaveClaudeCodeProfileRequest,
   SaveCodexProfileRequest,
-  UpdateAgentRouteRequest
+  UpdateAgentRouteRequest,
+  WorkBuddyEdition
 } from '@shared/agentRouter'
 import type { UpgradeChannel } from '@shared/config/constant'
 import { HOME_APP_DIR, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH } from '@shared/config/constant'
@@ -151,7 +152,13 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     return agentRouter
   }
 
-  let workBuddyConfigPath = path.join(homedir(), '.workbuddy', 'models.json')
+  const workBuddyConfigPaths = getTargetDetector('workbuddy').defaultConfigPaths()
+  let workBuddyConfigPath =
+    workBuddyConfigPaths.find((configPath) => fs.existsSync(configPath)) ?? workBuddyConfigPaths[0]
+  const workBuddyConfigPathByEdition: Record<WorkBuddyEdition, string> = {
+    domestic: workBuddyConfigPaths[0],
+    overseas: workBuddyConfigPaths[1]
+  }
   let claudeCodeConfigPath = getTargetDetector('claude-code').defaultConfigPaths()[0]
   const [codexDefaultConfigPath, codexDefaultAuthPath] = getTargetDetector('codex').defaultConfigPaths()
   let codexConfigPath = codexDefaultConfigPath
@@ -226,6 +233,14 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
       watchWorkBuddyConfig()
     }
     return configPath
+  })
+  ipcMain.handle(IpcChannel.AgentRouter_SetWorkBuddyEdition, (_, edition: WorkBuddyEdition) => {
+    if (edition !== 'domestic' && edition !== 'overseas') {
+      throw new Error('Invalid WorkBuddy edition')
+    }
+    workBuddyConfigPath = workBuddyConfigPathByEdition[edition]
+    watchWorkBuddyConfig()
+    return workBuddyConfigPath
   })
   ipcMain.handle(IpcChannel.AgentRouter_InspectTarget, (_, targetId: AgentRouterTargetId, accountId?: string) => {
     if (targetId === 'workbuddy') return getAgentRouter().inspectTarget('workbuddy', workBuddyConfigPath, accountId)

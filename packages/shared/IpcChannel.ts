@@ -467,6 +467,7 @@ export enum IpcChannel {
   AgentRouter_InspectTarget = 'agent-router:inspect-target',
   AgentRouter_IdentifyConfig = 'agent-router:identify-config',
   AgentRouter_SelectConfig = 'agent-router:select-config',
+  AgentRouter_SetWorkBuddyEdition = 'agent-router:set-workbuddy-edition',
   AgentRouter_GetRouteConfig = 'agent-router:get-route-config',
   AgentRouter_ListAgentCredentialSummaries = 'agent-router:list-agent-credential-summaries',
   AgentRouter_ResolveAgentRouteCredential = 'agent-router:resolve-agent-route-credential',

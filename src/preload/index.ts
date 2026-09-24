@@ -18,7 +18,8 @@ import type {
   PreviewWorkBuddyRoutesRequest,
   SaveClaudeCodeProfileRequest,
   SaveCodexProfileRequest,
-  UpdateAgentRouteRequest
+  UpdateAgentRouteRequest,
+  WorkBuddyEdition
 } from '@shared/agentRouter'
 import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
 import type { LogLevel, LogSourceWithContext } from '@shared/config/logger'
@@ -188,6 +189,8 @@ const api = {
       ipcRenderer.invoke(IpcChannel.AgentRouter_InspectTarget, targetId, accountId),
     identifyConfig: (filePath: string) => ipcRenderer.invoke(IpcChannel.AgentRouter_IdentifyConfig, filePath),
     selectConfig: (targetId: AgentRouterTargetId) => ipcRenderer.invoke(IpcChannel.AgentRouter_SelectConfig, targetId),
+    setWorkBuddyEdition: (edition: WorkBuddyEdition) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_SetWorkBuddyEdition, edition),
     getRouteConfig: (accountId: string) => ipcRenderer.invoke(IpcChannel.AgentRouter_GetRouteConfig, accountId),
     listAgentCredentialSummaries: (accountId: string, knownCredentials?: NamedAgentRouterCredential[]) =>
       ipcRenderer.invoke(IpcChannel.AgentRouter_ListAgentCredentialSummaries, accountId, knownCredentials),

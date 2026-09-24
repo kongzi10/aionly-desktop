@@ -180,8 +180,34 @@ const AgentRouterPage = () => {
             {activeTarget === 'workbuddy' ? (
               <MainContent data-testid="workbuddy-target-page">
                 <RouteSectionHeading>
-                  <HeadingCopy>
+                  <HeadingCopy style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <strong>{t('agentRouter.target.workbuddy.label')}</strong>
+                    <EditionSwitch role="group" aria-label={t('agentRouter.target.workbuddy.label')}>
+                      <EditionOption
+                        type="button"
+                        $active={router.workBuddyEdition === 'domestic'}
+                        aria-pressed={router.workBuddyEdition === 'domestic'}
+                        disabled={router.busy || router.refreshing}
+                        onClick={() => {
+                          if (router.workBuddyEdition !== 'domestic') {
+                            void router.switchWorkBuddyEdition('domestic').catch(onError)
+                          }
+                        }}>
+                        {t('agentRouter.workbuddyDomesticEdition')}
+                      </EditionOption>
+                      <EditionOption
+                        type="button"
+                        $active={router.workBuddyEdition === 'overseas'}
+                        aria-pressed={router.workBuddyEdition === 'overseas'}
+                        disabled={router.busy || router.refreshing}
+                        onClick={() => {
+                          if (router.workBuddyEdition !== 'overseas') {
+                            void router.switchWorkBuddyEdition('overseas').catch(onError)
+                          }
+                        }}>
+                        {t('agentRouter.workbuddyOverseasEdition')}
+                      </EditionOption>
+                    </EditionSwitch>
                   </HeadingCopy>
                   <Actions>
                     <Button icon={<SettingOutlined />} onClick={router.selectConfig}>
@@ -429,8 +455,12 @@ const StatusTag = styled.span<{
   $tone: 'success' | 'muted' | 'warning'
 }>`display:inline-flex;align-items:center;height:16px;padding:0 5px;border-radius:8px;color:${({ $tone }) => ($tone === 'success' ? '#1f9d70' : $tone === 'warning' ? '#d89614' : 'var(--color-text-3)')}!important;background:${({ $tone }) => ($tone === 'success' ? 'rgba(31,157,112,.12)' : $tone === 'warning' ? 'rgba(216,150,20,.13)' : 'var(--color-background-soft)')};font-size:8px!important;font-weight:650;white-space:nowrap;`
 const RouteSectionHeading = styled.div`min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:16px;`
-const HeadingCopy = styled.div`display:flex;flex-direction:column;gap:3px;strong{font-size:16px}span{color:var(--color-text-3);font-size:11px}`
-const Actions = styled.div`display:flex;gap:8px;`
+const HeadingCopy = styled.div`display:flex;flex-direction:column;gap:3px;strong{font-size:16px}>span{color:var(--color-text-3);font-size:11px}`
+const Actions = styled.div`display:flex;align-items:center;gap:8px;`
+const EditionSwitch = styled.div`display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-background-soft);white-space:nowrap;`
+const EditionOption = styled.button<{
+  $active: boolean
+}>`height:26px;padding:0 10px;border:0;border-radius:5px;background:${({ $active }) => ($active ? 'var(--color-background)' : 'transparent')};box-shadow:${({ $active }) => ($active ? '0 1px 3px rgba(0,0,0,.12)' : 'none')};color:${({ $active }) => ($active ? 'var(--color-primary)' : 'var(--color-text-3)')};font-size:12px;font-weight:${({ $active }) => ($active ? 650 : 500)};cursor:pointer;&:hover:not(:disabled){color:var(--color-primary)}&:focus-visible{outline:2px solid var(--color-primary);outline-offset:1px}&:disabled{cursor:not-allowed;opacity:.6}`
 const RoutesPanel = styled.div`flex:1;min-height:0;overflow:auto;border:1px solid var(--color-border);border-radius:10px;`
 
 export default AgentRouterPage

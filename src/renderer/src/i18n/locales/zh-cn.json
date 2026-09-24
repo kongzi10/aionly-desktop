@@ -863,6 +863,8 @@
     "tokenPlanModelList": "TokenPlan 固定模型列表",
     "updated": "更新",
     "useGlobalConfiguration": "使用全局配置",
+    "workbuddyDomesticEdition": "国内版",
+    "workbuddyOverseasEdition": "海外版",
     "workspace": "配置工作台"
   },
   "apiServer": {

@@ -263,6 +263,7 @@ export interface RedactedCredentialSummary {
 }
 
 export type AgentRouterDetectionState = 'detected' | 'notFound' | 'needsAttention'
+export type WorkBuddyEdition = 'domestic' | 'overseas'
 
 export interface TargetSnapshot {
   targetId: AgentRouterTargetId

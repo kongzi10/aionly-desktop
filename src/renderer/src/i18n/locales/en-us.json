@@ -863,6 +863,8 @@
     "tokenPlanModelList": "TokenPlan fixed model list",
     "updated": "Updated",
     "useGlobalConfiguration": "Use global configuration",
+    "workbuddyDomesticEdition": "Mainland China",
+    "workbuddyOverseasEdition": "Overseas",
     "workspace": "Configuration workspace"
   },
   "apiServer": {
