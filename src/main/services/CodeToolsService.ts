@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
@@ -63,6 +64,10 @@ const findDshWebUrl = (output: string): URL | null => {
 }
 
 const redactDshTokens = (output: string): string => output.replace(/([?&]token=)[^&#\s]+/gi, '$1[redacted]')
+
+const DSH_NODE_ENGINE_RANGE = '^22.19.0 || >=24.0.0'
+const DSH_NATIVE_SCRIPT_ALLOWLIST = '@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs'
+const DSH_MANAGED_NODE_VERSION = '24.21.0'
 
 const redactInstallerOutput = (output: string): string =>
   redactDshTokens(output)
@@ -730,34 +735,25 @@ class CodeToolsService {
   }
 
   public async isPackageInstalled(cliTool: string): Promise<boolean> {
+    if (cliTool === codeTools.deepseekHarness) {
+      if (!(await this.hasDeepSeekHarnessPackage())) return false
+      const nodePath = await this.getCompatibleDshNodePath()
+      const entryPath = this.getDeepSeekHarnessEntryPath()
+      if (!nodePath || !entryPath) return false
+      return this.checkDeepSeekHarnessExecutable(nodePath, entryPath)
+    }
+
     const executableName = await this.getCliExecutableName(cliTool)
     const binDir = path.join(os.homedir(), HOME_APP_DIR, 'bin')
     const executablePath = path.join(binDir, executableName + (isWin ? '.exe' : ''))
 
     if (!fs.existsSync(executablePath)) return false
 
-    if (cliTool === codeTools.deepseekHarness) {
-      // A Bun global shim can remain after a partial install or when its Node runtime
-      // is unavailable. Require the CLI itself to print a valid version before calling
-      // the package installed.
-      if (!(await this.hasDeepSeekHarnessPackage())) return false
-      return this.checkDeepSeekHarnessExecutable(executablePath)
-    }
-
     return true
   }
 
   private async hasDeepSeekHarnessPackage(): Promise<boolean> {
-    const packageJsonPath = path.join(
-      os.homedir(),
-      HOME_APP_DIR,
-      'install',
-      'global',
-      'node_modules',
-      '@deepseek-ai',
-      'dsh',
-      'package.json'
-    )
+    const packageJsonPath = this.getDeepSeekHarnessPackageJsonPath()
 
     try {
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')) as { name?: string; version?: string }
@@ -771,14 +767,81 @@ class CodeToolsService {
     }
   }
 
-  private checkDeepSeekHarnessExecutable(executablePath: string): Promise<boolean> {
+  private getDeepSeekHarnessPrefix(): string {
+    return path.join(os.homedir(), HOME_APP_DIR, 'dsh-node')
+  }
+
+  private getDeepSeekHarnessNodeModulesDir(): string {
+    return isWin
+      ? path.join(this.getDeepSeekHarnessPrefix(), 'node_modules')
+      : path.join(this.getDeepSeekHarnessPrefix(), 'lib', 'node_modules')
+  }
+
+  private getDeepSeekHarnessPackageJsonPath(): string {
+    return path.join(this.getDeepSeekHarnessNodeModulesDir(), '@deepseek-ai', 'dsh', 'package.json')
+  }
+
+  private getDeepSeekHarnessEntryPath(): string | null {
+    try {
+      const packageJson = JSON.parse(fs.readFileSync(this.getDeepSeekHarnessPackageJsonPath(), 'utf8')) as {
+        bin?: string | Record<string, string>
+      }
+      const entry = typeof packageJson.bin === 'string' ? packageJson.bin : packageJson.bin?.dsh
+      return entry ? path.resolve(path.dirname(this.getDeepSeekHarnessPackageJsonPath()), entry) : null
+    } catch {
+      return null
+    }
+  }
+
+  private getManagedDshNodePath(): string {
+    return path.join(
+      os.homedir(),
+      HOME_APP_DIR,
+      `node-runtime-v${DSH_MANAGED_NODE_VERSION}`,
+      isWin ? 'node.exe' : 'node'
+    )
+  }
+
+  private getDshNpmCliPath(nodePath: string): string {
+    return path.join(path.dirname(nodePath), 'node_modules', 'npm', 'bin', 'npm-cli.js')
+  }
+
+  private async getCompatibleDshNodePath(): Promise<string | null> {
+    const candidates: string[] = []
+    const managedNodePath = this.getManagedDshNodePath()
+    if (fs.existsSync(managedNodePath)) candidates.push(managedNodePath)
+
+    try {
+      const shellEnv = await getShellEnv()
+      const systemNodePath = await findCommandInShellEnv('node', shellEnv)
+      if (systemNodePath && !candidates.includes(systemNodePath)) candidates.push(systemNodePath)
+    } catch (error) {
+      logger.warn('Could not locate Node.js from the user shell environment', error as Error)
+    }
+
+    for (const nodePath of candidates) {
+      try {
+        const { stdout } = await execAsync(`"${nodePath}" --version`, { timeout: 5000, windowsHide: true })
+        const version = semver.valid(stdout.trim())
+        if (version && semver.satisfies(version, DSH_NODE_ENGINE_RANGE)) return nodePath
+        logger.info(`Skipping incompatible DSH Node.js runtime ${version ?? stdout.trim()}: ${nodePath}`)
+      } catch (error) {
+        logger.warn(`Could not check DSH Node.js runtime at ${nodePath}`, error as Error)
+      }
+    }
+
+    return null
+  }
+
+  private checkDeepSeekHarnessExecutable(nodePath: string, entryPath: string): Promise<boolean> {
     return new Promise((resolve) => {
       let output = ''
       let settled = false
 
       let child: ChildProcess
       try {
-        child = spawn(executablePath, ['--version'], {
+        child = spawn(nodePath, [entryPath, '--version'], {
+          cwd: path.dirname(entryPath),
           stdio: ['ignore', 'pipe', 'ignore'],
           windowsHide: true
         })
@@ -797,7 +860,7 @@ class CodeToolsService {
       const timeoutId = setTimeout(() => {
         child.kill()
         finish(false)
-      }, 5000)
+      }, 15000)
 
       child.stdout?.on('data', (chunk: Buffer | string) => {
         if (output.length < 256) output += chunk.toString()
@@ -829,6 +892,11 @@ class CodeToolsService {
         if (cliTool === codeTools.claudeCode) {
           const bunPath = await this.getBunPath()
           versionCommand = await this.getClaudeCodeCommand(bunPath)
+        } else if (cliTool === codeTools.deepseekHarness) {
+          const nodePath = await this.getCompatibleDshNodePath()
+          const entryPath = this.getDeepSeekHarnessEntryPath()
+          if (!nodePath || !entryPath) throw new Error(`DeepSeek Harness requires Node.js ${DSH_NODE_ENGINE_RANGE}`)
+          versionCommand = `"${nodePath}" "${entryPath}"`
         } else if (cliTool === codeTools.openCode) {
           versionCommand = await this.getOpenCodeCommand()
         } else {
@@ -927,6 +995,214 @@ class CodeToolsService {
     }
   }
 
+  private async ensureDshNodeRuntime(): Promise<{
+    nodePath: string | null
+    npmCliPath: string | null
+    message: string
+  }> {
+    const existingNodePath = await this.getCompatibleDshNodePath()
+    if (existingNodePath) {
+      const npmCliPath = this.getDshNpmCliPath(existingNodePath)
+      if (fs.existsSync(npmCliPath)) {
+        try {
+          const { stdout } = await execAsync(`"${existingNodePath}" "${npmCliPath}" --version`, {
+            timeout: 10000,
+            windowsHide: true
+          })
+          const npmVersion = semver.valid(stdout.trim())
+          if (npmVersion && semver.gte(npmVersion, '11.0.0')) {
+            return {
+              nodePath: existingNodePath,
+              npmCliPath,
+              message: `Using Node.js ${existingNodePath} and npm ${npmVersion} for DeepSeek Harness.`
+            }
+          }
+          logger.info(
+            `Node.js at ${existingNodePath} has unsupported npm ${stdout.trim()}; npm 11 or newer is required.`
+          )
+        } catch (error) {
+          logger.warn(`Could not check npm bundled with ${existingNodePath}`, error as Error)
+        }
+      }
+    }
+
+    if (!isWin || !['x64', 'arm64'].includes(process.arch)) {
+      return {
+        nodePath: null,
+        npmCliPath: null,
+        message: `DeepSeek Harness requires Node.js ${DSH_NODE_ENGINE_RANGE} and npm 11 or newer. Install both and try again.`
+      }
+    }
+
+    const logsDir = loggerService.getLogsDir()
+    fs.mkdirSync(logsDir, { recursive: true })
+    const logPath = path.join(logsDir, 'dsh-node-runtime-install.log')
+    const homeAppPath = path.join(os.homedir(), HOME_APP_DIR)
+    const managedNodePath = this.getManagedDshNodePath()
+    const managedDir = path.dirname(managedNodePath)
+    const archiveName = `node-v${DSH_MANAGED_NODE_VERSION}-win-${process.arch}.zip`
+    let stageDir = ''
+    try {
+      await fs.promises.mkdir(homeAppPath, { recursive: true })
+      stageDir = await fs.promises.mkdtemp(path.join(homeAppPath, '.dsh-node-stage-'))
+    } catch (error) {
+      const message = `Could not create the managed Node.js directory: ${error instanceof Error ? error.message : String(error)}.`
+      logger.error(message, error as Error)
+      return { nodePath: null, npmCliPath: null, message }
+    }
+    const stageArchivePath = path.join(stageDir, archiveName)
+    const expectedArchivePath = path.join(stageDir, `node-v${DSH_MANAGED_NODE_VERSION}-win-${process.arch}`)
+    const hashUrls = [
+      `https://nodejs.org/dist/v${DSH_MANAGED_NODE_VERSION}/SHASUMS256.txt`,
+      `https://npmmirror.com/mirrors/node/v${DSH_MANAGED_NODE_VERSION}/SHASUMS256.txt`
+    ]
+    const archiveUrls = [
+      `https://nodejs.org/dist/v${DSH_MANAGED_NODE_VERSION}/${archiveName}`,
+      `https://npmmirror.com/mirrors/node/v${DSH_MANAGED_NODE_VERSION}/${archiveName}`
+    ]
+
+    try {
+      let expectedHash = ''
+      for (const url of hashUrls) {
+        try {
+          const response = await fetch(url, { signal: AbortSignal.timeout(30000) })
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          const sums = await response.text()
+          const line = sums.split(/\r?\n/).find((item) => item.trim().endsWith(archiveName))
+          const hash = line?.trim().split(/\s+/)[0]
+          if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) throw new Error(`No SHA-256 entry for ${archiveName}`)
+          expectedHash = hash.toLowerCase()
+          break
+        } catch (error) {
+          logger.warn(`Could not fetch official Node.js checksum from ${url}`, error as Error)
+        }
+      }
+      if (!expectedHash) throw new Error('Could not retrieve the official Node.js SHA-256 checksum.')
+
+      let archiveBytes: ArrayBuffer | null = null
+      let archiveSource = ''
+      for (const url of archiveUrls) {
+        try {
+          const response = await fetch(url, { signal: AbortSignal.timeout(5 * 60 * 1000) })
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          archiveBytes = await response.arrayBuffer()
+          archiveSource = url
+          break
+        } catch (error) {
+          logger.warn(`Could not download Node.js runtime from ${url}`, error as Error)
+        }
+      }
+      if (!archiveBytes) throw new Error('Could not download the Node.js runtime from the official site or npmmirror.')
+
+      const archiveBuffer = Buffer.from(archiveBytes)
+      const actualHash = createHash('sha256').update(archiveBuffer).digest('hex')
+      if (actualHash !== expectedHash) {
+        throw new Error(`Node.js archive SHA-256 mismatch (expected ${expectedHash}, got ${actualHash}).`)
+      }
+      await fs.promises.writeFile(stageArchivePath, archiveBuffer)
+      logger.info(`Downloaded and verified Node.js archive from ${archiveSource} (SHA-256 ${actualHash}).`)
+
+      await new Promise<void>((resolve, reject) => {
+        const extractor = spawn('tar.exe', ['-xf', stageArchivePath, '-C', stageDir], {
+          stdio: 'ignore',
+          windowsHide: true
+        })
+        extractor.once('error', reject)
+        extractor.once('close', (code) =>
+          code === 0 ? resolve() : reject(new Error(`tar.exe exited with code ${code}`))
+        )
+      })
+
+      const stagedNodePath = path.join(expectedArchivePath, 'node.exe')
+      const stagedNpmCliPath = this.getDshNpmCliPath(stagedNodePath)
+      const { stdout: nodeOutput } = await execAsync(`"${stagedNodePath}" --version`, {
+        timeout: 10000,
+        windowsHide: true
+      })
+      const nodeVersion = semver.valid(nodeOutput.trim())
+      if (!nodeVersion || !semver.satisfies(nodeVersion, DSH_NODE_ENGINE_RANGE)) {
+        throw new Error(`Downloaded Node.js returned an unsupported version: ${nodeOutput.trim() || '(empty)'}`)
+      }
+      const { stdout: npmOutput } = await execAsync(`"${stagedNodePath}" "${stagedNpmCliPath}" --version`, {
+        timeout: 15000,
+        windowsHide: true
+      })
+      const npmVersion = semver.valid(npmOutput.trim())
+      if (!npmVersion || !semver.gte(npmVersion, '11.0.0')) {
+        throw new Error(`Downloaded Node.js contains unsupported npm ${npmOutput.trim() || '(empty)'}.`)
+      }
+
+      const backupDir = `${managedDir}.backup-${Date.now()}`
+      const hadManagedDir = fs.existsSync(managedDir)
+      if (hadManagedDir) await fs.promises.rename(managedDir, backupDir)
+      try {
+        await fs.promises.rename(expectedArchivePath, managedDir)
+      } catch (error) {
+        if (hadManagedDir) await fs.promises.rename(backupDir, managedDir).catch(() => undefined)
+        throw error
+      }
+      if (hadManagedDir) await fs.promises.rm(backupDir, { recursive: true, force: true })
+
+      const npmCliPath = this.getDshNpmCliPath(managedNodePath)
+      const successMessage = `Installed managed Node.js ${nodeVersion} and npm ${npmVersion} for DeepSeek Harness.`
+      await fs.promises.writeFile(logPath, `${successMessage}\nSource: ${archiveSource}\nSHA-256: ${actualHash}\n`)
+      logger.info(successMessage)
+      return { nodePath: managedNodePath, npmCliPath, message: successMessage }
+    } catch (error) {
+      const message = `Could not prepare Node.js for DeepSeek Harness: ${error instanceof Error ? error.message : String(error)}. Runtime log: ${logPath}`
+      await fs.promises.writeFile(logPath, `${message}\n`).catch(() => undefined)
+      logger.error(message, error as Error)
+      return { nodePath: null, npmCliPath: null, message }
+    } finally {
+      if (stageDir) await fs.promises.rm(stageDir, { recursive: true, force: true }).catch(() => undefined)
+    }
+  }
+
+  private async runDshNodeInstall(action: 'install' | 'update'): Promise<{ success: boolean; message: string }> {
+    const runtime = await this.ensureDshNodeRuntime()
+    if (!runtime.nodePath) return { success: false, message: runtime.message }
+
+    const npmCliPath = runtime.npmCliPath
+    if (!npmCliPath) return { success: false, message: runtime.message }
+    const installPrefix = this.getDeepSeekHarnessPrefix()
+    const logsDir = loggerService.getLogsDir()
+    fs.mkdirSync(logsDir, { recursive: true })
+    const logPath = path.join(logsDir, `dsh-node-package-${action}.log`).replace(/\\/g, '/')
+
+    try {
+      const registryUrl = await this.getNpmRegistryUrl()
+      const npmEnvPrefix = isWin
+        ? `set "PATH=${path.dirname(runtime.nodePath)};%PATH%" && set "NODE=${runtime.nodePath}" && set "NPM_CONFIG_REGISTRY=${registryUrl}" &&`
+        : `export PATH="${path.dirname(runtime.nodePath)}:$PATH" && export NODE="${runtime.nodePath}" && export NPM_CONFIG_REGISTRY="${registryUrl}" &&`
+      const command =
+        `${npmEnvPrefix} "${runtime.nodePath}" "${npmCliPath}" install --global --prefix "${installPrefix}" ` +
+        `--registry=${registryUrl} --no-audit --no-fund --allow-scripts=${DSH_NATIVE_SCRIPT_ALLOWLIST} ` +
+        '@deepseek-ai/dsh@latest'
+      const loggedCommand = `${command} > "${logPath}" 2>&1`
+      logger.info(`Installing DeepSeek Harness with Node.js ${runtime.nodePath} from ${registryUrl}`)
+      await execAsync(loggedCommand, { timeout: 15 * 60 * 1000, windowsHide: true })
+      this.versionCache.delete('@deepseek-ai/dsh-latest')
+      return {
+        success: true,
+        message: `Successfully ${action === 'install' ? 'installed' : 'updated'} DeepSeek Harness with Node.js.`
+      }
+    } catch (error) {
+      const logTail = await fs.promises
+        .readFile(logPath, 'utf8')
+        .then((log) => redactInstallerOutput(log.slice(-3000)).trim())
+        .catch(() => '')
+      const details = [
+        `Failed to ${action} DeepSeek Harness with Node.js: ${error instanceof Error ? error.message : String(error)}.`,
+        `Installer log: ${logPath}`,
+        logTail ? `Last installer output:\n${logTail}` : ''
+      ]
+        .filter(Boolean)
+        .join('\n')
+      logger.error(details)
+      return { success: false, message: details }
+    }
+  }
+
   /**
    * Get available terminals for the current platform
    */
@@ -967,32 +1243,8 @@ class CodeToolsService {
         ? `set "BUN_INSTALL=${bunInstallPath}" && set "BUN_CONFIG_REGISTRY=${registryUrl}" && set "NPM_CONFIG_REGISTRY=${registryUrl}" &&`
         : `export BUN_INSTALL="${bunInstallPath}" && export BUN_CONFIG_REGISTRY="${registryUrl}" && export NPM_CONFIG_REGISTRY="${registryUrl}" &&`
 
-      const installSteps: string[] = []
-      if (cliTool === codeTools.deepseekHarness) {
-        // Older Bun versions fail to resolve DSH's prerelease dependency ranges,
-        // even when those package versions exist in the configured registry.
-        installSteps.push(`"${bunPath}" upgrade --stable`)
-      }
-      installSteps.push(`"${bunPath}" install -g ${packageName}`)
-
-      if (cliTool === codeTools.deepseekHarness) {
-        // DSH needs these lifecycle scripts for its node-pty helper and native bindings.
-        // Run trust from Bun's global project root. Bun returns nonzero when scripts are
-        // already trusted or unavailable, so verify the installed CLI before failing.
-        const globalInstallDir = path.join(bunInstallPath, 'install', 'global')
-        const dshPath = path.join(
-          bunInstallPath,
-          'bin',
-          `${await this.getCliExecutableName(cliTool)}${isWin ? '.exe' : ''}`
-        )
-        const trustCommand = isWin
-          ? `cd /d "${globalInstallDir}" && "${bunPath}" pm trust @deepseek-ai/dsh-subprocess-local node-pty koffi`
-          : `cd "${globalInstallDir}" && "${bunPath}" pm trust @deepseek-ai/dsh-subprocess-local node-pty koffi`
-        installSteps.push(`(${trustCommand} || "${dshPath}" --version)`)
-      }
-
       // Redirect the whole command chain so upgrade and install diagnostics are in one log.
-      const installCommand = `${installEnvPrefix} ( ${installSteps.join(' && ')} ) > "${logPath}" 2>&1`
+      const installCommand = `${installEnvPrefix} "${bunPath}" install -g ${packageName} > "${logPath}" 2>&1`
       logger.info(`Executing ${action} command: ${installCommand}`)
 
       // windowsHide: packaged GUI app has no console — without this flag cmd.exe
@@ -1056,8 +1308,10 @@ class CodeToolsService {
     // Create installation promise
     const installPromise = (async () => {
       try {
-        const timeout = cliTool === codeTools.deepseekHarness ? 15 * 60 * 1000 : 5 * 60 * 1000
-        const result = await this.runBunGlobalInstall(cliTool, 'cli-tools-install.log', timeout, 'install')
+        const result =
+          cliTool === codeTools.deepseekHarness
+            ? await this.runDshNodeInstall('install')
+            : await this.runBunGlobalInstall(cliTool, 'cli-tools-install.log', 5 * 60 * 1000, 'install')
         return result
       } finally {
         // Always remove from installing map
@@ -1099,6 +1353,12 @@ class CodeToolsService {
       return { success: true, url: this.dshWebUrl, message: 'dsh web is already running' }
     }
 
+    const runtime = await this.ensureDshNodeRuntime()
+    if (!runtime.nodePath) {
+      logger.error(runtime.message)
+      return { success: false, url: null, message: runtime.message }
+    }
+
     // Install only when the managed package is absent. A present but unhealthy
     // package should produce a useful error instead of repeatedly reinstalling.
     if (!(await this.hasDeepSeekHarnessPackage())) {
@@ -1115,8 +1375,13 @@ class CodeToolsService {
       return { success: false, url: null, message }
     }
 
-    const executableName = await this.getCliExecutableName(codeTools.deepseekHarness)
-    const dshPath = path.join(os.homedir(), HOME_APP_DIR, 'bin', executableName + (isWin ? '.exe' : ''))
+    const nodePath = runtime.nodePath
+    const dshEntryPath = this.getDeepSeekHarnessEntryPath()
+    if (!nodePath || !dshEntryPath) {
+      const message = `DeepSeek Harness requires Node.js ${DSH_NODE_ENGINE_RANGE}. Install a compatible Node.js runtime and try again.`
+      logger.error(message)
+      return { success: false, url: null, message }
+    }
 
     const logsDir = loggerService.getLogsDir()
     fs.mkdirSync(logsDir, { recursive: true })
@@ -1155,7 +1420,8 @@ class CodeToolsService {
       logger.warn(`Port ${defaultDshPort} is occupied; starting dsh web on port ${dshPort}`)
     }
 
-    // Spawn so the Web UI keeps running independently of this app.
+    // Launch DSH with a real Node.js runtime. DSH depends on Node internals that
+    // Bun's Node compatibility layer does not provide.
     // On Windows, avoid detached: true (DETACHED_PROCESS) — dsh would have no
     // console at all, and the node.exe it spawns internally would get a new
     // VISIBLE console window. windowsHide: true gives dsh an invisible console
@@ -1164,9 +1430,14 @@ class CodeToolsService {
     const logFd = fs.openSync(logPath, 'w')
     let child: ReturnType<typeof spawn>
     try {
-      child = spawn(dshPath, ['web', '--no-open', '--port', String(dshPort)], {
+      child = spawn(nodePath, [dshEntryPath, 'web', '--no-open', '--port', String(dshPort)], {
         cwd: os.homedir(),
         detached: !isWin,
+        env: {
+          ...process.env,
+          NODE: nodePath,
+          PATH: `${path.dirname(nodePath)}${path.delimiter}${process.env.PATH ?? ''}`
+        },
         stdio: ['ignore', logFd, logFd],
         windowsHide: true
       })
@@ -1181,7 +1452,7 @@ class CodeToolsService {
     this.dshWebProcess = child
     this.dshWebUrl = null
     this.dshWebSpawnError = null
-    logger.info(`Launched dsh web (pid ${child.pid}), log: ${logPath}`)
+    logger.info(`Launched dsh web with Node.js at ${nodePath} (pid ${child.pid}), log: ${logPath}`)
 
     child.once('error', (error) => {
       this.dshWebSpawnError = error.message
@@ -1200,6 +1471,7 @@ class CodeToolsService {
     // DSH prints a tokenized URL; preserve it for the webview, but redact the
     // token from the diagnostic log as soon as startup completes.
     const url = await this.waitForDshWeb(logPath, 90 * 1000)
+    const startupLog = await fs.promises.readFile(logPath, 'utf8').catch(() => '')
     this.redactDshWebLog(logPath)
     if (url && child.exitCode === null) {
       this.dshWebUrl = url
@@ -1214,9 +1486,15 @@ class CodeToolsService {
       this.dshWebUrl = null
     }
     this.clearDshWebSession(sessionPath)
-    const message = this.dshWebSpawnError
-      ? `Failed to start dsh web: ${this.dshWebSpawnError}`
-      : 'Timed out waiting for dsh web to start. See logs/dsh-web.log for details'
+
+    const startupLogTail = redactInstallerOutput(startupLog.slice(-3000)).trim()
+    const message = [
+      this.dshWebSpawnError ? `Failed to start dsh web: ${this.dshWebSpawnError}.` : '',
+      `DeepSeek Harness was launched with Node.js ${nodePath}, but did not become ready. See logs/dsh-web.log.`,
+      startupLogTail ? `Last startup output:\n${startupLogTail}` : ''
+    ]
+      .filter(Boolean)
+      .join('\n')
     logger.error(message)
     return { success: false, url: null, message }
   }
@@ -1325,8 +1603,10 @@ class CodeToolsService {
    */
   public async updatePackage(cliTool: string): Promise<{ success: boolean; message: string }> {
     logger.info(`Starting update process for ${cliTool}`)
-    const timeout = cliTool === codeTools.deepseekHarness ? 15 * 60 * 1000 : 60000
-    return this.runBunGlobalInstall(cliTool, 'cli-tools-update.log', timeout, 'update')
+    if (cliTool === codeTools.deepseekHarness) {
+      return this.runDshNodeInstall('update')
+    }
+    return this.runBunGlobalInstall(cliTool, 'cli-tools-update.log', 60000, 'update')
   }
 
   async run(
@@ -1353,7 +1633,15 @@ class CodeToolsService {
     }
 
     const packageName = await this.getPackageName(cliTool)
-    const bunPath = await this.getBunPath()
+    let dshNodePath: string | null = null
+    if (cliTool === codeTools.deepseekHarness) {
+      const runtime = await this.ensureDshNodeRuntime()
+      if (!runtime.nodePath) {
+        return { success: false, message: runtime.message, command: '' }
+      }
+      dshNodePath = runtime.nodePath
+    }
+    const bunPath = cliTool === codeTools.deepseekHarness ? '' : await this.getBunPath()
     const executableName = await this.getCliExecutableName(cliTool)
     const binDir = path.join(os.homedir(), HOME_APP_DIR, 'bin')
     const executablePath = path.join(binDir, executableName + (isWin ? '.exe' : ''))
@@ -1364,7 +1652,14 @@ class CodeToolsService {
     logger.debug(`Executable path: ${executablePath}`)
 
     // Check if package is already installed
-    const isInstalled = await this.isPackageInstalled(cliTool)
+    let isInstalled = await this.isPackageInstalled(cliTool)
+    if (cliTool === codeTools.deepseekHarness && !isInstalled) {
+      const installResult = await this.installPackage(cliTool)
+      if (!installResult.success) {
+        return { success: false, message: installResult.message, command: '' }
+      }
+      isInstalled = await this.isPackageInstalled(cliTool)
+    }
 
     // Check for updates and auto-update if requested
     let updateMessage = ''
@@ -1447,7 +1742,17 @@ class CodeToolsService {
 
     // claude-code ships a native binary that cannot be executed via Bun.
     // Use cli-wrapper.cjs (via Bun) on all platforms for reliable execution.
-    if (cliTool === codeTools.claudeCode) {
+    if (cliTool === codeTools.deepseekHarness) {
+      const entryPath = this.getDeepSeekHarnessEntryPath()
+      if (!dshNodePath || !entryPath) {
+        return {
+          success: false,
+          message: 'DeepSeek Harness Node.js package entry point is missing. Reinstall DeepSeek Harness and try again.',
+          command: ''
+        }
+      }
+      baseCommand = `"${dshNodePath}" "${entryPath}"`
+    } else if (cliTool === codeTools.claudeCode) {
       baseCommand = await this.getClaudeCodeCommand(bunPath)
     } else if (cliTool === codeTools.openCode) {
       baseCommand = await this.getOpenCodeCommand()
@@ -1552,6 +1857,12 @@ class CodeToolsService {
       if (updateMessage) {
         // updateMessage already has escaped dynamic content, && connectors are intentional
         baseCommand = `echo "Checking ${cliTool} version..."${updateMessage} && ${baseCommand}`
+      }
+    } else if (cliTool === codeTools.deepseekHarness) {
+      return {
+        success: false,
+        message: 'DeepSeek Harness installation completed, but its Node.js entry point could not be verified.',
+        command: ''
       }
     } else {
       // If not installed, install first then run
