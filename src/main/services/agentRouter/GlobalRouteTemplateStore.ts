@@ -3,22 +3,23 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
 import type { AgentRouteTemplate, CreateAgentRouteTemplateRequest } from '@shared/agentRouter'
+import type { WorkBuddyEdition } from '@shared/agentRouter'
 
 const maskKey = (value: string) => `${value.slice(0, 4)}••••${value.slice(-4)}`
 
 export class GlobalRouteTemplateStore {
   constructor(private readonly rootPath: string) {}
 
-  getFilePath(accountId: string): string {
-    return join(this.accountPath(accountId), 'templates.json')
+  getFilePath(accountId: string, edition: WorkBuddyEdition = 'domestic'): string {
+    return join(this.accountPath(accountId, edition), 'templates.json')
   }
 
-  async list(accountId: string): Promise<AgentRouteTemplate[]> {
-    const templates = await this.readJson<AgentRouteTemplate[]>(this.getFilePath(accountId), [])
+  async list(accountId: string, edition: WorkBuddyEdition = 'domestic'): Promise<AgentRouteTemplate[]> {
+    const templates = await this.readJson<AgentRouteTemplate[]>(this.getFilePath(accountId, edition), [])
     return Promise.all(
       templates.map(async (template) => {
         try {
-          return { ...template, maskedKey: maskKey(await this.resolveKey(accountId, template.templateId)) }
+          return { ...template, maskedKey: maskKey(await this.resolveKey(accountId, template.templateId, edition)) }
         } catch {
           return template
         }
@@ -26,13 +27,20 @@ export class GlobalRouteTemplateStore {
     )
   }
 
-  async create(accountId: string, request: CreateAgentRouteTemplateRequest): Promise<AgentRouteTemplate> {
+  async create(
+    accountId: string,
+    request: CreateAgentRouteTemplateRequest,
+    edition: WorkBuddyEdition = 'domestic'
+  ): Promise<AgentRouteTemplate> {
     if (!request.modelId || !request.apiKey || (request.accessMode === 'tokenPlan') !== Boolean(request.tokenPlanId)) {
       throw new Error('Invalid global route template')
     }
-    const templates = await this.list(accountId)
+    const templates = await this.list(accountId, edition)
     for (const item of templates) {
-      if (item.modelId === request.modelId && (await this.resolveKey(accountId, item.templateId)) === request.apiKey) {
+      if (
+        item.modelId === request.modelId &&
+        (await this.resolveKey(accountId, item.templateId, edition)) === request.apiKey
+      ) {
         return item
       }
     }
@@ -46,35 +54,40 @@ export class GlobalRouteTemplateStore {
       createdAt: new Date().toISOString(),
       maskedKey: maskKey(request.apiKey)
     }
-    await this.writeJson(this.secretPath(accountId, template.templateId), {
+    await this.writeJson(this.secretPath(accountId, template.templateId, edition), {
       apiKey: request.apiKey
     })
-    await this.writeJson(this.getFilePath(accountId), [...templates, template])
+    await this.writeJson(this.getFilePath(accountId, edition), [...templates, template])
     return template
   }
 
-  async remove(accountId: string, templateId: string): Promise<void> {
-    const templates = await this.list(accountId)
+  async remove(accountId: string, templateId: string, edition: WorkBuddyEdition = 'domestic'): Promise<void> {
+    const templates = await this.list(accountId, edition)
     await this.writeJson(
-      this.getFilePath(accountId),
+      this.getFilePath(accountId, edition),
       templates.filter((item) => item.templateId !== templateId)
     )
-    await this.writeJson(this.secretPath(accountId, templateId), { deleted: true })
+    await this.writeJson(this.secretPath(accountId, templateId, edition), { deleted: true })
   }
 
-  async resolveKey(accountId: string, templateId: string): Promise<string> {
-    const secret = await this.readJson<{ apiKey?: string }>(this.secretPath(accountId, templateId), {})
+  async resolveKey(accountId: string, templateId: string, edition: WorkBuddyEdition = 'domestic'): Promise<string> {
+    const secret = await this.readJson<{ apiKey?: string }>(this.secretPath(accountId, templateId, edition), {})
     if (!secret.apiKey) throw new Error('Global route template credential is unavailable')
     return secret.apiKey
   }
 
-  private accountPath(accountId: string): string {
+  private accountPath(accountId: string, edition: WorkBuddyEdition): string {
     const accountKey = createHash('sha256').update(accountId).digest('hex')
-    return join(this.rootPath, 'global-templates', accountKey)
+    return join(
+      this.rootPath,
+      'global-templates',
+      accountKey,
+      ...(edition === 'overseas' ? ['workbuddy-overseas'] : [])
+    )
   }
 
-  private secretPath(accountId: string, templateId: string): string {
-    return join(this.accountPath(accountId), 'credentials', `${templateId}.json`)
+  private secretPath(accountId: string, templateId: string, edition: WorkBuddyEdition): string {
+    return join(this.accountPath(accountId, edition), 'credentials', `${templateId}.json`)
   }
 
   private async readJson<T>(filePath: string, fallback: T): Promise<T> {

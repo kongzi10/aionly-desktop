@@ -165,12 +165,18 @@ const AgentRouterPage = () => {
                     <strong>{t('agentRouter.target.claudeCode.label')}</strong>
                     <StatusTag
                       $tone={
-                        claudeCode.target && claudeCode.target.detectionState !== 'notFound' ? 'success' : 'muted'
+                        claudeCode.target?.detectionState === 'notFound'
+                          ? 'warning'
+                          : claudeCode.target?.detectionState === 'detected'
+                            ? 'success'
+                            : 'muted'
                       }>
                       {t(
-                        claudeCode.target && claudeCode.target.detectionState !== 'notFound'
-                          ? 'agentRouter.detected'
-                          : 'agentRouter.notDetected'
+                        claudeCode.target?.detectionState === 'notFound'
+                          ? 'agentRouter.configNotFoundShort'
+                          : claudeCode.target?.detectionState === 'detected'
+                            ? 'agentRouter.detected'
+                            : 'agentRouter.notDetected'
                       )}
                     </StatusTag>
                   </TargetNameRow>
@@ -260,6 +266,7 @@ const AgentRouterPage = () => {
                   target={claudeCode.target}
                   onSelect={() => void claudeCode.selectConfig()}
                   showEntryCounts={false}
+                  missingConfigWillBeCreated
                 />
                 <RoutesPanel>
                   <ClaudeCodeProfileList
@@ -314,6 +321,7 @@ const AgentRouterPage = () => {
                   target={codex.target}
                   onSelect={() => void codex.selectConfig()}
                   showEntryCounts={false}
+                  missingConfigWillBeCreated
                 />
                 <RoutesPanel>
                   <CodexProfileList
@@ -382,11 +390,13 @@ const AgentRouterPage = () => {
         apiModels={claudeCode.apiModels}
         busy={claudeCode.busy}
         onSave={(value) => {
-          const shouldReapply = value.profileId === claudeCode.library.activeProfileId
+          const shouldApply =
+            value.profileId === claudeCode.library.activeProfileId ||
+            (!claudeCode.library.activeProfileId && claudeCode.target?.detectionState === 'notFound')
           void claudeCode
             .saveDraft(value)
             .then(async (savedProfileId) => {
-              if (!shouldReapply || (await claudeCode.applyProfile(savedProfileId))) setProfileModalOpen(false)
+              if (!shouldApply || (await claudeCode.applyProfile(savedProfileId))) setProfileModalOpen(false)
             })
             .catch((error) =>
               messageApi.error(formatErrorMessageWithPrefix(error, t('agentRouter.claudeCode.saveFailed')))

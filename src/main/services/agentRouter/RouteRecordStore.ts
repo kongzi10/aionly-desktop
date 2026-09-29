@@ -2,7 +2,13 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import type { AgentRouteConfig, AgentRouteModel, AgentRouteRef, AgentRouterTargetId } from '@shared/agentRouter'
+import type {
+  AgentRouteConfig,
+  AgentRouteModel,
+  AgentRouteRef,
+  AgentRouterTargetId,
+  WorkBuddyEdition
+} from '@shared/agentRouter'
 
 const SECRET_FIELD_NAMES = new Set(['apikey', 'secret', 'token', 'authorization'])
 
@@ -33,13 +39,18 @@ export class RouteRecordStore {
 
   constructor(private readonly rootPath: string) {}
 
-  getFilePath(accountId: string, targetId: AgentRouterTargetId): string {
+  getFilePath(accountId: string, targetId: AgentRouterTargetId, edition: WorkBuddyEdition = 'domestic'): string {
     const accountKey = createHash('sha256').update(accountId).digest('hex')
-    return join(this.rootPath, 'routes', accountKey, `${targetId}.json`)
+    const fileName = targetId === 'workbuddy' && edition === 'overseas' ? 'workbuddy-overseas.json' : `${targetId}.json`
+    return join(this.rootPath, 'routes', accountKey, fileName)
   }
 
-  async getRouteConfig(accountId: string, targetId: AgentRouterTargetId): Promise<AgentRouteConfig> {
-    const filePath = this.getFilePath(accountId, targetId)
+  async getRouteConfig(
+    accountId: string,
+    targetId: AgentRouterTargetId,
+    edition: WorkBuddyEdition = 'domestic'
+  ): Promise<AgentRouteConfig> {
+    const filePath = this.getFilePath(accountId, targetId, edition)
     let document: AgentRouteConfig
     try {
       document = JSON.parse(await readFile(filePath, 'utf8')) as AgentRouteConfig
@@ -63,35 +74,47 @@ export class RouteRecordStore {
     return document
   }
 
-  async saveRouteModels(accountId: string, targetId: AgentRouterTargetId, models: AgentRouteModel[]): Promise<void> {
+  async saveRouteModels(
+    accountId: string,
+    targetId: AgentRouterTargetId,
+    models: AgentRouteModel[],
+    edition: WorkBuddyEdition = 'domestic'
+  ): Promise<void> {
     assertNoSecretFields(models)
     validateModels(models)
-    const current = await this.getRouteConfig(accountId, targetId)
+    const current = await this.getRouteConfig(accountId, targetId, edition)
     const byModel = new Map(current.models.map((model) => [`${model.modelId}\u0000${model.credentialId}`, model]))
     for (const model of models) byModel.set(`${model.modelId}\u0000${model.credentialId}`, model)
-    await this.write(accountId, targetId, { targetId, models: [...byModel.values()] })
+    await this.write(accountId, targetId, { targetId, models: [...byModel.values()] }, edition)
   }
 
   async removeRouteModels(
     accountId: string,
     targetId: AgentRouterTargetId,
-    routes: readonly AgentRouteRef[]
+    routes: readonly AgentRouteRef[],
+    edition: WorkBuddyEdition = 'domestic'
   ): Promise<void> {
     const removed = new Set(routes.map((route) => `${route.modelId}\u0000${route.credentialId}`))
-    const current = await this.getRouteConfig(accountId, targetId)
-    await this.write(accountId, targetId, {
+    const current = await this.getRouteConfig(accountId, targetId, edition)
+    await this.write(
+      accountId,
       targetId,
-      models: current.models.filter((model) => !removed.has(`${model.modelId}\u0000${model.credentialId}`))
-    })
+      {
+        targetId,
+        models: current.models.filter((model) => !removed.has(`${model.modelId}\u0000${model.credentialId}`))
+      },
+      edition
+    )
   }
 
   async replaceRouteModel(
     accountId: string,
     targetId: AgentRouterTargetId,
     currentRoute: AgentRouteRef,
-    replacement: AgentRouteModel
+    replacement: AgentRouteModel,
+    edition: WorkBuddyEdition = 'domestic'
   ): Promise<void> {
-    const current = await this.getRouteConfig(accountId, targetId)
+    const current = await this.getRouteConfig(accountId, targetId, edition)
     const index = current.models.findIndex(
       (model) => model.modelId === currentRoute.modelId && model.credentialId === currentRoute.credentialId
     )
@@ -99,11 +122,16 @@ export class RouteRecordStore {
     const models = [...current.models]
     models[index] = replacement
     validateModels(models)
-    await this.write(accountId, targetId, { targetId, models })
+    await this.write(accountId, targetId, { targetId, models }, edition)
   }
 
-  private async write(accountId: string, targetId: AgentRouterTargetId, document: AgentRouteConfig): Promise<void> {
-    const filePath = this.getFilePath(accountId, targetId)
+  private async write(
+    accountId: string,
+    targetId: AgentRouterTargetId,
+    document: AgentRouteConfig,
+    edition: WorkBuddyEdition
+  ): Promise<void> {
+    const filePath = this.getFilePath(accountId, targetId, edition)
     const previous = this.writeQueues.get(filePath) ?? Promise.resolve()
     const operation = previous.then(async () => {
       await mkdir(dirname(filePath), { recursive: true })

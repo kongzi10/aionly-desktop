@@ -7,20 +7,35 @@ import styled from 'styled-components'
 export const TargetStatusCard = ({
   target,
   onSelect,
-  showEntryCounts = true
+  showEntryCounts = true,
+  missingConfigWillBeCreated = false
 }: {
   target: TargetSnapshot | null
   onSelect: () => void
   showEntryCounts?: boolean
+  missingConfigWillBeCreated?: boolean
 }) => {
   const { t } = useTranslation()
   const ready = Boolean(target?.exists && target.readable && target.writable)
+  const willCreateConfig = missingConfigWillBeCreated && target?.detectionState === 'notFound'
   return (
     <Card $ready={ready}>
       <StateIcon $ready={ready}>{ready ? <CheckCircleFilled /> : <ExclamationCircleFilled />}</StateIcon>
       <Copy>
-        <strong>{ready ? t('agentRouter.configReady') : t('agentRouter.configNeedsAttention')}</strong>
-        {!ready ? <span>{t('agentRouter.configNeedsAttentionDescription')}</span> : null}
+        <strong>
+          {ready
+            ? t('agentRouter.configReady')
+            : willCreateConfig
+              ? t('agentRouter.configNotFoundTitle')
+              : t('agentRouter.configNeedsAttention')}
+        </strong>
+        {!ready ? (
+          <span>
+            {willCreateConfig
+              ? t('agentRouter.configNotFoundDescription')
+              : t('agentRouter.configNeedsAttentionDescription')}
+          </span>
+        ) : null}
       </Copy>
       {showEntryCounts ? (
         <Facts>
@@ -35,7 +50,7 @@ export const TargetStatusCard = ({
           </Fact>
         </Facts>
       ) : null}
-      {!ready ? (
+      {!ready && !willCreateConfig ? (
         <Button size="small" onClick={onSelect}>
           {t('agentRouter.changeConfig')}
         </Button>

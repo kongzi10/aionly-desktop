@@ -1,5 +1,6 @@
+import { DownOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import type { AgentRouteAccessMode, CodexRouteProfile } from '@shared/agentRouter'
-import { Button, Form, Input, Radio, Select, Spin } from 'antd'
+import { Button, Form, Input, Radio, Select, Spin, Tooltip } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -13,7 +14,6 @@ export interface CodexFormValue {
   name: string
   credential: AgentRouterCredential
   model: string
-  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high'
 }
 
 interface Props {
@@ -26,8 +26,6 @@ interface Props {
   onRemove: () => void
   onCancel: () => void
 }
-
-const REASONING_OPTIONS = ['minimal', 'low', 'medium', 'high'] as const
 
 export const CodexProfileForm = ({
   apiCredentials,
@@ -44,7 +42,6 @@ export const CodexProfileForm = ({
   const [accessMode, setAccessMode] = useState<AgentRouteAccessMode>(profile?.accessMode ?? 'api')
   const [credentialId, setCredentialId] = useState<string>()
   const [model, setModel] = useState(profile?.model)
-  const [reasoningEffort, setReasoningEffort] = useState<CodexFormValue['reasoningEffort']>(profile?.reasoningEffort)
   const credentials = accessMode === 'api' ? apiCredentials : tokenPlanCredentials
   const credential = credentials.find((item) => item.id === credentialId)
   const tokenPlan = useTokenPlanModels(accessMode === 'tokenPlan' ? credential : undefined)
@@ -55,7 +52,6 @@ export const CodexProfileForm = ({
     setAccessMode(profile?.accessMode ?? 'api')
     setCredentialId(undefined)
     setModel(profile?.model)
-    setReasoningEffort(profile?.reasoningEffort)
   }, [profile])
 
   useEffect(() => {
@@ -116,14 +112,14 @@ export const CodexProfileForm = ({
           disabled={!credential || modelsUnavailable}
           allowClear
           showSearch
-        />
-      </Field>
-      <Field label={t('agentRouter.codex.reasoningEffort')}>
-        <Select
-          value={reasoningEffort}
-          options={REASONING_OPTIONS.map((value) => ({ label: value, value }))}
-          onChange={setReasoningEffort}
-          allowClear
+          suffixIcon={
+            <SelectSuffix>
+              <Tooltip title={t('agentRouter.codex.responsesOnlyHint')}>
+                <ExclamationCircleOutlined aria-label={t('agentRouter.codex.responsesOnlyHint')} />
+              </Tooltip>
+              <DownOutlined aria-hidden="true" />
+            </SelectSuffix>
+          }
         />
       </Field>
       {tokenPlan.loading ? <Spin size="small" /> : null}
@@ -147,8 +143,7 @@ export const CodexProfileForm = ({
               profileId: profile?.id,
               name: name.trim(),
               credential,
-              model,
-              reasoningEffort
+              model
             })
           }>
           {t('agentRouter.codex.save')}
@@ -163,6 +158,17 @@ const Panel = styled.div`
 `
 const Field = styled(Form.Item)`margin-bottom:0;`
 const Hint = styled.div`color: var(--color-error);`
+const SelectSuffix = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-3);
+
+  > .anticon:first-child {
+    color: var(--color-error, #ff4d4f);
+    pointer-events: auto;
+  }
+`
 const Actions = styled.div`
   display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--color-border);
 `

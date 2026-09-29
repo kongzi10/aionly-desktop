@@ -46,7 +46,7 @@ export const useCodexRouter = ({ onError }: { onError?: (error: unknown) => void
     [refresh]
   )
 
-  const saveDraft = async ({ profileId, name, credential, model, reasoningEffort }: CodexFormValue) => {
+  const saveDraft = async ({ profileId, name, credential, model }: CodexFormValue) => {
     setBusy(true)
     try {
       const saved = await window.api.agentRouter.saveCodexProfile(sources.accountId, {
@@ -57,7 +57,7 @@ export const useCodexRouter = ({ onError }: { onError?: (error: unknown) => void
         tokenPlanId: credential.planId,
         apiKey: credential.value,
         model,
-        reasoningEffort
+        reasoningEffort: 'medium'
       })
       setSelectedProfileId(saved.id)
       await refresh()

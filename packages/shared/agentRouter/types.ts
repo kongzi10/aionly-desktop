@@ -159,9 +159,11 @@ export interface CodexRouteProfile {
   accessMode: AgentRouteAccessMode
   tokenPlanId?: string
   model: string
-  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high'
+  reasoningEffort?: CodexReasoningEffort
   managedAt: string
 }
+
+export type CodexReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra'
 
 export interface CodexProfileLibrary {
   version: 1
@@ -177,7 +179,7 @@ export interface SaveCodexProfileRequest {
   tokenPlanId?: string
   apiKey: string
   model: string
-  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high'
+  reasoningEffort?: CodexReasoningEffort
 }
 
 export interface PreviewCodexRouteRequest {

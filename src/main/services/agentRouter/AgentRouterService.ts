@@ -28,7 +28,8 @@ import type {
   SaveClaudeCodeProfileRequest,
   SaveCodexProfileRequest,
   TargetSnapshot,
-  UpdateAgentRouteRequest
+  UpdateAgentRouteRequest,
+  WorkBuddyEdition
 } from '@shared/agentRouter'
 
 import { AgentCredentialSnapshotStore } from './AgentCredentialSnapshotStore'
@@ -107,7 +108,7 @@ export class AgentRouterService {
       accessMode: request.accessMode,
       tokenPlanId: request.tokenPlanId,
       model: request.model.trim(),
-      reasoningEffort: request.reasoningEffort,
+      reasoningEffort: 'medium',
       managedAt: new Date().toISOString()
     }
     try {
@@ -421,11 +422,12 @@ export class AgentRouterService {
   async listGlobalTemplates(
     accountId: string,
     targetId: AgentRouterTargetId = 'workbuddy',
-    knownCredentials: NamedAgentRouterCredential[] = []
+    knownCredentials: NamedAgentRouterCredential[] = [],
+    edition: WorkBuddyEdition = 'domestic'
   ) {
     const [templates, config] = await Promise.all([
-      this.templates.list(accountId),
-      this.routes.getRouteConfig(accountId, targetId)
+      this.templates.list(accountId, edition),
+      this.routes.getRouteConfig(accountId, targetId, edition)
     ])
     const routesWithKeys = await Promise.all(
       config.models.map(async (route) => ({
@@ -435,7 +437,7 @@ export class AgentRouterService {
     )
     return Promise.all(
       templates.map(async (template) => {
-        const key = await this.templates.resolveKey(accountId, template.templateId).catch(() => undefined)
+        const key = await this.templates.resolveKey(accountId, template.templateId, edition).catch(() => undefined)
         return {
           ...template,
           credentialName:
@@ -446,20 +448,25 @@ export class AgentRouterService {
     )
   }
 
-  createGlobalTemplate(accountId: string, request: CreateAgentRouteTemplateRequest) {
-    return this.templates.create(accountId, request)
+  createGlobalTemplate(
+    accountId: string,
+    request: CreateAgentRouteTemplateRequest,
+    edition: WorkBuddyEdition = 'domestic'
+  ) {
+    return this.templates.create(accountId, request, edition)
   }
 
-  deleteGlobalTemplate(accountId: string, templateId: string) {
-    return this.templates.remove(accountId, templateId)
+  deleteGlobalTemplate(accountId: string, templateId: string, edition: WorkBuddyEdition = 'domestic') {
+    return this.templates.remove(accountId, templateId, edition)
   }
 
   async listAgentCredentialSummaries(
     accountId: string,
     targetId: AgentRouterTargetId,
-    knownCredentials: NamedAgentRouterCredential[] = []
+    knownCredentials: NamedAgentRouterCredential[] = [],
+    edition: WorkBuddyEdition = 'domestic'
   ): Promise<RedactedCredentialSummary[]> {
-    const config = await this.routes.getRouteConfig(accountId, targetId)
+    const config = await this.routes.getRouteConfig(accountId, targetId, edition)
     return Promise.all(
       config.models.map(async (route) => {
         try {
@@ -493,9 +500,10 @@ export class AgentRouterService {
   async resolveAgentRouteCredential(
     accountId: string,
     targetId: AgentRouterTargetId,
-    routeRef: AgentRouteRef
+    routeRef: AgentRouteRef,
+    edition: WorkBuddyEdition = 'domestic'
   ): Promise<string> {
-    const config = await this.routes.getRouteConfig(accountId, targetId)
+    const config = await this.routes.getRouteConfig(accountId, targetId, edition)
     const route = config.models.find(
       (model) => model.modelId === routeRef.modelId && model.credentialId === routeRef.credentialId
     )
@@ -506,12 +514,13 @@ export class AgentRouterService {
   async copyTemplatesToAgent(
     accountId: string,
     targetId: AgentRouterTargetId,
-    templateIds: string[]
+    templateIds: string[],
+    edition: WorkBuddyEdition = 'domestic'
   ): Promise<AgentRouteModel[]> {
     if (targetId !== 'workbuddy') throw new AgentRouterError('TARGET_NOT_FOUND', 'Target is not available')
-    const templates = await this.templates.list(accountId)
+    const templates = await this.templates.list(accountId, edition)
     const byId = new Map(templates.map((template) => [template.templateId, template]))
-    const current = await this.routes.getRouteConfig(accountId, targetId)
+    const current = await this.routes.getRouteConfig(accountId, targetId, edition)
     const existing = await Promise.all(
       current.models.map(async (route) => ({
         modelId: route.modelId,
@@ -524,7 +533,7 @@ export class AgentRouterService {
       for (const templateId of templateIds) {
         const template = byId.get(templateId)
         if (!template) throw new AgentRouterError('INVALID_REQUEST', 'Global route template does not exist')
-        const key = await this.templates.resolveKey(accountId, templateId)
+        const key = await this.templates.resolveKey(accountId, templateId, edition)
         if (existing.some((route) => route.modelId === template.modelId && route.key === key)) continue
         const credentialId = await this.credentialSnapshots.create(accountId, targetId, key)
         createdCredentialIds.push(credentialId)
@@ -540,7 +549,7 @@ export class AgentRouterService {
         })
         existing.push({ modelId: template.modelId, key })
       }
-      await this.routes.saveRouteModels(accountId, targetId, copied)
+      await this.routes.saveRouteModels(accountId, targetId, copied, edition)
       return copied
     } catch (error) {
       await Promise.all(createdCredentialIds.map((id) => this.credentialSnapshots.remove(accountId, targetId, id)))
@@ -551,13 +560,14 @@ export class AgentRouterService {
   async createAgentRoute(
     accountId: string,
     targetId: AgentRouterTargetId,
-    request: CreateAgentRouteRequest
+    request: CreateAgentRouteRequest,
+    edition: WorkBuddyEdition = 'domestic'
   ): Promise<AgentRouteModel> {
     if (targetId !== 'workbuddy') throw new AgentRouterError('TARGET_NOT_FOUND', 'Target is not available')
     if (!request.modelId || !request.apiKey || (request.accessMode === 'tokenPlan') !== Boolean(request.tokenPlanId)) {
       throw new AgentRouterError('INVALID_REQUEST', 'Invalid Agent route')
     }
-    const current = await this.routes.getRouteConfig(accountId, targetId)
+    const current = await this.routes.getRouteConfig(accountId, targetId, edition)
     for (const route of current.models) {
       const key = await this.credentialSnapshots.resolve(accountId, targetId, route.credentialId).catch(() => undefined)
       if (route.modelId === request.modelId && key === request.apiKey) {
@@ -576,7 +586,7 @@ export class AgentRouterService {
       routedAt: new Date().toISOString()
     }
     try {
-      await this.routes.saveRouteModels(accountId, targetId, [route])
+      await this.routes.saveRouteModels(accountId, targetId, [route], edition)
       return route
     } catch (error) {
       await this.credentialSnapshots.remove(accountId, targetId, credentialId)
@@ -588,10 +598,11 @@ export class AgentRouterService {
     accountId: string,
     targetId: AgentRouterTargetId,
     routeRef: AgentRouteRef,
-    request: UpdateAgentRouteRequest
+    request: UpdateAgentRouteRequest,
+    edition: WorkBuddyEdition = 'domestic'
   ): Promise<AgentRouteModel> {
     if (targetId !== 'workbuddy') throw new AgentRouterError('TARGET_NOT_FOUND', 'Target is not available')
-    const current = await this.routes.getRouteConfig(accountId, targetId)
+    const current = await this.routes.getRouteConfig(accountId, targetId, edition)
     const route = current.models.find(
       (model) => model.modelId === routeRef.modelId && model.credentialId === routeRef.credentialId
     )
@@ -624,7 +635,7 @@ export class AgentRouterService {
       modelTypes: request.modelTypes
     }
     try {
-      await this.routes.replaceRouteModel(accountId, targetId, routeRef, updated)
+      await this.routes.replaceRouteModel(accountId, targetId, routeRef, updated, edition)
       if (credentialId !== route.credentialId) {
         await this.credentialSnapshots.remove(accountId, targetId, route.credentialId)
       }
@@ -637,7 +648,12 @@ export class AgentRouterService {
     }
   }
 
-  async inspectTarget(targetId: 'workbuddy', configPath: string, accountId?: string): Promise<TargetSnapshot> {
+  async inspectTarget(
+    targetId: 'workbuddy',
+    configPath: string,
+    accountId?: string,
+    edition: WorkBuddyEdition = 'domestic'
+  ): Promise<TargetSnapshot> {
     if (targetId !== 'workbuddy') throw new AgentRouterError('TARGET_NOT_FOUND', 'Target is not available')
     const normalizedPath = resolve(configPath)
     try {
@@ -646,7 +662,7 @@ export class AgentRouterService {
         stat(normalizedPath)
       ])
       const parsed = this.adapter.parse(snapshot.content)
-      const config = accountId ? await this.routes.getRouteConfig(accountId, targetId) : { models: [] }
+      const config = accountId ? await this.routes.getRouteConfig(accountId, targetId, edition) : { models: [] }
       const managedIds = accountId
         ? await this.findManagedEntryIds(
             accountId,
@@ -712,8 +728,13 @@ export class AgentRouterService {
     }
   }
 
-  async getRouteConfig(accountId: string, targetId: 'workbuddy', configPath?: string): Promise<AgentRouteConfig> {
-    const config = await this.routes.getRouteConfig(accountId, targetId)
+  async getRouteConfig(
+    accountId: string,
+    targetId: 'workbuddy',
+    configPath?: string,
+    edition: WorkBuddyEdition = 'domestic'
+  ): Promise<AgentRouteConfig> {
+    const config = await this.routes.getRouteConfig(accountId, targetId, edition)
     if (!configPath) return config
     let applied: WorkBuddyEntry[]
     try {
@@ -736,12 +757,22 @@ export class AgentRouterService {
     return { ...config, models }
   }
 
-  saveRouteModels(accountId: string, targetId: 'workbuddy', models: AgentRouteModel[]): Promise<void> {
-    return this.routes.saveRouteModels(accountId, targetId, models)
+  saveRouteModels(
+    accountId: string,
+    targetId: 'workbuddy',
+    models: AgentRouteModel[],
+    edition: WorkBuddyEdition = 'domestic'
+  ): Promise<void> {
+    return this.routes.saveRouteModels(accountId, targetId, models, edition)
   }
 
-  removeRouteModels(accountId: string, targetId: 'workbuddy', routes: AgentRouteRef[]): Promise<void> {
-    return this.routes.removeRouteModels(accountId, targetId, routes)
+  removeRouteModels(
+    accountId: string,
+    targetId: 'workbuddy',
+    routes: AgentRouteRef[],
+    edition: WorkBuddyEdition = 'domestic'
+  ): Promise<void> {
+    return this.routes.removeRouteModels(accountId, targetId, routes, edition)
   }
 
   async listAppliedWorkBuddyRoutes(configPath: string): Promise<RedactedTargetEntry[]> {
@@ -752,7 +783,11 @@ export class AgentRouterService {
       .map((entry) => this.redact(entry))
   }
 
-  async previewWorkBuddyRoutes(configPath: string, request: PreviewWorkBuddyRoutesRequest): Promise<ApplyPreview> {
+  async previewWorkBuddyRoutes(
+    configPath: string,
+    request: PreviewWorkBuddyRoutesRequest,
+    edition: WorkBuddyEdition = 'domestic'
+  ): Promise<ApplyPreview> {
     if (
       !request.accountId ||
       request.resolvedCredentials.length > 100 ||
@@ -764,7 +799,7 @@ export class AgentRouterService {
     const snapshot = await this.transaction.readSnapshot(normalizedPath)
     if (snapshot.revision !== request.expectedRevision)
       throw new AgentRouterError('REVISION_CONFLICT', 'Target changed')
-    const config = await this.routes.getRouteConfig(request.accountId, 'workbuddy')
+    const config = await this.routes.getRouteConfig(request.accountId, 'workbuddy', edition)
     const current = this.adapter.parse(snapshot.content).entries.map(({ value }) => value)
     const credentials = new Map(request.resolvedCredentials.map((item) => [item.credentialId, item.value]))
     const enabledRoutes = new Set(request.enabledRoutes.map((route) => `${route.modelId}\u0000${route.credentialId}`))

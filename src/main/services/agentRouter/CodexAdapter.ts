@@ -93,8 +93,7 @@ export class CodexAdapter {
     configToml.model_providers = providers
     configToml.model_provider = CODEX_MANAGED_PROVIDER_ID
     configToml.model = profile.model
-    if (profile.reasoningEffort) configToml.model_reasoning_effort = profile.reasoningEffort
-    else delete configToml.model_reasoning_effort
+    configToml.model_reasoning_effort = 'medium'
     configToml.disable_response_storage = true
     const authJson: CodexAuthJson = { OPENAI_API_KEY: credential }
     return { configToml, provider, authJson }
