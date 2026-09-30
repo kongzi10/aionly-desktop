@@ -27,6 +27,7 @@ import { CacheService } from '@renderer/services/CacheService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import FileManager from '@renderer/services/FileManager'
 import { checkRateLimit, getUserMessage } from '@renderer/services/MessagesService'
+import { getActiveProfileId } from '@renderer/services/ProfileStorageService'
 import { spanManagerService } from '@renderer/services/SpanManagerService'
 import { estimateTextTokens as estimateTxtTokens, estimateUserPromptUsage } from '@renderer/services/TokenService'
 import WebSearchService from '@renderer/services/WebSearchService'
@@ -65,10 +66,11 @@ const logger = loggerService.withContext('Inputbar')
 const INPUTBAR_DRAFT_CACHE_KEY = 'inputbar-draft'
 const DRAFT_CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours
 
-const getMentionedModelsCacheKey = (assistantId: string) => `inputbar-mentioned-models-${assistantId}`
+const getMentionedModelsCacheKey = (profileId: string | null, assistantId: string) =>
+  `inputbar-mentioned-models-${profileId ?? 'login'}-${assistantId}`
 
-const getValidatedCachedModels = (assistantId: string): Model[] => {
-  const cached = CacheService.get<Model[]>(getMentionedModelsCacheKey(assistantId))
+const getValidatedCachedModels = (cacheKey: string): Model[] => {
+  const cached = CacheService.get<Model[]>(cacheKey)
   if (!Array.isArray(cached)) return []
   return cached.filter((model) => model?.id && model?.name)
 }
@@ -91,6 +93,7 @@ type ProviderActionHandlers = {
 
 interface InputbarInnerProps extends Props {
   actionsRef: React.RefObject<ProviderActionHandlers>
+  mentionedModelsCacheKey: string
 }
 
 const Inputbar: FC<Props> = ({ assistant: initialAssistant, setActiveTopic, topic, mode = 'chat' }) => {
@@ -103,7 +106,10 @@ const Inputbar: FC<Props> = ({ assistant: initialAssistant, setActiveTopic, topi
     toggleExpanded: () => {}
   })
 
-  const [initialMentionedModels] = useState(() => getValidatedCachedModels(initialAssistant.id))
+  const [mentionedModelsCacheKey] = useState(() =>
+    getMentionedModelsCacheKey(getActiveProfileId(), initialAssistant.id)
+  )
+  const [initialMentionedModels] = useState(() => getValidatedCachedModels(mentionedModelsCacheKey))
 
   const initialState = useMemo(
     () => ({
@@ -134,6 +140,7 @@ const Inputbar: FC<Props> = ({ assistant: initialAssistant, setActiveTopic, topi
         topic={topic}
         mode={mode}
         actionsRef={actionsRef}
+        mentionedModelsCacheKey={mentionedModelsCacheKey}
       />
     </InputbarToolsProvider>
   )
@@ -144,7 +151,8 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   setActiveTopic,
   topic,
   mode = 'chat',
-  actionsRef
+  actionsRef,
+  mentionedModelsCacheKey
 }) => {
   const scope = topic.type ?? TopicType.Chat
   const config = getInputbarConfig(scope)
@@ -227,14 +235,14 @@ const InputbarInner: FC<InputbarInnerProps> = ({
     setCouldAddImageFile(canAddImageFile)
   }, [canAddImageFile, setCouldAddImageFile])
 
-  const onUnmount = useEffectEvent((id: string) => {
-    CacheService.set(getMentionedModelsCacheKey(id), mentionedModels, DRAFT_CACHE_TTL)
+  const onUnmount = useEffectEvent(() => {
+    CacheService.set(mentionedModelsCacheKey, mentionedModels, DRAFT_CACHE_TTL)
   })
 
   useEffect(() => {
-    return () => onUnmount(assistant.id)
+    return () => onUnmount()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assistant.id])
+  }, [mentionedModelsCacheKey])
 
   const placeholderText = enableQuickPanelTriggers
     ? t('chat.input.placeholder', { key: getSendMessageShortcutLabel(sendMessageShortcut) })
