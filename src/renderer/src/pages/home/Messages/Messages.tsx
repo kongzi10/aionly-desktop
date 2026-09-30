@@ -10,6 +10,7 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import { useShortcut } from '@renderer/hooks/useShortcuts'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { autoRenameTopic } from '@renderer/hooks/useTopic'
+import { getAllMessagesForCapture, hasMultiModelMessageGroup } from '@renderer/pages/home/Messages/messageCapture'
 import SelectionBox from '@renderer/pages/home/Messages/SelectionBox'
 import Welcome from '@renderer/pages/home/Messages/Welcome'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
@@ -40,6 +41,7 @@ import styled from 'styled-components'
 
 import MessageAnchorLine from './MessageAnchorLine'
 import MessageGroup from './MessageGroup'
+import { withExpandedMultiModelCards } from './multiModelImageCapture'
 import NarrowLayout from './NarrowLayout'
 // import Prompt from './Prompt'
 import { MessagesContainer, ScrollContainer } from './shared'
@@ -83,10 +85,15 @@ const Messages: React.FC<MessagesProps> = ({
 
   const messageElements = useRef<Map<string, HTMLElement>>(new Map())
   const messagesRef = useRef<Message[]>(messages)
+  const displayMessagesRef = useRef(displayMessages)
 
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  useEffect(() => {
+    displayMessagesRef.current = displayMessages
+  }, [displayMessages])
 
   const registerMessageElement = useCallback((id: string, element: HTMLElement | null) => {
     if (element) {
@@ -138,11 +145,39 @@ const Messages: React.FC<MessagesProps> = ({
         })
       }),
       EventEmitter.on(EVENT_NAMES.COPY_TOPIC_IMAGE, async () => {
-        await captureScrollableAsBlob(scrollContainerRef, async (blob) => {
-          if (blob) {
-            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        const previousDisplayMessages = displayMessagesRef.current
+        const originalScrollTop = scrollContainerRef.current?.scrollTop ?? 0
+        const shouldCaptureFullHistory = mode === 'roundtable' || hasMultiModelMessageGroup(messagesRef.current)
+
+        try {
+          if (shouldCaptureFullHistory) {
+            setDisplayMessages(getAllMessagesForCapture(messagesRef.current))
+            await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
           }
-        })
+
+          const capture = () =>
+            captureScrollableAsBlob(scrollContainerRef, async (blob) => {
+              if (blob) {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+              }
+            })
+          if (shouldCaptureFullHistory) {
+            await withExpandedMultiModelCards(scrollContainerRef.current, capture)
+          } else {
+            await capture()
+          }
+        } finally {
+          if (shouldCaptureFullHistory) {
+            setDisplayMessages(previousDisplayMessages)
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollTop = originalScrollTop
+                }
+              })
+            )
+          }
+        }
       }),
       EventEmitter.on(EVENT_NAMES.EXPORT_TOPIC_IMAGE, async () => {
         const imageData = await captureScrollableAsDataURL(scrollContainerRef)

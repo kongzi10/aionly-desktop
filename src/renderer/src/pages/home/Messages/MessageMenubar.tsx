@@ -74,6 +74,7 @@ import { useSelector } from 'react-redux'
 import styled from 'styled-components'
 
 import MessageTokens from './MessageTokens'
+import { withExpandedMultiModelCards } from './multiModelImageCapture'
 
 const createTranslationAbortKey = (messageId: string) => `translation-abort-key:${messageId}`
 
@@ -360,18 +361,27 @@ const MessageMenubar: FC<Props> = (props) => {
             label: t('chat.topics.copy.image'),
             key: 'img',
             onClick: async () => {
-              await captureScrollableAsBlob(messageContainerRef, async (blob) => {
-                if (blob) {
-                  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-                }
-              })
+              const capture = () =>
+                captureScrollableAsBlob(messageContainerRef, async (blob) => {
+                  if (blob) {
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+                  }
+                })
+              if (isGrouped) {
+                await withExpandedMultiModelCards(messageContainerRef.current, capture)
+              } else {
+                await capture()
+              }
             }
           },
           exportMenuOptions.image && {
             label: t('chat.topics.export.image'),
             key: 'image',
             onClick: async () => {
-              const imageData = await captureScrollableAsDataURL(messageContainerRef)
+              const capture = () => captureScrollableAsDataURL(messageContainerRef)
+              const imageData = isGrouped
+                ? await withExpandedMultiModelCards(messageContainerRef.current, capture)
+                : await capture()
               const title = await getMessageTitle(message)
               if (title && imageData) {
                 const success = await window.api.file.saveImage(title, imageData)
@@ -475,6 +485,7 @@ const MessageMenubar: FC<Props> = (props) => {
     exportMenuOptions.siyuan,
     exportMenuOptions.yuque,
     isEditable,
+    isGrouped,
     mainTextContent,
     message,
     messageContainerRef,
