@@ -108,17 +108,14 @@ const ProviderOAuth: FC<Props> = ({ providerId, fancyProviderName }) => {
       </OAuthButton>*/}
 
       <div className="right">
-        {/* 子账号没有余额充值和账单，后付用户不显示充值按钮（确认非后付才渲染，避免闪现） */}
-        {userInfo?.userSubjectType != '2' && (
-          <HStack gap={10}>
-            <Button type="primary" onClick={handleClickBills}>
-              {t('settings.provider.bills')}
-            </Button>
-            {isPayLaterUser === false && (
-              <OrangeButton onClick={handleClickRecharge}>{t('settings.provider.charge')}</OrangeButton>
-            )}
-          </HStack>
-        )}
+        <HStack gap={10}>
+          <Button type="primary" onClick={handleClickBills}>
+            {t('settings.provider.bills')}
+          </Button>
+          {userInfo?.userSubjectType != '2' && isPayLaterUser === false && (
+            <OrangeButton onClick={handleClickRecharge}>{t('settings.provider.charge')}</OrangeButton>
+          )}
+        </HStack>
       </div>
     </Container>
   )
