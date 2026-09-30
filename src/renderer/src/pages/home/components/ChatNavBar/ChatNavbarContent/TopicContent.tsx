@@ -55,7 +55,9 @@ const TopicContent = ({ assistant }: TopicContentProps) => {
 
           {/* Model Button */}
           {aiOnlyModels && aiOnlyModels.length > 0 ? (
-            <SelectModelButton assistant={assistant} />
+            <span className="single-model-selector">
+              <SelectModelButton assistant={assistant} />
+            </span>
           ) : (
             <>
               <TipText className="tips">

@@ -234,6 +234,10 @@ const Chat: FC<Props> = (props) => {
 }
 
 const Container = styled.div`
+  &:has([data-mentioned-models]) .single-model-selector {
+    display: none;
+  }
+
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--navbar-height) - 10px);

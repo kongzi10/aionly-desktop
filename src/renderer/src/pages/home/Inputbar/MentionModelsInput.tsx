@@ -19,7 +19,7 @@ const MentionModelsInput: FC<{
   }*/
 
   return (
-    <Container>
+    <Container data-mentioned-models>
       <HorizontalScrollContainer dependencies={[selectedModels]} expandable>
         {selectedModels.map((model) => (
           <CustomTag color="#1677ff" key={getModelUniqId(model)} closable onClose={() => onRemoveModel(model)}>
