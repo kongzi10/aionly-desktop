@@ -13,6 +13,10 @@ vi.mock('@renderer/components/TopView', () => ({
   TopView: { show: vi.fn(), hide: vi.fn() }
 }))
 
+vi.mock('@renderer/components/TopView/toast', () => ({
+  warning: vi.fn()
+}))
+
 // 虚拟列表在 jsdom 中不便测量，直接平铺渲染以便断言
 vi.mock('@renderer/components/VirtualList', () => ({
   DynamicVirtualList: ({ list, children }: { list: any[]; children: (item: any) => ReactNode }) => (
@@ -91,6 +95,8 @@ vi.mock('@renderer/utils', () => ({
       .join(' ')
 }))
 
+import { warning } from '@renderer/components/TopView/toast'
+
 import SelectMultiModelsPopupView from '../multi-model-popup'
 
 describe('SelectMultiModelsPopupView', () => {
@@ -166,6 +172,18 @@ describe('SelectMultiModelsPopupView', () => {
 
     const resolved = resolve.mock.calls[0][0] as any[]
     expect(resolved.map((m) => m.name)).toEqual(['GPT-4.1', 'deepseek-v3.1'])
+  })
+
+  it('shows the roundtable model limit as a toast', async () => {
+    const user = userEvent.setup()
+    render(<SelectMultiModelsPopupView mode="roundtable" resolve={() => {}} />)
+
+    await user.click(screen.getByText('GPT-4.1'))
+    await user.click(screen.getByText('deepseek-v3.1'))
+    await user.click(screen.getByText('deepseek-r1'))
+
+    expect(warning).toHaveBeenCalledWith('roundtable.max_models_free')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('search filters models by serviceName and modelName', async () => {

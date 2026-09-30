@@ -1,5 +1,6 @@
 import { CrownFilled } from '@ant-design/icons'
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
+import { warning as showWarning } from '@renderer/components/TopView/toast'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
 import { transformToModel, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
@@ -97,9 +98,7 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
 
   const maxModelsMessage = useCallback(() => {
     if (mode === 'roundtable') {
-      message.warning(
-        isRoundtableMember(userInfo) ? t('roundtable.max_models_member') : t('roundtable.max_models_free')
-      )
+      showWarning(isRoundtableMember(userInfo) ? t('roundtable.max_models_member') : t('roundtable.max_models_free'))
     } else {
       message.warning(isRoundtableMember(userInfo) ? t('chat.max_models_member') : t('chat.max_models_free'))
     }
