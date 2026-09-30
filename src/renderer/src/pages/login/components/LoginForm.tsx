@@ -144,7 +144,7 @@ export const LoginForm = (_props: LoginFormProps) => {
   }, [])
 
   /** 登录成功 **/
-  const handleLoginSuccess = async () => {
+  const handleLoginSuccess = useCallback(async () => {
     const { userData, secretKey, balance, providerApiKey } = await saveUserInfo()
     const userId = userData?.userId
     if (userId === undefined || userId === null || !String(userId).trim()) {
@@ -165,17 +165,9 @@ export const LoginForm = (_props: LoginFormProps) => {
       if (providerApiKey) store.dispatch(updateProviderAction({ id: 'aionly', apiKey: providerApiKey }))
       await setupModels(10, String(userId))
     })
-  }
+  }, [saveUserInfo, setupModels])
 
   const tabList: TabsProps['items'] = useMemo(() => {
-    // 扫码登录：手机扫码后打开 Web 端 /scanLogin 完成确认
-    const qrcodeTab = {
-      key: QRCODE_TAB_KEY,
-      label: i18n.t('login.qrcode.tab'),
-      children: (
-        <QrcodeLogin active={activeTabKey === QRCODE_TAB_KEY} onSuccess={handleLoginSuccess} setLoading={setLoading} />
-      )
-    }
     const base = [
       {
         key: '2',
@@ -204,9 +196,22 @@ export const LoginForm = (_props: LoginFormProps) => {
             setLoading={setLoading}
           />
         )
-      },
-      qrcodeTab
+      }
     ]
+
+    if ((APP_PROTOCOL as string) !== 'aiionly') {
+      base.push({
+        key: QRCODE_TAB_KEY,
+        label: i18n.t('login.qrcode.tab'),
+        children: (
+          <QrcodeLogin
+            active={activeTabKey === QRCODE_TAB_KEY}
+            onSuccess={handleLoginSuccess}
+            setLoading={setLoading}
+          />
+        )
+      })
+    }
 
     if ((APP_PROTOCOL as string) === 'aionly') {
       return base
@@ -228,7 +233,7 @@ export const LoginForm = (_props: LoginFormProps) => {
       },
       ...base
     ]
-  }, [activeTabKey, handleLoginSuccess])
+  }, [activeTabKey, handleLoginSuccess, isAccept])
 
   const onTabChange = (key: string) => {
     setActiveTabKey(key)
