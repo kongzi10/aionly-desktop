@@ -1,5 +1,7 @@
 import { getChildLimit, queryMoneyConfig } from '@renderer/api/balance'
 import bullionImage from '@renderer/assets/images/home/bullion.png'
+import membershipBackground from '@renderer/assets/images/home/membership-background.png'
+import membershipIcon from '@renderer/assets/images/home/membership-icon.svg'
 import { isLinux, isMac, isWin } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
@@ -12,6 +14,7 @@ import { getThemeModeLabel } from '@renderer/i18n/label'
 import { useAppSelector } from '@renderer/store'
 import { selectToken, selectUserInfo } from '@renderer/store/user'
 import { ThemeMode } from '@renderer/types'
+import { USER_UI_HOST } from '@shared/config/constant'
 import { useQuery } from '@tanstack/react-query'
 import { Divider, Popover, Skeleton, Tooltip } from 'antd'
 import { Monitor } from 'lucide-react'
@@ -32,7 +35,7 @@ export const Navbar: FC<Props> = ({ children, ...props }) => {
   const isFullscreen = useFullscreen()
   const { isTopNavbar } = useNavbarPosition()
   const { minappShow } = useRuntime()
-  const { handleToRecharge } = useMinappPopup()
+  const { handleToRecharge, openSmartMinapp } = useMinappPopup()
   const isPayLaterUser = useIsPayLaterUser()
   const userInfo: any = useAppSelector(selectUserInfo)
   const defaultChildLimit = {
@@ -103,6 +106,26 @@ export const Navbar: FC<Props> = ({ children, ...props }) => {
               </>
             )}
           </RechargeContainer>
+        )}
+        {userInfo?.userSubjectType != '2' && (
+          <MembershipButton
+            type="button"
+            onClick={() =>
+              openSmartMinapp(
+                {
+                  id: 'vip',
+                  name: t('navbar.open_membership'),
+                  nameKey: 'navbar.open_membership',
+                  logo: membershipIcon,
+                  supportedRegions: ['CN', 'Global'],
+                  url: `${USER_UI_HOST}/vip`
+                },
+                true
+              )
+            }>
+            <img src={membershipIcon} alt="" />
+            <span>{t('navbar.open_membership')}</span>
+          </MembershipButton>
         )}
         {/* 子账户额度 */}
         {userInfo?.userSubjectType == '2' && (
@@ -327,6 +350,30 @@ const RechargeContainer = styled.div<{ $isPayLater?: boolean }>`
   .img-bullion {
     width: 18px;
     height: 18px;
+  }
+`
+
+const MembershipButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 12px;
+  margin: 1px 10px 0 0;
+  border: 0;
+  border-radius: 6px;
+  background: url(${membershipBackground}) center / 100% 100% no-repeat;
+  color: #603b25;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-app-region: none;
+
+  img {
+    width: 14px;
+    height: 14px;
   }
 `
 

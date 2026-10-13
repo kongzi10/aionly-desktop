@@ -3146,6 +3146,7 @@
   "navbar": {
     "expand": "伸縮對話框",
     "hide_sidebar": "隱藏側邊欄",
+    "open_membership": "開通會員",
     "show_sidebar": "顯示側邊欄",
     "window": {
       "close": "關閉",

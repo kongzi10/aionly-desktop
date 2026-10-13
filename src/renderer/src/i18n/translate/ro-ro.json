@@ -3060,6 +3060,7 @@
   "navbar": {
     "expand": "Extinde dialogul",
     "hide_sidebar": "Ascunde bara laterală",
+    "open_membership": "Activează abonamentul",
     "show_sidebar": "Afișează bara laterală",
     "window": {
       "close": "Închide",

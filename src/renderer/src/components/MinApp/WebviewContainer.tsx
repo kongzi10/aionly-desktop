@@ -134,6 +134,18 @@ const WebviewContainer = memo(
           // Set link opening behavior for this webview
           void window.api?.webview?.setOpenLinkExternal?.(webviewId, settings.minappsOpenLinkExternal)
         }
+        fitVipToWidth()
+      }
+
+      const fitVipToWidth = () => {
+        const webview = webviewRef.current
+        if (appid !== 'vip' || !webview?.clientWidth) return
+        try {
+          // /vip lays out three fixed-width plan cards at desktop width.
+          webview.setZoomFactor(Math.min(1, webview.clientWidth / 1200))
+        } catch (error) {
+          logger.warn('Failed to fit VIP webview to width', error as Error)
+        }
       }
 
       const handleStartLoading = () => {
@@ -147,11 +159,14 @@ const WebviewContainer = memo(
       webviewRef.current.addEventListener('ready-to-show', handleReadyToShow)
       webviewRef.current.addEventListener('did-navigate-in-page', handleNavigate)
       webviewRef.current.addEventListener('ipc-message', handleIpcMessage)
+      const resizeObserver = appid === 'vip' ? new ResizeObserver(fitVipToWidth) : undefined
+      resizeObserver?.observe(webviewRef.current)
 
       // we set the url when the webview is ready
       webviewRef.current.src = url
 
       return () => {
+        resizeObserver?.disconnect()
         webviewRef.current?.removeEventListener('did-start-loading', handleStartLoading)
         webviewRef.current?.removeEventListener('dom-ready', handleDomReady)
         webviewRef.current?.removeEventListener('did-finish-load', handleLoaded)

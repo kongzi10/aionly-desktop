@@ -3060,6 +3060,7 @@
   "navbar": {
     "expand": "Dialog ein-/ausklappen",
     "hide_sidebar": "Seitenleiste ausblenden",
+    "open_membership": "Mitgliedschaft abschließen",
     "show_sidebar": "Seitenleiste einblenden",
     "window": {
       "close": "Schließen",

@@ -3060,6 +3060,7 @@
   "navbar": {
     "expand": "ダイアログを展開",
     "hide_sidebar": "サイドバーを非表示",
+    "open_membership": "会員登録",
     "show_sidebar": "サイドバーを表示",
     "window": {
       "close": "閉じる",

@@ -3146,6 +3146,7 @@
   "navbar": {
     "expand": "Expand Dialog",
     "hide_sidebar": "Hide Sidebar",
+    "open_membership": "Open Membership",
     "show_sidebar": "Show Sidebar",
     "window": {
       "close": "Close",

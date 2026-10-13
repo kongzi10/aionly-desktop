@@ -416,7 +416,9 @@ const MinappPopupContainer: React.FC = () => {
               maxWidth: '400px'
             }
           }}>
-          <TitleText onContextMenu={(e) => handleCopyUrl(e, url ?? appInfo.url)}>{appInfo.name}</TitleText>
+          <TitleText onContextMenu={(e) => handleCopyUrl(e, url ?? appInfo.url)}>
+            {appInfo.nameKey ? t(appInfo.nameKey) : appInfo.name}
+          </TitleText>
         </Tooltip>
         {appInfo.canOpenExternalLink && (
           <Tooltip title={t('minapp.popup.openExternal')} mouseEnterDelay={0.8} placement="bottom">

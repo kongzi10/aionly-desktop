@@ -3060,6 +3060,7 @@
   "navbar": {
     "expand": "Agrandir la boîte de dialogue",
     "hide_sidebar": "Cacher la barre latérale",
+    "open_membership": "Activer l’abonnement",
     "show_sidebar": "Afficher la barre latérale",
     "window": {
       "close": "Fermer",
