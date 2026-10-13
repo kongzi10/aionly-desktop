@@ -1909,6 +1909,19 @@
     "warning": "警告",
     "you": "用户"
   },
+  "coupon": {
+    "accept": "开心收下",
+    "claimFailed": "领取失败",
+    "claimSuccess": "领取成功",
+    "congratulations": "恭喜您获得",
+    "limitExceeded": "已达到领取上限",
+    "newcomerGift": "新人注册礼",
+    "noThreshold": "无门槛",
+    "soldOut": "代金券已领完",
+    "threshold": "满 {{threshold}} 减 {{discount}}",
+    "unit": "张",
+    "voucher": "代金券"
+  },
   "dialog": {
     "all_files": "所有文件",
     "html_files": "HTML 文件",

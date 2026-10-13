@@ -1909,6 +1909,19 @@
     "warning": "警告",
     "you": "您"
   },
+  "coupon": {
+    "accept": "開心收下",
+    "claimFailed": "領取失敗",
+    "claimSuccess": "領取成功",
+    "congratulations": "恭喜您獲得",
+    "limitExceeded": "已達領取上限",
+    "newcomerGift": "新人註冊禮",
+    "noThreshold": "無門檻",
+    "soldOut": "代金券已領完",
+    "threshold": "滿 {{threshold}} 減 {{discount}}",
+    "unit": "張",
+    "voucher": "代金券"
+  },
   "dialog": {
     "all_files": "所有檔案",
     "html_files": "HTML 檔案",

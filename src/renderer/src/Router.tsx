@@ -8,6 +8,7 @@ import { HashRouter, Route, Routes } from 'react-router-dom'
 
 import AuthRoute from './AuthRoute'
 import Sidebar from './components/app/Sidebar'
+import { CouponDialog } from './components/CouponDialog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import TabsContainer from './components/Tab/TabContainer'
 import NavigationHandler from './handler/NavigationHandler'
@@ -41,6 +42,7 @@ const Router: FC = () => {
     () => (
       <ErrorBoundary>
         <AuthRoute>
+          <CouponDialog />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/roundtable" element={<RoundtablePage />} />

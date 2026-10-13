@@ -1909,6 +1909,19 @@
     "warning": "Warning",
     "you": "You"
   },
+  "coupon": {
+    "accept": "Accept gift",
+    "claimFailed": "Failed to claim voucher",
+    "claimSuccess": "Voucher claimed",
+    "congratulations": "Congratulations! You received",
+    "limitExceeded": "Claim limit reached",
+    "newcomerGift": "Welcome gift",
+    "noThreshold": "No minimum spend",
+    "soldOut": "Vouchers are sold out",
+    "threshold": "Save {{discount}} on {{threshold}}",
+    "unit": "",
+    "voucher": "voucher"
+  },
   "dialog": {
     "all_files": "All Files",
     "html_files": "HTML Files",
