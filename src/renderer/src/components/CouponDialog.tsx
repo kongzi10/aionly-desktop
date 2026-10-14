@@ -1,7 +1,7 @@
 import './CouponDialog.css'
 
 import type { NewcomerGiftVoucher } from '@renderer/api/coupon'
-import { activeByCode, getNewcomerGift } from '@renderer/api/coupon'
+import { getNewcomerGift, updateSelectStatus } from '@renderer/api/coupon'
 import haloImage from '@renderer/assets/images/couponDialog/couponIcon.png'
 import { useAppSelector } from '@renderer/store'
 import { selectUserInfo } from '@renderer/store/user'
@@ -14,14 +14,18 @@ export function CouponDialog() {
   const userInfo = useAppSelector(selectUserInfo)
   const userId = userInfo.userId
   const [voucher, setVoucher] = useState<NewcomerGiftVoucher | null>(null)
-  const [claiming, setClaiming] = useState(false)
 
   useEffect(() => {
     if (!userId) return
     let active = true
     void getNewcomerGift()
       .then(({ data }) => {
-        if (active && data) setVoucher(data)
+        if (active && data) {
+          setVoucher(data)
+          window.setTimeout(() => {
+            void updateSelectStatus(data)
+          }, 5000)
+        }
       })
       .catch(() => {
         if (active) setVoucher(null)
@@ -35,24 +39,9 @@ export function CouponDialog() {
     setVoucher(null)
   }
 
-  const claim = async () => {
-    if (!voucher || claiming) return
-    setClaiming(true)
-    try {
-      const { data } = await activeByCode({ code: voucher.code, takeAll: 1 })
-      if (data > 0) {
-        window.toast.success(t('coupon.claimSuccess'))
-        dismiss()
-      } else {
-        window.toast.error(
-          t(data === -1 ? 'coupon.soldOut' : data === -2 ? 'coupon.limitExceeded' : 'coupon.claimFailed')
-        )
-      }
-    } catch {
-      window.toast.error(t('coupon.claimFailed'))
-    } finally {
-      setClaiming(false)
-    }
+  const claim = () => {
+    window.toast.success(t('coupon.claimSuccess'))
+    dismiss()
   }
 
   return (
@@ -91,7 +80,7 @@ export function CouponDialog() {
                   <div className="coupon-dialog__gift">{t('coupon.newcomerGift')}</div>
                 </div>
               </div>
-              <button className="coupon-dialog__accept" type="button" disabled={claiming} onClick={claim}>
+              <button className="coupon-dialog__accept" type="button" onClick={claim}>
                 {t('coupon.accept')}
               </button>
             </div>

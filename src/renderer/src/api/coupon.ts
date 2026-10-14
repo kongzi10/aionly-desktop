@@ -13,5 +13,5 @@ export const getNewcomerGift = () =>
     data: NewcomerGiftVoucher | null
   }>
 
-export const activeByCode = (params: { code: string; takeAll: 1 }) =>
-  http.post('/bus/voucherDetail/activeByCode', params, { cancel: false, loading: false }) as Promise<{ data: number }>
+export const updateSelectStatus = (voucher: NewcomerGiftVoucher) =>
+  http.post('/bus/voucher/updateSelectStatus', voucher, { cancel: false, loading: false })

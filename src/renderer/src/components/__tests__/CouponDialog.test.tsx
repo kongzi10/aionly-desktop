@@ -1,15 +1,15 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CouponDialog } from '../CouponDialog'
 
-const { getNewcomerGift, activeByCode } = vi.hoisted(() => ({
+const { getNewcomerGift, updateSelectStatus } = vi.hoisted(() => ({
   getNewcomerGift: vi.fn(),
-  activeByCode: vi.fn()
+  updateSelectStatus: vi.fn()
 }))
 
-vi.mock('@renderer/api/coupon', () => ({ getNewcomerGift, activeByCode }))
+vi.mock('@renderer/api/coupon', () => ({ getNewcomerGift, updateSelectStatus }))
 vi.mock('@renderer/store', () => ({ useAppSelector: () => ({ userId: 'user-1' }) }))
 vi.mock('@renderer/store/user', () => ({ selectUserInfo: vi.fn() }))
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
@@ -28,32 +28,31 @@ const voucher = {
 beforeEach(() => {
   vi.clearAllMocks()
   getNewcomerGift.mockResolvedValue({ data: voucher })
-  activeByCode.mockResolvedValue({ data: 1 })
+  updateSelectStatus.mockResolvedValue({})
   Object.assign(window, { toast: { success: vi.fn(), error: vi.fn() } })
 })
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('CouponDialog', () => {
-  it('only submits the newcomer gift code after the user clicks accept', async () => {
-    render(<CouponDialog />)
-    const accept = await screen.findByRole('button', { name: 'coupon.accept' })
-    expect(activeByCode).not.toHaveBeenCalled()
+  it('updates the newcomer gift display status after five seconds, even if accepted earlier', async () => {
+    vi.useFakeTimers()
+    await act(async () => {
+      render(<CouponDialog />)
+    })
+    expect(updateSelectStatus).not.toHaveBeenCalled()
 
-    fireEvent.click(accept)
-
-    await waitFor(() => expect(activeByCode).toHaveBeenCalledWith({ code: 'GIFT-123', takeAll: 1 }))
-    await waitFor(() => expect(window.toast.success).toHaveBeenCalledWith('coupon.claimSuccess'))
+    fireEvent.click(screen.getByRole('button', { name: 'coupon.accept' }))
+    expect(window.toast.success).toHaveBeenCalledWith('coupon.claimSuccess')
     expect(screen.queryByRole('button', { name: 'coupon.accept' })).not.toBeInTheDocument()
-  })
 
-  it('keeps the dialog open when the claim limit is reached', async () => {
-    activeByCode.mockResolvedValue({ data: -2 })
-    render(<CouponDialog />)
-
-    fireEvent.click(await screen.findByRole('button', { name: 'coupon.accept' }))
-
-    await waitFor(() => expect(window.toast.error).toHaveBeenCalledWith('coupon.limitExceeded'))
-    expect(screen.getByRole('button', { name: 'coupon.accept' })).toBeInTheDocument()
-    expect(window.toast.success).not.toHaveBeenCalled()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(updateSelectStatus).toHaveBeenCalledWith(voucher)
+    expect(updateSelectStatus).toHaveBeenCalledOnce()
   })
 
   it('does not show a dialog when no newcomer gift is available', async () => {
@@ -62,5 +61,6 @@ describe('CouponDialog', () => {
 
     await waitFor(() => expect(getNewcomerGift).toHaveBeenCalledOnce())
     expect(screen.queryByRole('button', { name: 'coupon.accept' })).not.toBeInTheDocument()
+    expect(updateSelectStatus).not.toHaveBeenCalled()
   })
 })
