@@ -11,6 +11,12 @@ const logger = loggerService.withContext('WebviewContainer')
 /** Hosts allowed to receive app-config in the webview. Keep in sync with WebviewService. */
 const ALLOWED_WEBVIEW_HOSTS = [USER_UI_HOST, WEB_UI_HOST, 'http://localhost:7023']
 
+export const fitVipWebviewToWidth = (webview: WebviewTag) => {
+  if (!webview.clientWidth) return
+  // /vip lays out three fixed-width plan cards at desktop width.
+  webview.setZoomFactor(Math.min(1, webview.clientWidth / 1200))
+}
+
 /**
  * WebviewContainer is a component that renders a webview element.
  * It is used in the MinAppPopupContainer component.
@@ -141,8 +147,7 @@ const WebviewContainer = memo(
         const webview = webviewRef.current
         if (appid !== 'vip' || !webview?.clientWidth) return
         try {
-          // /vip lays out three fixed-width plan cards at desktop width.
-          webview.setZoomFactor(Math.min(1, webview.clientWidth / 1200))
+          fitVipWebviewToWidth(webview)
         } catch (error) {
           logger.warn('Failed to fit VIP webview to width', error as Error)
         }
@@ -177,6 +182,34 @@ const WebviewContainer = memo(
       // because the appid and url are enough, no need to add onLoadedCallback
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [appid, url])
+
+    // Electron may reset a guest webview's zoom when the app window is minimized and restored.
+    // The drawer stays mounted in that path, so neither dom-ready nor its open callback runs.
+    useEffect(() => {
+      if (appid !== 'vip') return
+
+      let frame = 0
+      const restoreZoom = () => {
+        cancelAnimationFrame(frame)
+        frame = requestAnimationFrame(() => {
+          const webview = webviewRef.current
+          if (!webview || !webview.clientWidth) return
+          try {
+            fitVipWebviewToWidth(webview)
+          } catch (error) {
+            logger.warn('Failed to restore VIP webview zoom after window focus', error as Error)
+          }
+        })
+      }
+
+      window.addEventListener('focus', restoreZoom)
+      document.addEventListener('visibilitychange', restoreZoom)
+      return () => {
+        window.removeEventListener('focus', restoreZoom)
+        document.removeEventListener('visibilitychange', restoreZoom)
+        cancelAnimationFrame(frame)
+      }
+    }, [appid])
 
     // Setup keyboard shortcuts handler for print and save
     useEffect(() => {

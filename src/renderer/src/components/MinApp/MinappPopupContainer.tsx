@@ -33,7 +33,7 @@ import { useTranslation } from 'react-i18next'
 import BeatLoader from 'react-spinners/BeatLoader'
 import styled from 'styled-components'
 
-import WebviewContainer from './WebviewContainer'
+import WebviewContainer, { fitVipWebviewToWidth } from './WebviewContainer'
 
 const logger = loggerService.withContext('MinappPopupContainer')
 
@@ -535,6 +535,16 @@ const MinappPopupContainer: React.FC = () => {
       placement="bottom"
       onClose={handlePopupMinimize}
       open={isPopupShow}
+      afterOpenChange={(open) => {
+        if (!open || currentMinappId !== 'vip') return
+        const webview = webviewRefs.current.get('vip')
+        if (!webview) return
+        try {
+          fitVipWebviewToWidth(webview)
+        } catch (error) {
+          logger.warn('Failed to restore VIP webview zoom', error as Error)
+        }
+      }}
       mask={false}
       rootClassName="minapp-drawer"
       maskClassName="minapp-mask"
