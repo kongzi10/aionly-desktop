@@ -4366,6 +4366,7 @@
         "title": "意见反馈"
       },
       "label": "关于我们",
+      "onboardingTour": "重新查看新手指引",
       "releases": {
         "button": "查看",
         "title": "更新日志"
@@ -6404,6 +6405,107 @@
   },
   "tokenPlan": {
     "title": "token plan"
+  },
+  "tour": {
+    "account": {
+      "description": "从这里管理账号和个人设置。",
+      "title": "账号与个人中心"
+    },
+    "addAssistant": {
+      "description": "创建助手，或从角色库挑选一个。",
+      "title": "添加角色"
+    },
+    "finish": {
+      "description": "开始探索吧！你可以随时在「设置 → 关于我们」重看指引。",
+      "title": "一切就绪"
+    },
+    "input": {
+      "description": "输入问题，也可以上传文件或使用联网搜索。",
+      "title": "聊天框"
+    },
+    "module": {
+      "agentRouter": {
+        "description": "将 AiOnly 模型接入 WorkBuddy、Claude Code 等工具。",
+        "title": "Agent 路由"
+      },
+      "agentRouterContent": {
+        "description": "先选择目标工具，再管理它使用的模型路由。",
+        "title": "配置目标工具"
+      },
+      "chat": {
+        "description": "和 AI 助手交流，从这里开始。",
+        "title": "对话"
+      },
+      "minapp": {
+        "description": "常用小程序与实用工具都在这里。",
+        "title": "工具箱"
+      },
+      "minappContent": {
+        "description": "从这里打开绘画、Agent 等内置工具。",
+        "title": "选择工具"
+      },
+      "roundtable": {
+        "description": "让多个模型同时回答，轻松对比结果。",
+        "title": "圆桌"
+      },
+      "roundtableAddModel": {
+        "description": "添加想要一起比较的模型。",
+        "title": "添加模型"
+      },
+      "roundtableContent": {
+        "description": "在这里提问，圆桌会展示多个模型的回答供你比较。",
+        "title": "对比模型回答"
+      },
+      "roundtableInput": {
+        "description": "输入问题，查看多个模型的回答。",
+        "title": "聊天框"
+      },
+      "tokenplan": {
+        "description": "查看套餐权益与使用量。",
+        "title": "token plan"
+      },
+      "tokenplanContent": {
+        "description": "在页面中查看套餐详情、剩余额度和使用记录。",
+        "title": "套餐内容"
+      },
+      "toolboxBuiltIn": {
+        "description": "从这里打开绘画、Agent 等内置工具。",
+        "title": "内置工具"
+      },
+      "toolboxExtensions": {
+        "description": "在这里查看和使用扩展应用。",
+        "title": "扩展应用"
+      },
+      "toolboxMiniApps": {
+        "description": "在这里打开已添加的小程序。",
+        "title": "小程序"
+      },
+      "translate": {
+        "description": "翻译文字、文件和图片，记录会自动保存。",
+        "title": "翻译"
+      },
+      "translateContent": {
+        "description": "选择语言，输入文字或上传文件后开始翻译。",
+        "title": "开始翻译"
+      },
+      "translateInput": {
+        "description": "输入文字或上传文件，开始翻译。",
+        "title": "输入框"
+      },
+      "translateOutput": {
+        "description": "翻译完成后，结果会显示在这里。",
+        "title": "输出框"
+      }
+    },
+    "newTopic": {
+      "description": "点击这里创建一场新对话。",
+      "title": "新建对话"
+    },
+    "skip": "跳过",
+    "welcome": {
+      "description": "跟着指引快速认识核心功能。",
+      "title": "欢迎来到 AiOnly"
+    }
   },
   "trace": {
     "backList": "返回列表",

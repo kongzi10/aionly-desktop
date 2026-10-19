@@ -10,7 +10,7 @@ const AssistantAddButton: FC<AssistantAddButtonProps> = ({ onCreateAssistant }) 
   const { t } = useTranslation()
 
   return (
-    <div className="assistant-add-button">
+    <div className="assistant-add-button" data-tour="add-assistant">
       <AddButton onClick={onCreateAssistant}>{t('chat.add.assistant.title')}</AddButton>
     </div>
   )

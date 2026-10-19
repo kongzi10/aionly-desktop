@@ -65,6 +65,7 @@ const Sidebar: FC = () => {
     <Container
       $isFullscreen={isFullscreen}
       id="app-sidebar"
+      data-tour="sidebar"
       style={{ backgroundColor, zIndex: minappShow ? 10000 : 'initial' }}>
       {/*{isEmoji(avatar) ? (
         <EmojiAvatar onClick={onEditUser} className="sidebar-avatar" size={31} fontSize={18}>
@@ -75,7 +76,7 @@ const Sidebar: FC = () => {
       )}*/}
       <AvatarImg src={logo} draggable={false} className="nodrag" />
       <MainMenusContainer>
-        <Menus onClick={hideMinappPopup}>
+        <Menus onClick={hideMinappPopup} data-tour="sidebar-menus">
           <MainMenus />
         </Menus>
         {/*<SidebarOpenedMinappTabs />
@@ -115,6 +116,22 @@ const Sidebar: FC = () => {
       </Menus>
     </Container>
   )
+}
+
+/**
+ * 侧栏菜单项的新手指引锚点属性；
+ * 返回 undefined 时不渲染该属性，避免 DOM 上出现 data-tour="undefined"。
+ */
+const getTourAttr = (path: string): string | undefined => {
+  const map: Record<string, string> = {
+    '/': 'nav-chat',
+    '/roundtable': 'nav-roundtable',
+    '/translate': 'nav-translate',
+    '/apps': 'nav-minapp',
+    '/tokenPlan': 'nav-tokenplan',
+    '/agent-router': 'nav-agent-router'
+  }
+  return map[path]
 }
 
 const MainMenus: FC = () => {
@@ -175,6 +192,7 @@ const MainMenus: FC = () => {
     return (
       <StyledLink
         key={menu.path}
+        data-tour={getTourAttr(menu.path)}
         onClick={async () => {
           hideMinappPopup()
           await modelGenerating()

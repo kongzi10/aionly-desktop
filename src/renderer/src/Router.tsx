@@ -11,7 +11,9 @@ import Sidebar from './components/app/Sidebar'
 import { CouponDialog } from './components/CouponDialog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import TabsContainer from './components/Tab/TabContainer'
+import AppOnboardingTour from './components/Tour/AppOnboardingTour'
 import NavigationHandler from './handler/NavigationHandler'
+import { useOnboardingTour } from './hooks/useOnboardingTour'
 // import { useOnboardingState } from './hooks/useOnboardingState'
 import { useNavbarPosition } from './hooks/useSettings'
 import AgentRouterPage from './pages/agentRouter/AgentRouterPage'
@@ -33,6 +35,36 @@ import AssistantPresetsPage from './pages/store/assistants/presets/AssistantPres
 import TokenPlanPage from './pages/tokenPlan/TokenPlanPage'
 import TranslatePage from './pages/translate/TranslatePage'
 
+const ProtectedExperience: FC = () => {
+  const { tourOpen, tourPending, endTour } = useOnboardingTour()
+
+  return (
+    <>
+      <CouponDialog deferUntilTourEnds={tourPending || tourOpen} />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/roundtable" element={<RoundtablePage />} />
+        <Route path="/agents" element={<AgentPage />} />
+        <Route path="/agent-router" element={<AgentRouterPage />} />
+        <Route path="/store" element={<AssistantPresetsPage />} />
+        <Route path="/paintings/*" element={<PaintingsRoutePage />} />
+        <Route path="/translate" element={<TranslatePage />} />
+        <Route path="/files" element={<FilesPage />} />
+        <Route path="/notes" element={<NotesPage />} />
+        <Route path="/knowledge" element={<KnowledgePage />} />
+        <Route path="/apps/:appId" element={<MinAppPage />} />
+        <Route path="/apps" element={<MinAppsPage />} />
+        <Route path="/code" element={<CodeToolsPage />} />
+        <Route path="/openclaw" element={<OpenClawPage />} />
+        <Route path="/settings/*" element={<SettingsPage />} />
+        <Route path="/launchpad" element={<LaunchpadPage />} />
+        <Route path="/tokenPlan" element={<TokenPlanPage />} />
+      </Routes>
+      <AppOnboardingTour tourOpen={tourOpen} endTour={endTour} />
+    </>
+  )
+}
+
 const Router: FC = () => {
   const { completeLogin } = useLoginState()
 
@@ -42,26 +74,7 @@ const Router: FC = () => {
     () => (
       <ErrorBoundary>
         <AuthRoute>
-          <CouponDialog />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/roundtable" element={<RoundtablePage />} />
-            <Route path="/agents" element={<AgentPage />} />
-            <Route path="/agent-router" element={<AgentRouterPage />} />
-            <Route path="/store" element={<AssistantPresetsPage />} />
-            <Route path="/paintings/*" element={<PaintingsRoutePage />} />
-            <Route path="/translate" element={<TranslatePage />} />
-            <Route path="/files" element={<FilesPage />} />
-            <Route path="/notes" element={<NotesPage />} />
-            <Route path="/knowledge" element={<KnowledgePage />} />
-            <Route path="/apps/:appId" element={<MinAppPage />} />
-            <Route path="/apps" element={<MinAppsPage />} />
-            <Route path="/code" element={<CodeToolsPage />} />
-            <Route path="/openclaw" element={<OpenClawPage />} />
-            <Route path="/settings/*" element={<SettingsPage />} />
-            <Route path="/launchpad" element={<LaunchpadPage />} />
-            <Route path="/tokenPlan" element={<TokenPlanPage />} />
-          </Routes>
+          <ProtectedExperience />
         </AuthRoute>
       </ErrorBoundary>
     ),

@@ -30,7 +30,7 @@ const RoundtableChat: FC<Props> = ({ assistant: sourceAssistant, activeTopic, se
           <QuickPanelProvider>
             <Content style={{ height: `calc(${mainHeight} - var(--navbar-height))` }}>
               <Messages assistant={assistant} topic={activeTopic} setActiveTopic={setActiveTopic} mode="roundtable" />
-              <BottomArea>
+              <BottomArea data-tour="roundtable-inputbar">
                 <Inputbar assistant={assistant} setActiveTopic={setActiveTopic} topic={activeTopic} mode="roundtable" />
               </BottomArea>
               {isMultiSelectMode && <MultiSelectActionPopup topic={activeTopic} />}

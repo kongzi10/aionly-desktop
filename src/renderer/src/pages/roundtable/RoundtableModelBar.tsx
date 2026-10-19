@@ -38,7 +38,11 @@ const RoundtableModelBar = () => {
             }
           />
         ))}
-        <AddModelButton type="primary" icon={<RoundtableCompareIcon />} onClick={handleOpenModelPopup}>
+        <AddModelButton
+          data-tour="roundtable-add-model"
+          type="primary"
+          icon={<RoundtableCompareIcon />}
+          onClick={handleOpenModelPopup}>
           {t('roundtable.add_model')}
         </AddModelButton>
       </Models>

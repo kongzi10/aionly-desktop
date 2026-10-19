@@ -178,7 +178,7 @@ const HomePanel: FC<Props> = ({
       <PanelItem className="topics" theme={theme}>
         <div className="header">
           <span className="title">{t('chat.topics.title')}</span>
-          <AddButton onClick={() => EventEmitter.emit(EVENT_NAMES.ADD_NEW_TOPIC)}>
+          <AddButton data-tour="new-topic" onClick={() => EventEmitter.emit(EVENT_NAMES.ADD_NEW_TOPIC)}>
             {t('chat.add.topic.title')}
           </AddButton>
           {/*<Tooltip title={t('chat.topics.manage.title')} mouseEnterDelay={0.5}>

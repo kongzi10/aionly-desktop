@@ -126,7 +126,7 @@ const AppsPage: FC = () => {
             )}
             <AppsContainerWrapper>
               <AppsContainer>
-                <ToolboxSection title={t('minapp.toolbox.built_in')}>
+                <ToolboxSection title={t('minapp.toolbox.built_in')} tourId="toolbox-built-in">
                   <ToolboxEntryButton
                     icon={<Image size={32} strokeWidth={2} className="lucide-custom" aria-hidden="true" />}
                     tone="blue"
@@ -140,11 +140,11 @@ const AppsPage: FC = () => {
                     onClick={() => navigate('/agents')}
                   />
                 </ToolboxSection>
-                <ToolboxSection title={t('minapp.toolbox.extensions')}>
+                <ToolboxSection title={t('minapp.toolbox.extensions')} tourId="toolbox-extensions">
                   <VeryClawButton />
                   <DeepSeekHarnessButton />
                 </ToolboxSection>
-                <ToolboxSection title={t('minapp.toolbox.mini_app')}>
+                <ToolboxSection title={t('minapp.toolbox.mini_app')} tourId="toolbox-mini-apps">
                   {apiApps.map((app: any) => (
                     <App key={app.id} app={app} variant="toolbox" />
                   ))}

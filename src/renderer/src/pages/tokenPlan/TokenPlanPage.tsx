@@ -167,7 +167,7 @@ const TokenPlanPage: FC = () => {
           </Tooltip>
         )}
       </ButtonsGroup>
-      <ContentContainer id="content-container">
+      <ContentContainer id="content-container" data-tour="tokenplan-content">
         {!isReady && (
           <EmptyView style={{ backgroundColor: 'var(--color-background-soft)' }}>
             <Avatar

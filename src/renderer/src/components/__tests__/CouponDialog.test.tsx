@@ -37,6 +37,18 @@ afterEach(() => {
 })
 
 describe('CouponDialog', () => {
+  it('waits for the onboarding tour to end before requesting the gift', async () => {
+    const { rerender } = render(<CouponDialog deferUntilTourEnds />)
+
+    expect(getNewcomerGift).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'coupon.accept' })).not.toBeInTheDocument()
+
+    rerender(<CouponDialog deferUntilTourEnds={false} />)
+
+    await waitFor(() => expect(getNewcomerGift).toHaveBeenCalledOnce())
+    expect(await screen.findByRole('button', { name: 'coupon.accept' })).toBeInTheDocument()
+  })
+
   it('updates the newcomer gift display status after five seconds, even if accepted earlier', async () => {
     vi.useFakeTimers()
     await act(async () => {

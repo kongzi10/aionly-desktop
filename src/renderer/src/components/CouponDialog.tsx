@@ -9,20 +9,21 @@ import { Modal } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export function CouponDialog() {
+export function CouponDialog({ deferUntilTourEnds = false }: { deferUntilTourEnds?: boolean }) {
   const { t } = useTranslation()
   const userInfo = useAppSelector(selectUserInfo)
   const userId = userInfo.userId
   const [voucher, setVoucher] = useState<NewcomerGiftVoucher | null>(null)
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId || deferUntilTourEnds) return
     let active = true
+    let statusTimer: number | undefined
     void getNewcomerGift()
       .then(({ data }) => {
         if (active && data) {
           setVoucher(data)
-          window.setTimeout(() => {
+          statusTimer = window.setTimeout(() => {
             void updateSelectStatus(data)
           }, 5000)
         }
@@ -32,8 +33,9 @@ export function CouponDialog() {
       })
     return () => {
       active = false
+      if (statusTimer) clearTimeout(statusTimer)
     }
-  }, [userId])
+  }, [userId, deferUntilTourEnds])
 
   const dismiss = () => {
     setVoucher(null)
@@ -47,7 +49,7 @@ export function CouponDialog() {
   return (
     <Modal
       className="coupon-dialog-modal"
-      open={!!voucher}
+      open={!!voucher && !deferUntilTourEnds}
       onCancel={dismiss}
       footer={null}
       closable={false}

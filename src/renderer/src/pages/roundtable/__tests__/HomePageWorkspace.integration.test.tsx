@@ -60,8 +60,12 @@ vi.mock('@renderer/services/AssistantService', () => ({
 }))
 vi.mock('@renderer/services/NavigationService', () => ({ default: { setNavigate: vi.fn() } }))
 vi.mock('@renderer/services/EventService', () => ({
-  EVENT_NAMES: { SHOW_ASSISTANTS: 'show-assistants', SHOW_TOPIC_SIDEBAR: 'show-topic-sidebar' },
-  EventEmitter: { emit: vi.fn() }
+  EVENT_NAMES: {
+    SHOW_ASSISTANTS: 'show-assistants',
+    SHOW_TOPIC_SIDEBAR: 'show-topic-sidebar',
+    START_ONBOARDING_TOUR: 'start-onboarding-tour'
+  },
+  EventEmitter: { emit: vi.fn(), on: vi.fn(() => Promise.resolve(() => undefined)) }
 }))
 vi.mock('@renderer/components/ErrorBoundary', () => ({
   ErrorBoundary: ({ children }: PropsWithChildren) => children

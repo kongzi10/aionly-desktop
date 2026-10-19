@@ -3,6 +3,7 @@ import UpdateDialogPopup from '@renderer/components/Popups/UpdateDialogPopup'
 import { AppLogo } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
+import { requestOnboardingTour } from '@renderer/hooks/useOnboardingTour'
 import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
 // import i18n from '@renderer/i18n'
@@ -15,16 +16,18 @@ import { UPDATE_API_BASE_URL, UPDATE_CHECK_PATH, WEB_UI_HOST } from '@shared/con
 // import { UpgradeChannel } from '@shared/config/constant'
 import { Avatar, Button, Progress, Row, Switch, Tag /*Tooltip, Radio*/ } from 'antd'
 import { debounce } from 'lodash'
-import { ChevronRight, Clock4, Globe } from 'lucide-react'
+import { ChevronRight, Clock4, Compass, Globe } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from 'react-markdown'
+import { useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
 import { SettingContainer, SettingDivider, SettingGroup, SettingRow, SettingTitle } from '.'
 
 const AboutSettings: FC = () => {
+  const navigate = useNavigate()
   const [version, setVersion] = useState('')
   const [isPortable /*setIsPortable*/] = useState(false)
   const { t } = useTranslation()
@@ -205,6 +208,19 @@ const AboutSettings: FC = () => {
           <SettingRowTitle>
             <Clock4 size={18} />
             {t('settings.about.releases.title')}
+          </SettingRowTitle>
+          <ChevronRight size={20} />
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow
+          onClick={() => {
+            // 先回主页，确保指引所需的页面元素已挂载
+            navigate('/')
+            requestOnboardingTour()
+          }}>
+          <SettingRowTitle>
+            <Compass size={18} />
+            {t('settings.about.onboardingTour')}
           </SettingRowTitle>
           <ChevronRight size={20} />
         </SettingRow>

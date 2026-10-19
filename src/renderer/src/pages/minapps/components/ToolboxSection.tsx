@@ -5,13 +5,14 @@ import styled from 'styled-components'
 interface Props {
   title: string
   children: ReactElement | ReactElement[]
+  tourId?: string
 }
 
-const ToolboxSection: FC<Props> = ({ title, children }) => {
+const ToolboxSection: FC<Props> = ({ title, children, tourId }) => {
   const headingId = useId()
 
   return (
-    <Section>
+    <Section data-tour={tourId}>
       <Heading id={headingId}>{title}</Heading>
       <Grid role="list" aria-labelledby={headingId}>
         {(Array.isArray(children) ? children : [children]).map((child, index) => (

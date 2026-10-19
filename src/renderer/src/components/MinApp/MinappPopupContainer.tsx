@@ -519,15 +519,16 @@ const MinappPopupContainer: React.FC = () => {
         key={app.id}
         appid={app.id}
         url={app.url}
+        isVisible={minappShow && currentMinappId === app.id}
         onSetRefCallback={handleWebviewSetRef}
         onLoadedCallback={handleWebviewLoaded}
         onNavigateCallback={handleWebviewNavigate}
       />
     ))
 
-    // because the combinedApps is enough
+    // Keep the existing webviews mounted while updating their visibility.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combinedApps])
+  }, [combinedApps, currentMinappId, minappShow])
 
   return (
     <Drawer
@@ -554,6 +555,7 @@ const MinappPopupContainer: React.FC = () => {
       styles={{
         wrapper: {
           position: 'fixed',
+          display: currentMinappId === 'vip' && !minappShow ? 'none' : undefined,
           marginLeft: isLeftNavbar ? 'var(--sidebar-width)' : 0,
           marginTop: isTopNavbar ? 'var(--navbar-height)' : 0
         },

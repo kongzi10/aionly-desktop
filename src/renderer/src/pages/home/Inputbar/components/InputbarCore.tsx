@@ -662,6 +662,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
         {beforeInputContent}
         <InputBarContainer
           id="inputbar"
+          data-tour="inputbar"
           className={classNames('inputbar-container', isDragging && 'file-dragging', isExpanded && 'expanded')}>
           <DragHandle onMouseDown={handleDragStart}>
             <HolderOutlined style={{ fontSize: 12 }} />

@@ -810,6 +810,7 @@ const TranslatePage: FC = () => {
         </OperationBar>
         <AreaContainer>
           <InputContainer
+            data-tour="translate-input"
             style={isDraggingOnInput ? { border: '2px dashed var(--color-primary)' } : undefined}
             onDragEnter={handleDragEnterInput}
             onDragLeave={handleDragLeaveInput}
@@ -852,7 +853,7 @@ const TranslatePage: FC = () => {
             </Footer>
           </InputContainer>
 
-          <OutputContainer>
+          <OutputContainer data-tour="translate-output">
             <CopyButton
               type="text"
               size="small"

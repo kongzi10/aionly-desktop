@@ -1,0 +1,86 @@
+.app-onboarding-tour.ant-tour {
+  width: min(320px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+
+/* Token Plan 的内容区域几乎占满窗口，顶部弹层需要留出安全边距。 */
+.app-onboarding-tour-tokenplan-content.ant-tour {
+  top: 16px !important;
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-content {
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-inner {
+  padding: 16px 20px 14px;
+  background: transparent;
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-header {
+  padding: 0;
+  width: 100%;
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-title {
+  color: #222;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-description {
+  padding: 8px 0 0;
+  color: #777;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-footer {
+  padding: 14px 0 0;
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-footer .ant-tour-indicators {
+  display: none;
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-footer .ant-tour-buttons {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.app-onboarding-tour-skip {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #999;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.app-onboarding-tour-skip:hover {
+  color: #555;
+}
+
+.app-onboarding-tour-skip:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid #1677ff;
+  outline-offset: 3px;
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-footer .ant-tour-prev-btn {
+  display: none;
+}
+
+.app-onboarding-tour.ant-tour .ant-tour-footer .ant-tour-buttons .ant-tour-next-btn {
+  height: 32px;
+  margin-inline-start: auto;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-size: 12px;
+}

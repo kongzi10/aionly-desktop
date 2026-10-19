@@ -85,7 +85,7 @@ const AgentRouterPage = () => {
           </GlobalSection>
         ) : (
           <WorkArea data-testid="agent-router-shell">
-            <TargetList data-testid="agent-router-targets">
+            <TargetList data-testid="agent-router-targets" data-tour="agent-router-content">
               <TargetSectionTitle>
                 <span>{t('agentRouter.agentTargetsTitle')}</span>
                 <Button

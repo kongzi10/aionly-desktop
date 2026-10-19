@@ -14,7 +14,13 @@ const ALLOWED_WEBVIEW_HOSTS = [USER_UI_HOST, WEB_UI_HOST, 'http://localhost:7023
 export const fitVipWebviewToWidth = (webview: WebviewTag) => {
   if (!webview.clientWidth) return
   // /vip lays out three fixed-width plan cards at desktop width.
-  webview.setZoomFactor(Math.min(1, webview.clientWidth / 1200))
+  const zoom = Math.min(1, webview.clientWidth / 1200)
+  // Guest zoom can reset when focus moves back to the host window. Keep the
+  // scale in the guest document so it survives that focus change.
+  void webview.executeJavaScript(`document.documentElement.style.zoom = '${zoom}'`).catch((error) => {
+    logger.warn('Failed to fit VIP webview to width', error as Error)
+  })
+  webview.setZoomFactor(1)
 }
 
 /**
@@ -26,17 +32,21 @@ const WebviewContainer = memo(
   ({
     appid,
     url,
+    isVisible = true,
     onSetRefCallback,
     onLoadedCallback,
     onNavigateCallback
   }: {
     appid: string
     url: string
+    isVisible?: boolean
     onSetRefCallback: (appid: string, element: WebviewTag | null) => void
     onLoadedCallback: (appid: string) => void
     onNavigateCallback: (appid: string, url: string) => void
   }) => {
     const webviewRef = useRef<WebviewTag | null>(null)
+    const isVisibleRef = useRef(isVisible)
+    isVisibleRef.current = isVisible
     const { enableSpellCheck, minappsOpenLinkExternal } = useSettings()
     const [preloadPath, setPreloadPath] = useState<string>('')
     const { theme } = useTheme()
@@ -145,7 +155,7 @@ const WebviewContainer = memo(
 
       const fitVipToWidth = () => {
         const webview = webviewRef.current
-        if (appid !== 'vip' || !webview?.clientWidth) return
+        if (appid !== 'vip' || !isVisibleRef.current || !webview?.clientWidth) return
         try {
           fitVipWebviewToWidth(webview)
         } catch (error) {
@@ -193,7 +203,7 @@ const WebviewContainer = memo(
         cancelAnimationFrame(frame)
         frame = requestAnimationFrame(() => {
           const webview = webviewRef.current
-          if (!webview || !webview.clientWidth) return
+          if (!isVisibleRef.current || !webview || !webview.clientWidth) return
           try {
             fitVipWebviewToWidth(webview)
           } catch (error) {
@@ -338,7 +348,7 @@ const WebviewContainer = memo(
       width: '100%',
       height: '100%',
       backgroundColor: 'var(--color-background)',
-      display: 'inline-flex'
+      display: appid === 'vip' && !isVisible ? 'none' : 'inline-flex'
     }
 
     return (

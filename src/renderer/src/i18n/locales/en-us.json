@@ -4366,6 +4366,7 @@
         "title": "Feedback"
       },
       "label": "About & Feedback",
+      "onboardingTour": "Review the getting-started tour",
       "releases": {
         "button": "Releases",
         "title": "Release Notes"
@@ -6404,6 +6405,107 @@
   },
   "tokenPlan": {
     "title": "token plan"
+  },
+  "tour": {
+    "account": {
+      "description": "Manage your account and preferences here.",
+      "title": "Account & Profile"
+    },
+    "addAssistant": {
+      "description": "Create an assistant or choose one from the role library.",
+      "title": "Add a role"
+    },
+    "finish": {
+      "description": "Start exploring! You can revisit this guide in Settings → About.",
+      "title": "You're all set"
+    },
+    "input": {
+      "description": "Ask a question, upload a file, or search the web.",
+      "title": "Chat box"
+    },
+    "module": {
+      "agentRouter": {
+        "description": "Connect AiOnly models to WorkBuddy, Claude Code, and more.",
+        "title": "Agent Router"
+      },
+      "agentRouterContent": {
+        "description": "Choose a target tool, then manage the model routes it uses.",
+        "title": "Configure a target"
+      },
+      "chat": {
+        "description": "Start a conversation with your AI assistant here.",
+        "title": "Chat"
+      },
+      "minapp": {
+        "description": "Find mini apps and useful tools in one place.",
+        "title": "Toolbox"
+      },
+      "minappContent": {
+        "description": "Open built-in tools such as Painting and Agents here.",
+        "title": "Choose a tool"
+      },
+      "roundtable": {
+        "description": "Compare answers from multiple models side by side.",
+        "title": "Roundtable"
+      },
+      "roundtableAddModel": {
+        "description": "Add the models you want to compare.",
+        "title": "Add models"
+      },
+      "roundtableContent": {
+        "description": "Ask here to compare answers from multiple models.",
+        "title": "Compare model answers"
+      },
+      "roundtableInput": {
+        "description": "Ask a question to compare model responses.",
+        "title": "Chat box"
+      },
+      "tokenplan": {
+        "description": "Check your plan benefits and usage.",
+        "title": "token plan"
+      },
+      "tokenplanContent": {
+        "description": "View plan details, remaining quota, and usage history here.",
+        "title": "Plan details"
+      },
+      "toolboxBuiltIn": {
+        "description": "Open built-in tools such as Painting and Agents here.",
+        "title": "Built-in tools"
+      },
+      "toolboxExtensions": {
+        "description": "Browse and use extensions here.",
+        "title": "Extensions"
+      },
+      "toolboxMiniApps": {
+        "description": "Open your added mini apps here.",
+        "title": "Mini apps"
+      },
+      "translate": {
+        "description": "Translate text, files, and images. Your history is saved.",
+        "title": "Translate"
+      },
+      "translateContent": {
+        "description": "Choose languages, then enter text or upload a file to translate.",
+        "title": "Start translating"
+      },
+      "translateInput": {
+        "description": "Enter text or upload a file to translate.",
+        "title": "Input box"
+      },
+      "translateOutput": {
+        "description": "Your translation appears here when ready.",
+        "title": "Output box"
+      }
+    },
+    "newTopic": {
+      "description": "Create a new conversation here.",
+      "title": "New conversation"
+    },
+    "skip": "Skip",
+    "welcome": {
+      "description": "Take a quick look at the core features.",
+      "title": "Welcome to AiOnly"
+    }
   },
   "trace": {
     "backList": "Back To List",

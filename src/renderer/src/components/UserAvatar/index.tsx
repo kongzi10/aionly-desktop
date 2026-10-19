@@ -186,7 +186,7 @@ const UserAvatar: React.FC<Props> = () => {
   )
 
   return (
-    <Container className="user-avatar">
+    <Container className="user-avatar" data-tour="user-avatar">
       <Popover
         content={UserInfoPanel}
         placement={'top'}
