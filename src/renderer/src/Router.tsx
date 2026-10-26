@@ -42,7 +42,8 @@ const ProtectedExperience: FC = () => {
     <>
       <CouponDialog deferUntilTourEnds={tourPending || tourOpen} />
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<HomePage mode="landing" />} />
+        <Route path="/chat" element={<HomePage />} />
         <Route path="/roundtable" element={<RoundtablePage />} />
         <Route path="/agents" element={<AgentPage />} />
         <Route path="/agent-router" element={<AgentRouterPage />} />

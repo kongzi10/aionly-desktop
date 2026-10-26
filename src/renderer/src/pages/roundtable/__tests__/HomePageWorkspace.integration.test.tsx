@@ -8,8 +8,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import HomePage from '../../home/HomePage'
 
-const { useAssistantsMock } = vi.hoisted(() => ({
-  useAssistantsMock: vi.fn()
+const { useAssistantsMock, navbarPositionMock, navbarMock } = vi.hoisted(() => ({
+  useAssistantsMock: vi.fn(),
+  navbarPositionMock: vi.fn(),
+  navbarMock: vi.fn()
 }))
 
 const chatTopic = { id: 'chat-topic', name: 'Chat topic' } as Topic
@@ -39,7 +41,7 @@ vi.mock('@renderer/hooks/useAssistant', () => ({
 vi.mock('@renderer/utils', () => ({ uuid: () => 'workspace-default' }))
 
 vi.mock('@renderer/hooks/useSettings', () => ({
-  useNavbarPosition: () => ({ isLeftNavbar: false }),
+  useNavbarPosition: navbarPositionMock,
   useSettings: () => ({ showAssistants: true, showTopics: true, topicPosition: 'left' })
 }))
 
@@ -81,12 +83,18 @@ vi.mock('../../home/Panel', () => ({
     <div data-testid="workspace-panel" data-workspace={workspace} data-assistant={activeAssistant.id} />
   )
 }))
-vi.mock('../../home/Navbar', () => ({ default: () => null }))
+vi.mock('../../home/Navbar', () => ({
+  default: (props: unknown) => {
+    navbarMock(props)
+    return <div data-testid="home-navbar" />
+  }
+}))
 vi.mock('../../home/Chat', () => ({
   default: ({ assistant, activeTopic }: { assistant: Assistant; activeTopic: Topic }) => (
     <div data-testid="chat-content" data-assistant={assistant.id} data-topic={activeTopic.id} />
   )
 }))
+vi.mock('../../home/LandingPage', () => ({ default: () => <div data-testid="landing-content" /> }))
 vi.mock('../RoundtableChat', () => ({
   default: ({ assistant, activeTopic }: { assistant: Assistant; activeTopic: Topic }) => (
     <div data-testid="roundtable-content" data-assistant={assistant.id} data-topic={activeTopic.id} />
@@ -95,6 +103,8 @@ vi.mock('../RoundtableChat', () => ({
 
 beforeEach(() => {
   useAssistantsMock.mockReturnValue({ assistants: [chatAssistant, roundtableAssistant], addAssistant: vi.fn() })
+  navbarPositionMock.mockReturnValue({ isLeftNavbar: false })
+  navbarMock.mockClear()
   Object.assign(window.api, {
     window: { setMinimumSize: vi.fn(), resetMinimumSize: vi.fn() }
   })
@@ -103,6 +113,36 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('HomePage workspace integration', () => {
+  it('retains the standard top toolbar on the landing page in left navigation mode', () => {
+    navbarPositionMock.mockReturnValue({ isLeftNavbar: true })
+    render(
+      <Provider store={testStore}>
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <HomePage mode="landing" />
+        </MemoryRouter>
+      </Provider>
+    )
+
+    expect(screen.getByTestId('home-navbar')).toBeInTheDocument()
+    expect(navbarMock).toHaveBeenCalledWith(
+      expect.objectContaining({ titleKey: 'title.home', showAssistantToggle: false })
+    )
+  })
+
+  it('shows the landing page without the conversation panel on the home route', () => {
+    render(
+      <Provider store={testStore}>
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <HomePage mode="landing" />
+        </MemoryRouter>
+      </Provider>
+    )
+
+    expect(screen.getByTestId('landing-content')).toBeInTheDocument()
+    expect(screen.queryByTestId('workspace-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('chat-content')).not.toBeInTheDocument()
+  })
+
   it('selects the current profile default assistant after the profile changes', () => {
     const previousProfileView = render(
       <Provider store={testStore}>

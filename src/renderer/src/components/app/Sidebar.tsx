@@ -14,6 +14,7 @@ import { useAppSelector } from '@renderer/store'
 import { selectServiceInfo } from '@renderer/store/user'
 // import { ThemeMode } from '@renderer/types'
 import { Avatar /*Tooltip*/ } from 'antd'
+import { House } from 'lucide-react'
 /*import {
   Code,
   FileSearch,
@@ -124,7 +125,8 @@ const Sidebar: FC = () => {
  */
 const getTourAttr = (path: string): string | undefined => {
   const map: Record<string, string> = {
-    '/': 'nav-chat',
+    '/': 'nav-home',
+    '/chat': 'nav-chat',
     '/roundtable': 'nav-roundtable',
     '/translate': 'nav-translate',
     '/apps': 'nav-minapp',
@@ -200,7 +202,9 @@ const MainMenus: FC = () => {
         }}>
         <Icon theme={theme} className={isActive}>
           {/*{iconMap[menu.name]}*/}
-          {menu.icon === 'roundtable' ? (
+          {menu.icon === 'home' ? (
+            <House size={18} className="icon" />
+          ) : menu.icon === 'roundtable' ? (
             <RoundtableSidebarIcon active={isActive === 'active'} className="icon roundtable-icon" />
           ) : (
             <i className={`iconfont icon ${isActive ? menu.iconActive : menu.icon}`}></i>

@@ -2146,6 +2146,18 @@
     },
     "title": "Topics Search"
   },
+  "homeLanding": {
+    "announcements": "Home announcements",
+    "modelGuide": {
+      "action": "Open models",
+      "description": "Choose and enable a model to start a conversation.",
+      "title": "No model is available yet"
+    },
+    "multiModel": "Multi-model chat",
+    "promotionAction": "action",
+    "title": "Explore the unknown, find your answer",
+    "viewPromotion": "View now"
+  },
   "html_artifacts": {
     "capture": {
       "label": "Capture Page",

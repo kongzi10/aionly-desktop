@@ -184,10 +184,10 @@ describe('buildTourStepsWithRoutes', () => {
     expect(steps).toHaveLength(FULL_STEP_TITLES.length)
     expect(routes).toEqual([
       undefined,
-      '/',
-      '/',
-      '/',
-      '/',
+      '/chat',
+      '/chat',
+      '/chat',
+      '/chat',
       '/roundtable',
       '/roundtable',
       '/roundtable',
@@ -290,7 +290,7 @@ describe('AppOnboardingTour', () => {
       fireEvent.click(nextButton())
     })
 
-    expect(paths).toContain('/')
+    expect(paths).toContain('/chat')
     expect(paths.at(-1)).toBe('/roundtable')
 
     act(() => {

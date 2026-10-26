@@ -2146,6 +2146,18 @@
     },
     "title": "对话搜索"
   },
+  "homeLanding": {
+    "announcements": "首页公告",
+    "modelGuide": {
+      "action": "开通模型",
+      "description": "先选择并开通一个模型，就可以开始对话。",
+      "title": "还没有可用模型"
+    },
+    "multiModel": "多模型对话",
+    "promotionAction": "操作",
+    "title": "行至未知，答至所需",
+    "viewPromotion": "立即查看"
+  },
   "html_artifacts": {
     "capture": {
       "label": "捕获页面",

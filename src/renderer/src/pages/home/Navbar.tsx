@@ -23,9 +23,10 @@ interface Props {
   setActiveAssistant: (assistant: Assistant) => void
   position: 'left' | 'right'
   titleKey?: string
+  showAssistantToggle?: boolean
 }
 
-const HeaderNavbar: FC<Props> = ({ titleKey = 'assistants.title' }) => {
+const HeaderNavbar: FC<Props> = ({ titleKey = 'assistants.title', showAssistantToggle = true }) => {
   const { showAssistants, toggleShowAssistants } = useShowAssistants()
   // const { topicPosition, narrowMode } = useSettings()
   // const { showTopics, toggleShowTopics } = useShowTopics()
@@ -42,7 +43,7 @@ const HeaderNavbar: FC<Props> = ({ titleKey = 'assistants.title' }) => {
 
   return (
     <Navbar className="home-navbar" style={{ position: 'relative' }}>
-      {showAssistants && (
+      {showAssistantToggle && showAssistants && (
         <Tooltip title={t('navbar.hide_sidebar')} mouseEnterDelay={0.8}>
           <NavbarIcon
             onClick={toggleShowAssistants}
@@ -75,7 +76,7 @@ const HeaderNavbar: FC<Props> = ({ titleKey = 'assistants.title' }) => {
       </AnimatePresence>*/}
       <NavbarCenter>
         {t(titleKey)}
-        {!showAssistants && (
+        {showAssistantToggle && !showAssistants && (
           <Tooltip title={t('navbar.show_sidebar')} mouseEnterDelay={0.8}>
             <NavbarIcon onClick={toggleShowAssistants} style={{ marginLeft: 6 }}>
               <i className="iconfont icon-choutizhankai" style={{ fontSize: 18 }} />

@@ -80,6 +80,8 @@ interface Props {
   setActiveTopic: (topic: Topic) => void
   topic: Topic
   mode?: 'chat' | 'roundtable'
+  onMessageAccepted?: () => void
+  compact?: boolean
 }
 
 type ProviderActionHandlers = {
@@ -96,7 +98,14 @@ interface InputbarInnerProps extends Props {
   mentionedModelsCacheKey: string
 }
 
-const Inputbar: FC<Props> = ({ assistant: initialAssistant, setActiveTopic, topic, mode = 'chat' }) => {
+const Inputbar: FC<Props> = ({
+  assistant: initialAssistant,
+  setActiveTopic,
+  topic,
+  mode = 'chat',
+  onMessageAccepted,
+  compact
+}) => {
   const actionsRef = useRef<ProviderActionHandlers>({
     resizeTextArea: () => {},
     addNewTopic: () => {},
@@ -139,6 +148,8 @@ const Inputbar: FC<Props> = ({ assistant: initialAssistant, setActiveTopic, topi
         setActiveTopic={setActiveTopic}
         topic={topic}
         mode={mode}
+        onMessageAccepted={onMessageAccepted}
+        compact={compact}
         actionsRef={actionsRef}
         mentionedModelsCacheKey={mentionedModelsCacheKey}
       />
@@ -151,6 +162,8 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   setActiveTopic,
   topic,
   mode = 'chat',
+  onMessageAccepted,
+  compact,
   actionsRef,
   mentionedModelsCacheKey
 }) => {
@@ -190,6 +203,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   const isVisionAssistant = useMemo(() => isVisionModel(model), [model])
   const isGenerateImageAssistant = useMemo(() => isGenerateImageModel(model), [model])
   const { setTimeoutTimer } = useTimer()
+  const landingSendInFlight = useRef(false)
   const isMultiSelectMode = useAppSelector((state) => state.runtime.chat.isMultiSelectMode)
   const userInfo: any = useAppSelector(selectUserInfo)
 
@@ -254,6 +268,8 @@ const InputbarInner: FC<InputbarInnerProps> = ({
       })
 
   const sendMessage = useCallback(async () => {
+    if (onMessageAccepted && landingSendInFlight.current) return
+
     if (mode === 'roundtable' && !canSendRoundtableMessage(mentionedModels)) {
       message.warning(t('roundtable.minimum_models'))
       return
@@ -278,6 +294,8 @@ const InputbarInner: FC<InputbarInnerProps> = ({
     if (checkRateLimit(assistant)) {
       return
     }
+
+    if (onMessageAccepted) landingSendInFlight.current = true
 
     logger.info('Starting to send message')
 
@@ -311,7 +329,9 @@ const InputbarInner: FC<InputbarInnerProps> = ({
       setTimeoutTimer('sendMessage_2', () => resizeTextArea(), 0)
       // Restore focus to textarea after sending to maintain IME state (fcitx5 issue)
       focusTextarea()
+      onMessageAccepted?.()
     } catch (error) {
+      landingSendInFlight.current = false
       logger.warn('Failed to send message:', error as Error)
       parent?.recordException(error as Error)
     }
@@ -328,6 +348,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
     resizeTextArea,
     focusTextarea,
     mode,
+    onMessageAccepted,
     userInfo,
     t
   ])
@@ -561,6 +582,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
       topContent={topContent}
       beforeInputContent={mode === 'roundtable' ? <RoundtableModelBar /> : undefined}
       fullWidth={mode === 'roundtable'}
+      compact={compact}
     />
   )
 }

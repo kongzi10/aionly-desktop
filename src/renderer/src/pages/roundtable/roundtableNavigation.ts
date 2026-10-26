@@ -8,6 +8,12 @@ export type PrimarySidebarMenu = {
 const BASE_MENUS: PrimarySidebarMenu[] = [
   {
     path: '/',
+    name: 'home',
+    icon: 'home',
+    iconActive: 'home'
+  },
+  {
+    path: '/chat',
     name: 'assistants',
     icon: 'icon-duihuamoren',
     iconActive: 'icon-duihuaxuanzhong'

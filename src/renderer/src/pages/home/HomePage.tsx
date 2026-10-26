@@ -21,6 +21,7 @@ import styled from 'styled-components'
 import RoundtableChat from '../roundtable/RoundtableChat'
 import { filterAssistantsByWorkspace, getAssistantWorkspace } from '../roundtable/roundtableWorkspace'
 import Chat from './Chat'
+import LandingPage from './LandingPage'
 import Navbar from './Navbar'
 // import HomeTabs from './Tabs'
 import HomePanel from './Panel'
@@ -28,11 +29,11 @@ import HomePanel from './Panel'
 const activeAssistants: Partial<Record<AssistantWorkspace, Assistant>> = {}
 
 interface Props {
-  mode?: 'chat' | 'roundtable'
+  mode?: 'chat' | 'roundtable' | 'landing'
 }
 
 const HomePage: FC<Props> = ({ mode = 'chat' }) => {
-  const workspace: AssistantWorkspace = mode
+  const workspace: AssistantWorkspace = mode === 'roundtable' ? 'roundtable' : 'chat'
   const { assistants, addAssistant } = useAssistants()
   const { defaultAssistant } = useDefaultAssistant()
   const workspaceAssistants = filterAssistantsByWorkspace(assistants, workspace)
@@ -154,12 +155,13 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
           setActiveTopic={setActiveTopic}
           setActiveAssistant={setActiveAssistant}
           position="left"
-          titleKey={mode === 'roundtable' ? 'roundtable.title' : 'assistants.title'}
+          titleKey={mode === 'landing' ? 'title.home' : mode === 'roundtable' ? 'roundtable.title' : 'assistants.title'}
+          showAssistantToggle={mode !== 'landing'}
         />
       )}
       <ContentContainer id={isLeftNavbar ? 'content-container' : undefined}>
         <AnimatePresence initial={false}>
-          {showAssistants && (
+          {mode !== 'landing' && showAssistants && (
             <ErrorBoundary>
               <motion.div
                 initial={{ width: 0, opacity: 0 }}
@@ -188,7 +190,9 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
           )}
         </AnimatePresence>
         <ErrorBoundary>
-          {mode === 'roundtable' ? (
+          {mode === 'landing' ? (
+            <LandingPage assistant={activeAssistant} activeTopic={activeTopic} setActiveTopic={setActiveTopic} />
+          ) : mode === 'roundtable' ? (
             <RoundtableChat assistant={activeAssistant} activeTopic={activeTopic} setActiveTopic={setActiveTopic} />
           ) : (
             <Chat

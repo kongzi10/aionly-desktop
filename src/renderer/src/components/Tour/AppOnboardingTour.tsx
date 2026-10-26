@@ -41,14 +41,14 @@ const TOUR_STEP_CONFIGS: TourStepConfig[] = [
   // 左侧栏逐模块：先在主页介绍对话入口，再进入各模块页面讲解
   {
     selector: '[data-tour="nav-chat"]',
-    route: '/',
+    route: '/chat',
     requiredSelector: '[data-tour="nav-chat"]',
     titleKey: 'tour.module.chat.title',
     descriptionKey: 'tour.module.chat.description'
   },
   {
     selector: '[data-tour="add-assistant"]',
-    route: '/',
+    route: '/chat',
     requiredSelector: '[data-tour="nav-chat"]',
     placement: 'bottom',
     titleKey: 'tour.addAssistant.title',
@@ -56,7 +56,7 @@ const TOUR_STEP_CONFIGS: TourStepConfig[] = [
   },
   {
     selector: '[data-tour="new-topic"]',
-    route: '/',
+    route: '/chat',
     requiredSelector: '[data-tour="nav-chat"]',
     placement: 'bottom',
     titleKey: 'tour.newTopic.title',
@@ -64,7 +64,7 @@ const TOUR_STEP_CONFIGS: TourStepConfig[] = [
   },
   {
     selector: '[data-tour="inputbar"]',
-    route: '/',
+    route: '/chat',
     requiredSelector: '[data-tour="nav-chat"]',
     placement: 'top',
     titleKey: 'tour.input.title',

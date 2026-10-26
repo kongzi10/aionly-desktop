@@ -186,6 +186,7 @@ export const getThemeModeLabel = (key: string): string => {
 // } as const
 
 const sidebarIconKeyMap = {
+  home: 'title.home',
   assistants: 'assistants.title',
   roundtable: 'roundtable.title',
   agents: 'agent.sidebar_title',

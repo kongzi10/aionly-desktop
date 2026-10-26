@@ -78,6 +78,7 @@ export interface InputbarCoreProps {
   // Override the user preference for quick panel triggers
   forceEnableQuickPanelTriggers?: boolean
   fullWidth?: boolean
+  compact?: boolean
 }
 
 const TextareaStyle: CSSProperties = {
@@ -129,7 +130,8 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
   beforeInputContent,
   pinnedContent,
   forceEnableQuickPanelTriggers,
-  fullWidth = false
+  fullWidth = false,
+  compact = false
 }) => {
   const config = useMemo(() => getInputbarConfig(scope), [scope])
   const { files, isExpanded } = useInputbarToolsState()
@@ -684,8 +686,8 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
             autoFocus
             variant="borderless"
             spellCheck={enableSpellCheck}
-            rows={4}
-            autoSize={height ? false : { minRows: 4, maxRows: 20 }}
+            rows={compact ? 3 : 4}
+            autoSize={height ? false : { minRows: compact ? 3 : 4, maxRows: 20 }}
             styles={{ textarea: TextareaStyle }}
             style={{
               fontSize,
