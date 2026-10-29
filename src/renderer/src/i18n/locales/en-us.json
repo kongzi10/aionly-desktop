@@ -2964,6 +2964,7 @@
     "add_to_launchpad": "Add to Launchpad",
     "add_to_sidebar": "Add to Sidebar",
     "deepseek_harness": {
+      "description": "Launch the local DeepSeek Harness coding workbench",
       "install_failed": "DeepSeek Harness installation failed",
       "install_success": "DeepSeek Harness installed successfully",
       "install_timeout": "DeepSeek Harness installation timed out, please retry",
@@ -3001,11 +3002,17 @@
     },
     "title": "Toolbox",
     "toolbox": {
+      "agents_description": "Set up dedicated agents to get work done",
       "built_in": "Built-in tools",
       "extensions": "Extensions",
-      "mini_app": "Mini app"
+      "mini_app": "Mini app",
+      "mini_app_empty": "No mini apps available yet",
+      "paintings_description": "Text-to-image and image-to-image with any model",
+      "subtitle": "Built-in tools, extensions and mini apps in one place",
+      "subtitle_hint": "Search or tap a card to jump right in"
     },
     "veryclaw": {
+      "description": "Open the VeryClaw assistant in its own window",
       "download": "Download and install",
       "download_failed": "Unable to retrieve or open the installer download link. Check your connection and retry.",
       "download_unavailable": "An installer for this operating system and processor has not been published yet. Please try again later.",

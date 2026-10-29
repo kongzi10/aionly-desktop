@@ -149,6 +149,7 @@ const DeepSeekHarnessButton: FC = () => {
     <ToolboxCard
       icon={<MinAppIcon size={56} app={DEEPSEEK_HARNESS_APP} />}
       title="DeepSeek Harness"
+      description={t('minapp.deepseek_harness.description')}
       onClick={handleClick}
       busy={busy}
     />

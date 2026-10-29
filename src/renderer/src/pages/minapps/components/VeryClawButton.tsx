@@ -67,6 +67,7 @@ export default function VeryClawButton() {
     <ToolboxCard
       icon={<img src={veryclawLogo} alt={t('minapp.veryclaw.name')} draggable={false} />}
       title={t('minapp.veryclaw.name')}
+      description={t('minapp.veryclaw.description')}
       onClick={handleClick}
       busy={busy}
     />

@@ -2964,6 +2964,7 @@
     "add_to_launchpad": "新增到啟動台",
     "add_to_sidebar": "新增到側邊欄",
     "deepseek_harness": {
+      "description": "啟動本機 DeepSeek Harness 編碼工作台",
       "install_failed": "DeepSeek Harness 安裝失敗",
       "install_success": "DeepSeek Harness 安裝成功",
       "install_timeout": "DeepSeek Harness 安裝逾時，請重試",
@@ -3001,11 +3002,17 @@
     },
     "title": "工具箱",
     "toolbox": {
+      "agents_description": "設定專屬智能體，讓它替你做事",
       "built_in": "內建工具",
       "extensions": "擴充應用程式",
-      "mini_app": "小程式"
+      "mini_app": "小程式",
+      "mini_app_empty": "暫無可用的小程式",
+      "paintings_description": "文生圖 / 圖生圖，多模型任選",
+      "subtitle": "內建工具、擴充應用與小程式，一處直達",
+      "subtitle_hint": "搜尋或直接點擊卡片，立即進入"
     },
     "veryclaw": {
+      "description": "在獨立視窗中喚起 VeryClaw 助手",
       "download": "下載安裝",
       "download_failed": "取得或開啟安裝程式下載連結失敗，請檢查網路後重試。",
       "download_unavailable": "目前系統與晶片對應的安裝程式尚未發布，請稍後重試。",
