@@ -1323,6 +1323,7 @@
         "description": "代理会话斜杠命令",
         "title": "斜杠命令"
       },
+      "stop": "停止回复",
       "thinking": {
         "budget_exceeds_max": "思考预算超过最大 Token 数",
         "label": "思考",

@@ -72,7 +72,7 @@ const HomePanel: FC<Props> = ({
   }
 
   const showTab = position === 'left' && topicPosition === 'left'
-  const mergePanels = workspace === 'chat' && position === 'left'
+  const mergePanels = position === 'left'
 
   const onCreateAssistant = async () => {
     if (mergePanels) setRolePickerOpen(false)
@@ -390,7 +390,7 @@ const Container = styled.div<{ $merged: boolean }>`
         }
       }
 
-      body.light #home-page & {
+      body.light :is(#home-page, #roundtable-page) & {
         background: rgb(248 251 255 / 78%);
         border: 0;
         border-radius: 0;
@@ -466,7 +466,7 @@ const RolePicker = styled.div`
     }
   }
 
-  body.light #home-page & {
+  body.light :is(#home-page, #roundtable-page) & {
     border-bottom-color: rgb(132 172 226 / 15%);
 
     .role-selector:hover,
@@ -602,7 +602,7 @@ const PanelItem = styled.div<{ theme: string }>`
   border-radius: var(--base-border-radius);
   overflow: hidden;
 
-  body.light #home-page & {
+  body.light :is(#home-page, #roundtable-page) & {
     background: rgb(248 251 255 / 78%);
     border: 1px solid rgb(255 255 255 / 70%);
     border-radius: 12px;
@@ -617,7 +617,7 @@ const PanelItem = styled.div<{ theme: string }>`
     padding: 10px;
     border-bottom: 1px solid ${({ theme }) => (theme === 'dark' ? 'var(--color-black-mute)' : 'var(--color-gray-4)')};
 
-    body.light #home-page & {
+    body.light :is(#home-page, #roundtable-page) & {
       border-bottom-color: rgb(132 172 226 / 15%);
     }
 

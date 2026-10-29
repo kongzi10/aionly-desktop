@@ -24,7 +24,7 @@ const RoundtableChat: FC<Props> = ({ assistant: sourceAssistant, activeTopic, se
   const mainHeight = isTopNavbar ? 'calc(100vh - var(--navbar-height) - 6px)' : 'calc(100vh - var(--navbar-height))'
 
   return (
-    <Container id="roundtable-chat">
+    <Container id="roundtable-chat" className={isMultiSelectMode ? 'multi-select-mode' : undefined}>
       <HStack flex={1} style={{ width: '100%', minWidth: 0 }}>
         <Main vertical flex={1} justify="space-between" style={{ height: mainHeight, width: '100%' }}>
           <QuickPanelProvider>
@@ -47,8 +47,8 @@ const Container = styled.div`
   flex: 1;
   height: calc(100vh - var(--navbar-height) - 10px);
   overflow: hidden;
-  border-radius: var(--base-border-radius);
-  background-color: var(--color-background);
+  border-radius: 0;
+  background-color: transparent;
 `
 
 const Main = styled(Flex)`
@@ -67,11 +67,10 @@ const Content = styled.div`
 
 const BottomArea = styled.div`
   flex-shrink: 0;
+  align-self: center;
+  width: 100%;
+  max-width: 1036px;
   z-index: 2;
-
-  .inputbar > div:first-child {
-    max-width: none;
-  }
 `
 
 export default RoundtableChat

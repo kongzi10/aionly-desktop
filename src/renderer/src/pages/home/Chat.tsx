@@ -244,20 +244,6 @@ const Container = styled.div`
   background-color: transparent;
   border-radius: 0;
 
-  body.light #home-page & {
-    .inputbar-container {
-      border: 1px solid rgb(255 255 255 / 76%);
-      border-radius: 12px;
-      background: rgb(246 249 255 / 88%);
-      backdrop-filter: blur(20px);
-      box-shadow:
-        0 -8px 28px rgb(48 79 133 / 10%),
-        0 5px 18px rgb(48 79 133 / 7%),
-        inset 0 1px rgb(255 255 255 / 75%);
-    }
-
-  }
-
   [navbar-position='top'] & {
     height: calc(100vh - var(--navbar-height) - 6px);
     background-color: transparent;

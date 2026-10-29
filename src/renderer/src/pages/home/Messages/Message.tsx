@@ -195,6 +195,29 @@ const MessageItem: FC<Props> = ({
     )
   }
 
+  const messageFooter = showMenubar ? (
+    <MessageFooter className="MessageFooter">
+      <HorizontalScrollContainer
+        classNames={{
+          content: cn('flex-1 items-center justify-between', isAssistantMessage ? 'flex-row-reverse' : 'flex-row')
+        }}>
+        <MessageMenubar
+          message={message}
+          assistant={assistant}
+          model={model}
+          index={index}
+          topic={topic}
+          isLastMessage={isLastMessage}
+          isAssistantMessage={isAssistantMessage}
+          isGrouped={isGrouped}
+          messageContainerRef={messageContainerRef as React.RefObject<HTMLDivElement>}
+          setModel={setModel}
+          onUpdateUseful={onUpdateUseful}
+        />
+      </HorizontalScrollContainer>
+    </MessageFooter>
+  ) : null
+
   return (
     <WrapperContainer isMultiSelectMode={isMultiSelectMode}>
       <MessageContainer
@@ -241,8 +264,8 @@ const MessageItem: FC<Props> = ({
               {!isMultiSelectMode && message.role === 'assistant' && showMessageOutline && (
                 <MessageOutline message={message} />
               )}
-              {message.role === 'assistant' && message.model?.name && (
-                <div className="model-name">{message.model?.name}</div>
+              {isAssistantMessage && (model?.name || assistant?.name) && (
+                <div className="model-name">{model?.name || assistant?.name}</div>
               )}
               <MessageInnerWrapper className="message-inner-wrapper">
                 <MessageContentContainer
@@ -256,33 +279,9 @@ const MessageItem: FC<Props> = ({
                     <MessageContent message={message} />
                   </MessageErrorBoundary>
                 </MessageContentContainer>
-                {showMenubar && (
-                  <MessageFooter className="MessageFooter">
-                    <HorizontalScrollContainer
-                      classNames={{
-                        content: cn(
-                          'flex-1 items-center justify-between',
-                          /*shouldReverseFooter ? 'flex-row-reverse' : 'flex-row'*/
-                          isAssistantMessage ? 'flex-row-reverse' : 'flex-row'
-                        )
-                      }}>
-                      <MessageMenubar
-                        message={message}
-                        assistant={assistant}
-                        model={model}
-                        index={index}
-                        topic={topic}
-                        isLastMessage={isLastMessage}
-                        isAssistantMessage={isAssistantMessage}
-                        isGrouped={isGrouped}
-                        messageContainerRef={messageContainerRef as React.RefObject<HTMLDivElement>}
-                        setModel={setModel}
-                        onUpdateUseful={onUpdateUseful}
-                      />
-                    </HorizontalScrollContainer>
-                  </MessageFooter>
-                )}
+                {isAssistantMessage && messageFooter}
               </MessageInnerWrapper>
+              {!isAssistantMessage && messageFooter}
             </div>
           </MessageInfoWrapper>
         )}

@@ -533,7 +533,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   // topContent: 所有顶部预览内容
   const topContent = (
     <>
-      {mode === 'chat' && mentionedModels.length > 0 && (
+      {mentionedModels.length > 0 && (
         <MentionModelsInput selectedModels={mentionedModels} onRemoveModel={handleRemoveModel} />
       )}
       {selectedKnowledgeBases.length > 0 && (
@@ -553,6 +553,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   // rightToolbar: 右侧工具栏
   const rightToolbar = (
     <>
+      {mode === 'roundtable' && <RoundtableModelBar />}
       {mode === 'chat' && availableModels.length > 0 && mentionedModels.length === 0 && (
         <span className="landing-model-selector">
           <SelectModelButton assistant={assistant} />
@@ -590,8 +591,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
         mode === 'chat' && !compact && availableModels.length > 0 ? <SettingsButton assistant={assistant} /> : undefined
       }
       topContent={topContent}
-      beforeInputContent={mode === 'roundtable' ? <RoundtableModelBar /> : undefined}
-      fullWidth={mode === 'roundtable'}
+      fullWidth={false}
       compact={compact}
     />
   )

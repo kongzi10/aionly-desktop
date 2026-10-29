@@ -1,13 +1,9 @@
-import { getModelLogo } from '@renderer/config/models'
 import { useInputbarTools } from '@renderer/pages/home/Inputbar/context/InputbarToolsProvider'
 import { useMentionModelsPanel } from '@renderer/pages/home/Inputbar/tools/components/useMentionModelsPanel'
-import { getModelUniqId } from '@renderer/services/ModelService'
-import { Button } from 'antd'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import RoundtableCompareIcon from './RoundtableCompareIcon'
-import RoundtableModelChip from './RoundtableModelChip'
 
 const RoundtableModelBar = () => {
   const { t } = useTranslation()
@@ -22,61 +18,42 @@ const RoundtableModelBar = () => {
   })
 
   return (
-    <Container data-testid="roundtable-model-bar">
-      <Models>
-        {tools.mentionedModels.map((model) => (
-          <RoundtableModelChip
-            key={getModelUniqId(model)}
-            logo={getModelLogo(model)}
-            name={model.name}
-            removeLabel={t('common.delete')}
-            onOpen={handleOpenModelPopup}
-            onRemove={() =>
-              tools.setMentionedModels((models) =>
-                models.filter((candidate) => getModelUniqId(candidate) !== getModelUniqId(model))
-              )
-            }
-          />
-        ))}
-        <AddModelButton
-          data-tour="roundtable-add-model"
-          type="primary"
-          icon={<RoundtableCompareIcon />}
-          onClick={handleOpenModelPopup}>
-          {t('roundtable.add_model')}
-        </AddModelButton>
-      </Models>
-    </Container>
+    <AddModelButton
+      type="button"
+      data-testid="roundtable-model-bar"
+      data-tour="roundtable-add-model"
+      onClick={handleOpenModelPopup}>
+      <RoundtableCompareIcon width={15} height={15} />
+      <span>{t('roundtable.add_model')}</span>
+    </AddModelButton>
   )
 }
 
-const Container = styled.div`
-  width: 100%;
-  padding: 0 0 10px;
-  overflow: hidden;
-`
-
-const Models = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-`
-
-const AddModelButton = styled(Button)`
-  height: 32px;
+const AddModelButton = styled.button`
+  display: inline-flex;
   flex: 0 0 auto;
-  border-radius: 16px;
-  padding: 0 16px;
-  background-color: rgba(0, 94, 255, 1);
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 29px;
+  padding: 0 9px;
+  border: 1px solid rgb(90 143 215 / 22%);
+  border-radius: 9px;
+  background: rgb(94 154 232 / 9%);
+  color: var(--color-primary);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
 
-  .ant-btn-icon {
-    display: flex;
+  &:hover,
+  &:focus-visible {
+    background: rgb(94 154 232 / 17%);
+    border-color: rgb(90 143 215 / 38%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
 `
 

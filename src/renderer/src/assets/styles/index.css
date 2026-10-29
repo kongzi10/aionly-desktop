@@ -195,17 +195,23 @@ ul {
   margin-right: 45px;
 }
 
-.bubble:not(.multi-select-mode) .message-user .MessageFooter .message-footer-metadata {
+#root :is(#chat, #roundtable-chat) .message .MessageFooter .message-footer-metadata {
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transition:
     opacity 0.2s ease,
     visibility 0.2s ease;
 }
 
-.bubble:not(.multi-select-mode) .message-user:hover .MessageFooter .message-footer-metadata {
+#root :is(#chat, #roundtable-chat) .message:is(:hover, :focus-within) .MessageFooter .message-footer-metadata {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
+}
+
+#root :is(#chat, #roundtable-chat) .message-assistant .MessageFooter .menubar {
+  opacity: 1;
 }
 
 .bubble:not(.multi-select-mode) .message-user code {
@@ -214,6 +220,89 @@ ul {
 
 .bubble:not(.multi-select-mode) .message-user .markdown {
   display: flow-root;
+}
+
+/* Share the compact user-message treatment across chat and roundtable. */
+#root :is(#chat, #roundtable-chat):not(.multi-select-mode) .message-user .message-header {
+  display: none;
+}
+
+#root :is(#chat, #roundtable-chat):not(.multi-select-mode) .message-user .main:not(.is-grouped) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: fit-content;
+  max-width: min(76%, 680px);
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+#root :is(#chat, #roundtable-chat):not(.multi-select-mode) .message-user .message-inner-wrapper {
+  min-width: 0;
+  max-width: 100%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: #e8f3fe;
+}
+
+#root :is(#chat, #roundtable-chat):not(.multi-select-mode) .message-user .message-content-container {
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+#root :is(#chat, #roundtable-chat):not(.multi-select-mode) .message-user .MessageFooter {
+  align-self: flex-end;
+  margin: 4px 0 0;
+}
+
+body.dark #root :is(#chat, #roundtable-chat):not(.multi-select-mode) .message-user .message-inner-wrapper {
+  background: #2d2d2d;
+}
+
+/* Put assistant identity above the reply and let the answer read as page content. */
+#root :is(#chat, #roundtable-chat) .message-assistant .message-header .ant-avatar {
+  border-radius: 50%;
+  background: #e8f3fe;
+  box-shadow:
+    0 0 0 2px var(--color-background),
+    0 0 0 3px #c9dffa;
+}
+
+#root :is(#chat, #roundtable-chat) .message-assistant:not(.roundtable-response-card) .message-header {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  height: 35px;
+  margin-bottom: 0;
+}
+
+#root :is(#chat, #roundtable-chat) .message-assistant:not(.roundtable-response-card) .main:not(.is-grouped) {
+  width: 100%;
+  margin-left: 0;
+}
+
+#root :is(#chat, #roundtable-chat) .message-assistant:not(.roundtable-response-card) .model-name {
+  position: absolute;
+  top: 5px;
+  left: 47px;
+  max-width: calc(100% - 52px);
+  overflow: hidden;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 25px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#root :is(#chat, #roundtable-chat) .message-assistant:not(.roundtable-response-card) .message-inner-wrapper {
+  padding: 10px 0 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 ::highlight(search-matches) {

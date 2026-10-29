@@ -1,6 +1,5 @@
 import { HolderOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
-import { ActionIconButton } from '@renderer/components/Buttons'
 import type { QuickPanelTriggerInfo } from '@renderer/components/QuickPanel'
 import { QuickPanelReservedSymbol, QuickPanelView, useQuickPanel } from '@renderer/components/QuickPanel'
 // import TranslateButton from '@renderer/components/TranslateButton'
@@ -18,10 +17,9 @@ import { classNames } from '@renderer/utils'
 import { formatQuotedText } from '@renderer/utils/formats'
 import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import { IpcChannel } from '@shared/IpcChannel'
-import { Tooltip } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
 import type { TextAreaRef } from 'antd/lib/input/TextArea'
-import { CirclePause, Languages } from 'lucide-react'
+import { Languages } from 'lucide-react'
 import type { CSSProperties, FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -630,17 +628,15 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
         isLoading={isTranslating}
       />
     )*/
-    extras.push(<SendMessageButton key="send-message" sendMessage={handleSendMessage} disabled={isSendDisabled} />)
-
-    if (isLoading) {
-      extras.push(
-        <Tooltip key="pause" placement="top" title={t('chat.input.pause')} mouseLeaveDelay={0} arrow>
-          <ActionIconButton onClick={onPause} style={{ marginRight: -2 }}>
-            <CirclePause size={20} color="var(--color-error)" />
-          </ActionIconButton>
-        </Tooltip>
-      )
-    }
+    extras.push(
+      <SendMessageButton
+        key="send-message"
+        sendMessage={handleSendMessage}
+        disabled={isSendDisabled}
+        isLoading={isLoading}
+        onStop={onPause}
+      />
+    )
 
     return <>{extras}</>
     // Note: text, onTranslated, isTranslating are excluded because TranslateButton is commented out

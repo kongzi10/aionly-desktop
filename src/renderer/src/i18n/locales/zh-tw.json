@@ -1323,6 +1323,7 @@
         "description": "Agent 工作階段斜線指令",
         "title": "斜線指令"
       },
+      "stop": "停止回覆",
       "thinking": {
         "budget_exceeds_max": "思考預算超過最大 Token 數",
         "label": "思考",

@@ -46,7 +46,7 @@ const Container = styled.div<{ $roundtable: boolean }>`
     letter-spacing: ${({ $roundtable }) => ($roundtable ? '5px' : '0.01em')};
   }
 
-  body.light #home-page & .text {
+  body.light :is(#home-page, #roundtable-page) & .text {
     color: #10234d;
   }
 `

@@ -33,6 +33,7 @@ interface Props {
 }
 
 const HomePage: FC<Props> = ({ mode = 'chat' }) => {
+  const isConversationWorkspace = mode === 'chat' || mode === 'roundtable'
   const workspace: AssistantWorkspace = mode === 'roundtable' ? 'roundtable' : 'chat'
   const { assistants, addAssistant } = useAssistants()
   const { defaultAssistant } = useDefaultAssistant()
@@ -149,8 +150,10 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
   return (
     <Container
       id={mode === 'roundtable' ? 'roundtable-page' : 'home-page'}
-      className={mode === 'chat' ? 'page-container nav-module-layout chat-layout' : 'page-container nav-module-layout'}
-      $chat={mode === 'chat'}>
+      className={
+        isConversationWorkspace ? 'page-container nav-module-layout chat-layout' : 'page-container nav-module-layout'
+      }
+      $chat={isConversationWorkspace}>
       {isLeftNavbar && (
         <Navbar
           activeAssistant={activeAssistant}
@@ -159,19 +162,19 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
           setActiveAssistant={setActiveAssistant}
           position="left"
           titleKey={mode === 'landing' ? 'title.home' : mode === 'roundtable' ? 'roundtable.title' : 'assistants.title'}
-          showTitle={mode === 'roundtable'}
+          showTitle={false}
           showAssistantToggle={mode !== 'landing'}
         />
       )}
       <ContentContainer
         id={isLeftNavbar ? 'content-container' : undefined}
         className="nav-module-surface"
-        $unified={mode === 'chat'}>
+        $unified={isConversationWorkspace}>
         <AnimatePresence initial={false}>
           {mode !== 'landing' && showAssistants && (
             <ErrorBoundary>
               <motion.div
-                className={mode === 'chat' ? 'chat-history-panel' : undefined}
+                className={isConversationWorkspace ? 'chat-history-panel' : undefined}
                 initial={{ width: 0, opacity: 0 }}
                 animate={{ width: 'var(--assistants-width)', opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
@@ -258,6 +261,17 @@ const ContentContainer = styled.div<{ $unified: boolean }>`
 
         .chat-history-panel {
           border-right-color: rgb(132 172 226 / 15%);
+        }
+
+        .inputbar-container {
+          border: 1px solid rgb(255 255 255 / 76%);
+          border-radius: 12px;
+          background: rgb(246 249 255 / 88%);
+          backdrop-filter: blur(20px);
+          box-shadow:
+            0 -8px 28px rgb(48 79 133 / 10%),
+            0 5px 18px rgb(48 79 133 / 7%),
+            inset 0 1px rgb(255 255 255 / 75%);
         }
       }
     `}

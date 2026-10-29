@@ -1,55 +1,68 @@
-import type { FC, KeyboardEvent } from 'react'
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 interface Props {
   disabled: boolean
   sendMessage: () => void
+  isLoading?: boolean
+  onStop?: () => void
 }
 
-const SendMessageButton: FC<Props> = ({ disabled, sendMessage }) => {
+const SendMessageButton: FC<Props> = ({ disabled, sendMessage, isLoading = false, onStop }) => {
   const { t } = useTranslation()
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
-    if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
+  const label = t(isLoading ? 'chat.input.stop' : 'chat.input.send')
 
   return (
-    <SendButton disabled={disabled}>
-      <i
-        className="iconfont icon-fasongguanli"
-        onClick={disabled ? undefined : sendMessage}
-        onKeyDown={handleKeyDown}
-        role="button"
-        aria-label={t('chat.input.send')}
-        aria-disabled={disabled}
-        tabIndex={disabled ? -1 : 0}
-        style={{
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          // color: disabled ? 'var(--color-text-3)' : 'var(--color-primary)',
-          fontSize: 16,
-          transition: 'all 0.2s',
-          marginTop: 1,
-          marginRight: 2
-        }}
-      />
+    <SendButton
+      type="button"
+      disabled={isLoading ? !onStop : disabled}
+      $loading={isLoading}
+      aria-label={label}
+      title={label}
+      onClick={isLoading ? onStop : sendMessage}>
+      {isLoading ? <StopMark aria-hidden="true" /> : <i className="iconfont icon-fasongguanli" />}
     </SendButton>
   )
 }
 
-const SendButton = styled.div<{ disabled?: boolean }>`
+const SendButton = styled.button<{ $loading: boolean }>`
   width: 32px;
   height: 32px;
-  background-color: ${({ disabled }) => (disabled ? 'var(--color-disabled-1)' : 'var(--color-primary)')};
+  padding: 0;
+  border: 0;
+  background-color: ${({ $loading }) => ($loading ? '#3b82f6' : 'var(--color-primary)')};
   color: var(--color-white);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    background-color: var(--color-disabled-1);
+    cursor: not-allowed;
+  }
+
+  .iconfont {
+    font-size: 16px;
+    margin-top: 1px;
+    margin-right: 2px;
+  }
+`
+
+const StopMark = styled.span`
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #fff;
 `
 
 export default SendMessageButton
