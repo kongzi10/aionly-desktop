@@ -739,7 +739,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
   }
 
   return (
-    <Container className="page-container">
+    <Container>
       <Navbar>
         <NavbarCenter style={{ borderRight: 'none' }}>{t('paintings.title')}</NavbarCenter>
         {/*{isMac && (

@@ -50,16 +50,21 @@ body,
 }
 
 body.light #root {
-  background: url('../images/bg-app.jpg') center center / 100% 100% no-repeat !important;
+  background:
+    radial-gradient(circle at 8% 90%, rgb(200 227 255 / 72%), transparent 46%),
+    linear-gradient(110deg, #e5f3ff 0%, #edf8ff 60%, #f1faf8 100%) !important;
 }
 
 body.light #app-sidebar {
-  background: linear-gradient(180deg, #e7f2fc 0%, #ecf4fc 80%, #bee0fc 100%) !important;
-  border-right: 1px solid var(--color-white);
+  background: transparent !important;
 }
 
 body.dark #root {
-  background: var(--navbar-background);
+  background: linear-gradient(120deg, var(--color-background-soft), var(--color-background-mute));
+}
+
+body.dark #app-sidebar {
+  background: transparent !important;
 }
 
 body {
@@ -225,5 +230,25 @@ textarea::-webkit-resizer {
 }
 
 .page-container {
-  padding: 0 10px 10px;
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 2px;
+  padding-bottom: 2px;
+}
+
+#root .page-container :is(#content-container, .nav-module-surface) {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 12px !important;
+  background: var(--color-background);
+}
+
+body.light #root .page-container :is(#content-container, .nav-module-surface) {
+  border-color: rgb(132 172 226 / 16%);
+}
+
+body.light #root .page-container,
+body.dark #root .page-container {
+  background: transparent;
 }

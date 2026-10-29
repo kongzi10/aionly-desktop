@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit'
 import type { Assistant, Topic } from '@renderer/types'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { Provider } from 'react-redux'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
@@ -8,8 +8,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import LandingPage from '../LandingPage'
 
-const { getContentMock, ensureModelsMock } = vi.hoisted(() => ({ getContentMock: vi.fn(), ensureModelsMock: vi.fn() }))
-vi.mock('../homeContentApi', () => ({ getPublishedHomeContent: getContentMock }))
+const { getPushListMock, ensureModelsMock } = vi.hoisted(() => ({
+  getPushListMock: vi.fn(),
+  ensureModelsMock: vi.fn()
+}))
+vi.mock('../homeContentApi', () => ({ getHomePushList: getPushListMock }))
 vi.mock('@renderer/hooks/useAiOnlyModels', () => ({ ensureAiOnlyModelsLoaded: ensureModelsMock }))
 
 vi.mock('../Inputbar/Inputbar', () => ({
@@ -26,8 +29,8 @@ const testStore = configureStore({ reducer: () => ({ user: { aiOnlyModels: [] } 
 const withStore = (children: ReactNode) => <Provider store={testStore}>{children}</Provider>
 
 beforeEach(() => {
-  getContentMock.mockReset()
-  getContentMock.mockResolvedValue({ ticker: [], announcements: [], avatarPromotion: null })
+  getPushListMock.mockReset()
+  getPushListMock.mockResolvedValue([])
   ensureModelsMock.mockReset()
   ensureModelsMock.mockResolvedValue(undefined)
 })
@@ -42,7 +45,7 @@ const ChatRoute = () => {
 }
 
 describe('LandingPage', () => {
-  it('shows useful built-in notices and a mascot card while publishing is unconfigured', async () => {
+  it('queries top_loop and cartoon without inventing content for empty responses', async () => {
     render(
       withStore(
         <MemoryRouter initialEntries={['/']}>
@@ -51,10 +54,10 @@ describe('LandingPage', () => {
       )
     )
 
-    expect(await screen.findByLabelText('Home announcements')).toBeInTheDocument()
-    expect(
-      within(screen.getByLabelText('Home announcements')).getByRole('button', { name: /Open models/ })
-    ).toBeInTheDocument()
+    expect(getPushListMock).toHaveBeenCalledWith('top_loop')
+    expect(getPushListMock).toHaveBeenCalledWith('cartoon')
+    expect(screen.queryByLabelText('Home announcements')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'homeLanding.closeCartoonPush' })).not.toBeInTheDocument()
   })
 
   it('opens the conversation with the same assistant and topic after an accepted send', () => {
@@ -76,19 +79,22 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('chat-route')).toHaveTextContent('main-assistant/first-topic')
   })
 
-  it('renders configured announcements and routes their actions', async () => {
-    getContentMock.mockResolvedValue({
-      ticker: [{ id: 'ticker', slot: 'ticker', title: 'New feature' }],
-      announcements: [
-        {
-          id: 'notice',
-          slot: 'announcement',
-          title: 'Open model',
-          action: { type: 'route', target: '/settings/model' }
-        }
-      ],
-      avatarPromotion: null
-    })
+  it('renders top_loop content and opens the cartoon action', async () => {
+    getPushListMock.mockImplementation((pushType: string) =>
+      Promise.resolve(
+        pushType === 'top_loop'
+          ? [{ id: 'ticker', pushType, content: 'New feature' }]
+          : [
+              {
+                id: 'cartoon',
+                pushType,
+                title: 'Open model',
+                buttonText: 'View now',
+                buttonUrl: '/settings/model'
+              }
+            ]
+      )
+    )
 
     render(
       withStore(
@@ -105,7 +111,8 @@ describe('LandingPage', () => {
     )
 
     expect(await screen.findByText('New feature')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Open model' }))
+    expect(await screen.findByText('Open model')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'View now' }))
     expect(screen.getByText('Model settings route')).toBeInTheDocument()
   })
 
@@ -124,8 +131,7 @@ describe('LandingPage', () => {
       )
     )
 
-    const notices = await screen.findByLabelText('Home announcements')
-    fireEvent.click(within(notices).getByRole('button', { name: /Open models/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Open models' }))
     expect(screen.getByText('Model settings route')).toBeInTheDocument()
   })
 })

@@ -16,7 +16,7 @@ import type { FC } from 'react'
 import { startTransition, useCallback, useEffect, useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
-import styled from 'styled-components'
+import styled, { css } from 'styled-components'
 
 import RoundtableChat from '../roundtable/RoundtableChat'
 import { filterAssistantsByWorkspace, getAssistantWorkspace } from '../roundtable/roundtableWorkspace'
@@ -147,7 +147,10 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
   }, [showAssistants, showTopics, topicPosition])
 
   return (
-    <Container id={mode === 'roundtable' ? 'roundtable-page' : 'home-page'} className="page-container">
+    <Container
+      id={mode === 'roundtable' ? 'roundtable-page' : 'home-page'}
+      className={mode === 'chat' ? 'page-container nav-module-layout chat-layout' : 'page-container nav-module-layout'}
+      $chat={mode === 'chat'}>
       {isLeftNavbar && (
         <Navbar
           activeAssistant={activeAssistant}
@@ -156,14 +159,19 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
           setActiveAssistant={setActiveAssistant}
           position="left"
           titleKey={mode === 'landing' ? 'title.home' : mode === 'roundtable' ? 'roundtable.title' : 'assistants.title'}
+          showTitle={mode === 'roundtable'}
           showAssistantToggle={mode !== 'landing'}
         />
       )}
-      <ContentContainer id={isLeftNavbar ? 'content-container' : undefined}>
+      <ContentContainer
+        id={isLeftNavbar ? 'content-container' : undefined}
+        className="nav-module-surface"
+        $unified={mode === 'chat'}>
         <AnimatePresence initial={false}>
           {mode !== 'landing' && showAssistants && (
             <ErrorBoundary>
               <motion.div
+                className={mode === 'chat' ? 'chat-history-panel' : undefined}
                 initial={{ width: 0, opacity: 0 }}
                 animate={{ width: 'var(--assistants-width)', opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
@@ -208,10 +216,12 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
   )
 }
 
-const Container = styled.div`
+const Container = styled.div<{ $chat: boolean }>`
   display: flex;
   flex: 1;
   flex-direction: column;
+  ${({ $chat }) => $chat && '--assistants-width: clamp(200px, 22vw, 230px);'}
+  border-top: ${({ $chat }) => ($chat ? '1px solid var(--color-border)' : 'none')};
   [navbar-position='left'] & {
     max-width: calc(100vw - var(--sidebar-width));
   }
@@ -220,12 +230,37 @@ const Container = styled.div`
   }
 `
 
-const ContentContainer = styled.div`
+const ContentContainer = styled.div<{ $unified: boolean }>`
   display: flex;
   flex: 1;
   flex-direction: row;
-  gap: 8px;
+  gap: ${({ $unified }) => ($unified ? '0' : '8px')};
   overflow: hidden;
+
+  ${({ $unified }) =>
+    $unified &&
+    css`
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      background: var(--color-background);
+
+      &#content-container {
+        border-radius: 12px;
+      }
+
+      .chat-history-panel {
+        border-right: 1px solid var(--color-border);
+      }
+
+      body.light & {
+        border-color: rgb(132 172 226 / 16%);
+        box-shadow: 0 8px 24px rgb(77 122 190 / 7%);
+
+        .chat-history-panel {
+          border-right-color: rgb(132 172 226 / 15%);
+        }
+      }
+    `}
 
   [navbar-position='top'] & {
     max-width: calc(100vw - 12px);

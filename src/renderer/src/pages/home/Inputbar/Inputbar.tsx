@@ -33,7 +33,7 @@ import { estimateTextTokens as estimateTxtTokens, estimateUserPromptUsage } from
 import WebSearchService from '@renderer/services/WebSearchService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { sendMessage as _sendMessage } from '@renderer/store/thunk/messageThunk'
-import { selectUserInfo } from '@renderer/store/user'
+import { selectAiOnlyModels, selectUserInfo } from '@renderer/store/user'
 import {
   type Assistant,
   type FileMetadata,
@@ -54,6 +54,8 @@ import { useTranslation } from 'react-i18next'
 
 import RoundtableModelBar from '../../roundtable/RoundtableModelBar'
 import { canSendRoundtableMessage, getRoundtableMaxModels, isRoundtableMember } from '../../roundtable/roundtablePolicy'
+import SettingsButton from '../components/ChatNavBar/Tools/SettingsButton'
+import SelectModelButton from '../components/SelectModelButton'
 import { InputbarCore } from './components/InputbarCore'
 import InputbarTools from './InputbarTools'
 import KnowledgeBaseInput from './KnowledgeBaseInput'
@@ -206,6 +208,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   const landingSendInFlight = useRef(false)
   const isMultiSelectMode = useAppSelector((state) => state.runtime.chat.isMultiSelectMode)
   const userInfo: any = useAppSelector(selectUserInfo)
+  const availableModels = useAppSelector(selectAiOnlyModels)
 
   const isVisionSupported = useMemo(
     () =>
@@ -530,15 +533,14 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   // topContent: 所有顶部预览内容
   const topContent = (
     <>
+      {mode === 'chat' && mentionedModels.length > 0 && (
+        <MentionModelsInput selectedModels={mentionedModels} onRemoveModel={handleRemoveModel} />
+      )}
       {selectedKnowledgeBases.length > 0 && (
         <KnowledgeBaseInput
           selectedKnowledgeBases={selectedKnowledgeBases}
           onRemoveKnowledgeBase={handleRemoveKnowledgeBase}
         />
-      )}
-
-      {mode !== 'roundtable' && mentionedModels.length > 0 && (
-        <MentionModelsInput selectedModels={mentionedModels} onRemoveModel={handleRemoveModel} />
       )}
     </>
   )
@@ -551,6 +553,11 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   // rightToolbar: 右侧工具栏
   const rightToolbar = (
     <>
+      {mode === 'chat' && availableModels.length > 0 && mentionedModels.length === 0 && (
+        <span className="landing-model-selector">
+          <SelectModelButton assistant={assistant} />
+        </span>
+      )}
       {tokenCountProps && (
         <TokenCount
           estimateTokenCount={tokenCountProps.estimateTokenCount}
@@ -579,6 +586,9 @@ const InputbarInner: FC<InputbarInnerProps> = ({
       handleSendMessage={sendMessage}
       leftToolbar={leftToolbar}
       rightToolbar={rightToolbar}
+      topRightContent={
+        mode === 'chat' && !compact && availableModels.length > 0 ? <SettingsButton assistant={assistant} /> : undefined
+      }
       topContent={topContent}
       beforeInputContent={mode === 'roundtable' ? <RoundtableModelBar /> : undefined}
       fullWidth={mode === 'roundtable'}

@@ -1,5 +1,5 @@
+import chatMascot from '@renderer/assets/images/home/landing/mascot-reference.png'
 import roundtableBg from '@renderer/assets/images/home/roundtable-welcome.png'
-import bg from '@renderer/assets/images/home/welcome.png'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -15,7 +15,7 @@ const Welcome: React.FC<Props> = ({ mode = 'chat' }) => {
 
   return (
     <Container $roundtable={mode === 'roundtable'}>
-      <img className="image-welcome" src={mode === 'roundtable' ? roundtableBg : bg} alt="" />
+      <img className="image-welcome" src={mode === 'roundtable' ? roundtableBg : chatMascot} alt="" />
       <div className="text">{t(mode === 'roundtable' ? getRoundtableWelcomeKey() : 'chat.welcome')}</div>
     </Container>
   )
@@ -31,19 +31,23 @@ const Container = styled.div<{ $roundtable: boolean }>`
   gap: 20px;
 
   .image-welcome {
-    width: ${({ $roundtable }) => ($roundtable ? '200px' : '130px')};
-    height: 173px;
+    width: ${({ $roundtable }) => ($roundtable ? '200px' : '112px')};
+    height: ${({ $roundtable }) => ($roundtable ? '173px' : '150px')};
     object-fit: contain;
     object-position: center bottom;
   }
 
   .text {
     text-align: center;
-    font-family: Alimama ShuHeiTi;
+    font-family: ${({ $roundtable }) => ($roundtable ? 'Alimama ShuHeiTi' : 'var(--font-family)')};
     font-weight: 700;
-    color: var(--text-color);
-    font-size: 36px;
-    letter-spacing: 5px;
+    color: ${({ $roundtable }) => ($roundtable ? 'var(--text-color)' : 'var(--color-text)')};
+    font-size: ${({ $roundtable }) => ($roundtable ? '36px' : '28px')};
+    letter-spacing: ${({ $roundtable }) => ($roundtable ? '5px' : '0.01em')};
+  }
+
+  body.light #home-page & .text {
+    color: #10234d;
   }
 `
 

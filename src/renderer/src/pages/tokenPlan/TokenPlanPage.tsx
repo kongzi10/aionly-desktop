@@ -136,74 +136,86 @@ const TokenPlanPage: FC = () => {
   }
 
   return (
-    <Container id="translate-page" className="page-container">
+    <Container id="translate-page" className="page-container nav-module-layout">
       <Navbar>
         <NavbarCenter style={{ borderRight: 'none', gap: 10 }}>{t('tokenPlan.title')}</NavbarCenter>
       </Navbar>
-      <ButtonsGroup
-        className={isWin || isLinux ? 'windows' : ''}
-        style={{ marginRight: isWin || isLinux ? '140px' : 0 }}
-        isTopNavbar={isTopNavbar}>
-        <Tooltip title={t('minapp.popup.goBack')} mouseEnterDelay={0.8} placement="bottom">
-          <TitleButton onClick={() => handleGoBack(app.id)}>
-            <ArrowLeftOutlined />
-          </TitleButton>
-        </Tooltip>
-        <Tooltip title={t('minapp.popup.goForward')} mouseEnterDelay={0.8} placement="bottom">
-          <TitleButton onClick={() => handleGoForward(app.id)}>
-            <ArrowRightOutlined />
-          </TitleButton>
-        </Tooltip>
-        <Tooltip title={t('minapp.popup.refresh')} mouseEnterDelay={0.8} placement="bottom">
-          <TitleButton onClick={() => handleReload(app.id)}>
-            <ReloadOutlined />
-          </TitleButton>
-        </Tooltip>
-        {isDev && (
-          <Tooltip title={t('minapp.popup.devtools')} mouseEnterDelay={0.8} placement="bottom">
-            <TitleButton onClick={() => handleOpenDevTools(app.id)}>
-              <CodeOutlined />
+      <Surface className="nav-module-surface">
+        <ButtonsGroup
+          className={isWin || isLinux ? 'windows' : ''}
+          style={{ marginRight: isWin || isLinux ? '140px' : 0 }}
+          isTopNavbar={isTopNavbar}>
+          <Tooltip title={t('minapp.popup.goBack')} mouseEnterDelay={0.8} placement="bottom">
+            <TitleButton onClick={() => handleGoBack(app.id)}>
+              <ArrowLeftOutlined />
             </TitleButton>
           </Tooltip>
-        )}
-      </ButtonsGroup>
-      <ContentContainer id="content-container" data-tour="tokenplan-content">
-        {!isReady && (
-          <EmptyView style={{ backgroundColor: 'var(--color-background-soft)' }}>
-            <Avatar
-              src={app?.logo}
-              size={80}
-              style={{
-                border: '1px solid var(--color-border)',
-                marginTop: -150,
-                height: '40px',
-                width: 'auto',
-                padding: '6px',
-                borderRadius: '4px'
-              }}
-            />
-            <BeatLoader color="var(--color-text-2)" size={10} style={{ marginTop: 15 }} />
-          </EmptyView>
-        )}
-        <WebviewContainer
-          key={app.id}
-          appid={app.id}
-          url={app.url}
-          onSetRefCallback={handleWebviewSetRef}
-          onLoadedCallback={handleWebviewLoaded}
-          onNavigateCallback={handleWebviewNavigate}
-        />
-      </ContentContainer>
+          <Tooltip title={t('minapp.popup.goForward')} mouseEnterDelay={0.8} placement="bottom">
+            <TitleButton onClick={() => handleGoForward(app.id)}>
+              <ArrowRightOutlined />
+            </TitleButton>
+          </Tooltip>
+          <Tooltip title={t('minapp.popup.refresh')} mouseEnterDelay={0.8} placement="bottom">
+            <TitleButton onClick={() => handleReload(app.id)}>
+              <ReloadOutlined />
+            </TitleButton>
+          </Tooltip>
+          {isDev && (
+            <Tooltip title={t('minapp.popup.devtools')} mouseEnterDelay={0.8} placement="bottom">
+              <TitleButton onClick={() => handleOpenDevTools(app.id)}>
+                <CodeOutlined />
+              </TitleButton>
+            </Tooltip>
+          )}
+        </ButtonsGroup>
+        <ContentContainer id="content-container" data-tour="tokenplan-content">
+          {!isReady && (
+            <EmptyView style={{ backgroundColor: 'var(--color-background-soft)' }}>
+              <Avatar
+                src={app?.logo}
+                size={80}
+                style={{
+                  border: '1px solid var(--color-border)',
+                  marginTop: -150,
+                  height: '40px',
+                  width: 'auto',
+                  padding: '6px',
+                  borderRadius: '4px'
+                }}
+              />
+              <BeatLoader color="var(--color-text-2)" size={10} style={{ marginTop: 15 }} />
+            </EmptyView>
+          )}
+          <WebviewContainer
+            key={app.id}
+            appid={app.id}
+            url={app.url}
+            onSetRefCallback={handleWebviewSetRef}
+            onLoadedCallback={handleWebviewLoaded}
+            onNavigateCallback={handleWebviewNavigate}
+          />
+        </ContentContainer>
+      </Surface>
     </Container>
   )
 }
 
 const Container = styled.div`
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-height: 0;
+`
+
+const Surface = styled.div`
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 `
 
 const ContentContainer = styled.div`
-  height: calc(100vh - var(--navbar-height) - 40px);
+  min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -211,7 +223,7 @@ const ContentContainer = styled.div`
   flex: 1;
   position: relative;
   background-color: var(--color-background);
-  border-radius: 0 0 var(--base-border-radius) var(--base-border-radius) !important;
+  border-radius: 12px;
   overflow: hidden;
 `
 

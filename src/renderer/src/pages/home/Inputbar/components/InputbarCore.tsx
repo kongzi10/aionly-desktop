@@ -65,6 +65,7 @@ export interface InputbarCoreProps {
   // Toolbar sections
   leftToolbar?: React.ReactNode
   rightToolbar?: React.ReactNode
+  topRightContent?: React.ReactNode
 
   // Preview sections (attachments, mentions, etc.)
   topContent?: React.ReactNode
@@ -126,6 +127,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
   handleSendMessage,
   leftToolbar,
   rightToolbar,
+  topRightContent,
   topContent,
   beforeInputContent,
   pinnedContent,
@@ -669,6 +671,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
           <DragHandle onMouseDown={handleDragStart}>
             <HolderOutlined style={{ fontSize: 12 }} />
           </DragHandle>
+          {topRightContent && <TopRightContent>{topRightContent}</TopRightContent>}
           {files.length > 0 && (
             <AttachmentPreview files={files} setFiles={setFiles} onAttachmentContextMenu={appendTxtContentToInput} />
           )}
@@ -688,7 +691,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
             spellCheck={enableSpellCheck}
             rows={compact ? 3 : 4}
             autoSize={height ? false : { minRows: compact ? 3 : 4, maxRows: 20 }}
-            styles={{ textarea: TextareaStyle }}
+            styles={{ textarea: { ...TextareaStyle, paddingRight: topRightContent ? 48 : 15 } }}
             style={{
               fontSize,
               height: height,
@@ -776,6 +779,13 @@ const InputBarContainer = styled.div`
       pointer-events: none;
     }
   }
+`
+
+const TopRightContent = styled.div`
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  z-index: 3;
 `
 
 const Textarea = styled(TextArea)`

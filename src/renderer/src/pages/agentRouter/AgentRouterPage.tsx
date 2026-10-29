@@ -44,13 +44,13 @@ const AgentRouterPage = () => {
   }
 
   return (
-    <Page className="page-container">
+    <Page className="page-container nav-module-layout">
       {contextHolder}
       {modalContextHolder}
       <Navbar>
         <NavbarCenter style={{ borderRight: 'none' }}>{t('agentRouter.title')}</NavbarCenter>
       </Navbar>
-      <Content data-testid="agent-router-content">
+      <Content className="nav-module-surface" data-testid="agent-router-content">
         <TabBar role="tablist">
           <TabButton
             role="tab"

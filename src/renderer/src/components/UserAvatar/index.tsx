@@ -5,11 +5,13 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { modelGenerating, useRuntime } from '@renderer/hooks/useRuntime'
 import { getSidebarIconLabel } from '@renderer/i18n/label'
+import { type HomePushItem, resolveHomeContentAction } from '@renderer/pages/home/homeContent'
+import { getHomePushList } from '@renderer/pages/home/homeContentApi'
 import { applyProfileSwitch } from '@renderer/services/ProfileLifecycleService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { clearToken, selectUserInfo } from '@renderer/store/user'
 import { Avatar, Popover } from 'antd'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
@@ -21,6 +23,7 @@ interface Props {
 const logger = loggerService.withContext('UserAvatar')
 
 const Container = styled.div`
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -28,6 +31,38 @@ const Container = styled.div`
 
   .ant-avatar{
     background-color: var(--color-gray-2);
+  }
+`
+
+const AvatarOverlay = styled.div`
+  position: absolute;
+  z-index: 100000;
+  bottom: 52px;
+  left: 12px;
+  width: 210px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid rgb(255 255 255 / 80%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 12px 32px rgb(55 98 160 / 18%);
+  color: #152b54;
+  font-size: 12px;
+
+  p {
+    margin: 6px 0 10px;
+    color: #667b9d;
+    line-height: 1.5;
+  }
+
+  button {
+    float: right;
+    border: 0;
+    border-radius: 6px;
+    padding: 5px 10px;
+    background: var(--color-primary);
+    color: white;
+    cursor: pointer;
   }
 `
 
@@ -97,6 +132,34 @@ const UserAvatar: React.FC<Props> = () => {
   const { theme /*settedTheme, toggleTheme*/ } = useTheme()
   const { pathname } = useLocation()
   const { minappShow } = useRuntime()
+  const [overlay, setOverlay] = useState<HomePushItem | null>(null)
+  const [overlayVisible, setOverlayVisible] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (pathname !== '/') {
+      setOverlay(null)
+      setOverlayVisible(false)
+      return
+    }
+    let mounted = true
+    void getHomePushList('avatar_overlay')
+      .then((items) => {
+        if (mounted) setOverlay(items[0] ?? null)
+      })
+      .catch(() => {})
+    return () => {
+      mounted = false
+    }
+  }, [pathname])
+
+  const overlayAction = resolveHomeContentAction(overlay?.buttonUrl)
+  const openOverlayAction = () => {
+    if (!overlayAction) return
+    setOverlayVisible(false)
+    if (overlayAction.type === 'route') navigate(overlayAction.target)
+    else void window.api.shell.openExternal(overlayAction.target)
+  }
 
   const menus = SHOW_IN_USER_MENUS
 
@@ -186,16 +249,36 @@ const UserAvatar: React.FC<Props> = () => {
   )
 
   return (
-    <Container className="user-avatar" data-tour="user-avatar">
+    <Container
+      className="user-avatar"
+      data-tour="user-avatar"
+      onMouseEnter={() => setOverlayVisible(Boolean(overlay) && !menuOpen)}
+      onMouseLeave={() => setOverlayVisible(false)}>
       <Popover
         content={UserInfoPanel}
         placement={'top'}
         align={{ offset: [10, -10] }}
         zIndex={99999}
         getPopupContainer={() => document.body}
-        trigger="hover">
+        trigger="click"
+        open={menuOpen}
+        onOpenChange={(open) => {
+          setMenuOpen(open)
+          if (open) setOverlayVisible(false)
+        }}>
         <Avatar src={userInfo?.avatarUrl ?? defaultAvatar} size={40}></Avatar>
       </Popover>
+      {overlayVisible && overlay && (
+        <AvatarOverlay role="region" aria-label={overlay.title}>
+          <strong>{overlay.title}</strong>
+          {overlay.description && <p>{overlay.description}</p>}
+          {overlay.buttonText && overlayAction && (
+            <button type="button" onClick={openOverlayAction}>
+              {overlay.buttonText}
+            </button>
+          )}
+        </AvatarOverlay>
+      )}
     </Container>
   )
 }

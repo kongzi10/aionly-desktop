@@ -1,6 +1,6 @@
 #content-container {
   /*background-color: var(--color-background);*/
-  border-radius: 5px;
+  border-radius: 12px;
 }
 
 [navbar-position='left'] #content-container {

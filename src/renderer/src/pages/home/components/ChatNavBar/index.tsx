@@ -1,6 +1,5 @@
 import { NavbarHeader } from '@renderer/components/app/Navbar'
 import SearchPopup from '@renderer/components/Popups/SearchPopup'
-import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useNavbarPosition } from '@renderer/hooks/useSettings'
 import { useShortcut } from '@renderer/hooks/useShortcuts'
 import { useShowAssistants } from '@renderer/hooks/useStore'
@@ -24,7 +23,6 @@ interface Props {
 }
 
 const HeaderNavbar: FC<Props> = ({ activeAssistant, setActiveAssistant, activeTopic, setActiveTopic }) => {
-  const { assistant } = useAssistant(activeAssistant.id)
   const { showAssistants, toggleShowAssistants } = useShowAssistants()
   const { isTopNavbar } = useNavbarPosition()
 
@@ -71,7 +69,7 @@ const HeaderNavbar: FC<Props> = ({ activeAssistant, setActiveAssistant, activeTo
             </motion.div>
           )}
         </AnimatePresence>
-        <ChatNavbarContent assistant={assistant} />
+        <ChatNavbarContent />
       </div>
     </NavbarHeader>
   )

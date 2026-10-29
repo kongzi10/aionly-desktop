@@ -6,7 +6,6 @@ import { useProvider } from '@renderer/hooks/useProvider'
 import AiOnlyAddModelPopup from '@renderer/pages/settings/ProviderSettings/AiOnlyModel/add/AddModelPopup'
 import { selectAiOnlyModels } from '@renderer/store/user'
 // import AssistantSettingsPopup from '@renderer/pages/settings/AssistantSettings'
-import type { Assistant } from '@renderer/types'
 import { Button } from 'antd'
 // import { getLeadingEmoji } from '@renderer/utils'
 // import { ChevronRight } from 'lucide-react'
@@ -15,14 +14,9 @@ import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
 import styled from 'styled-components'
 
-import SelectModelButton from '../../SelectModelButton'
 import Tools from '../Tools'
 
-type TopicContentProps = {
-  assistant: Assistant
-}
-
-const TopicContent = ({ assistant }: TopicContentProps) => {
+const TopicContent = () => {
   const { t } = useTranslation()
   // const assistantName = useMemo(() => assistant.name || t('chat.default.name'), [assistant.name, t])
   const { provider } = useProvider('aionly')
@@ -40,38 +34,24 @@ const TopicContent = ({ assistant }: TopicContentProps) => {
 
   return (
     <>
-      <HorizontalScrollContainer className="ml-2 flex-initial">
-        <div className="flex flex-nowrap items-center gap-2">
-          {/* Assistant Label */}
-          {/*<div
-            className="flex h-full cursor-pointer items-center gap-1.5"
-            onClick={() => AssistantSettingsPopup.show({ assistant })}>
-            <EmojiIcon emoji={assistant.emoji || getLeadingEmoji(assistantName)} size={24} />
-            <span className="max-w-40 truncate text-xs">{assistantName}</span>
-          </div>*/}
-
-          {/* Separator */}
-          {/*<ChevronRight className="h-4 w-4 text-gray-400" />*/}
-
-          {/* Model Button */}
-          {aiOnlyModels && aiOnlyModels.length > 0 ? (
-            <span className="single-model-selector">
-              <SelectModelButton assistant={assistant} />
-            </span>
-          ) : (
-            <>
-              <TipText className="tips">
-                <WarningFilled />
-                {t('chat.topics.no_model')}
-              </TipText>
-              <Button type="primary" size="small" onClick={handleOpenModel}>
-                {t('chat.topics.open_model_text')}
-              </Button>
-            </>
-          )}
+      {(!aiOnlyModels || aiOnlyModels.length === 0) && (
+        <HorizontalScrollContainer className="ml-2 flex-initial">
+          <div className="flex flex-nowrap items-center gap-2">
+            <TipText className="tips">
+              <WarningFilled />
+              {t('chat.topics.no_model')}
+            </TipText>
+            <Button type="primary" size="small" onClick={handleOpenModel}>
+              {t('chat.topics.open_model_text')}
+            </Button>
+          </div>
+        </HorizontalScrollContainer>
+      )}
+      {aiOnlyModels && aiOnlyModels.length > 0 && (
+        <div className="ml-auto">
+          <Tools />
         </div>
-      </HorizontalScrollContainer>
-      {aiOnlyModels && aiOnlyModels.length > 0 && <Tools assistant={assistant} />}
+      )}
     </>
   )
 }
@@ -79,6 +59,18 @@ const TopicContent = ({ assistant }: TopicContentProps) => {
 const TipText = styled.span`
   color: var(--color-red-600);
   font-size: 14px;
+
+  body.light #home-page & {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid rgb(255 255 255 / 70%);
+    border-radius: 100px;
+    background: rgb(233 244 255 / 78%);
+    color: #466a9e;
+    font-size: 12px;
+  }
 `
 
 export default TopicContent

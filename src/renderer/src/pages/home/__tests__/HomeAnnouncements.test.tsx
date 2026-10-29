@@ -1,60 +1,31 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 
 import HomeAnnouncements from '../HomeAnnouncements'
-import type { HomeContentItem } from '../homeContent'
+import type { HomePushItem } from '../homeContent'
 
-const ticker: HomeContentItem[] = [
-  { id: 'one', slot: 'ticker', title: 'First update' },
-  { id: 'two', slot: 'ticker', title: 'Second update' }
+const items: HomePushItem[] = [
+  { id: 'one', pushType: 'top_loop', content: 'First update' },
+  { id: 'two', pushType: 'top_loop', content: 'Second update' },
+  { id: 'three', pushType: 'top_loop', content: 'Third update' }
 ]
-const announcements: HomeContentItem[] = [
-  {
-    id: 'notice',
-    slot: 'announcement',
-    title: 'Model launch',
-    action: { type: 'route', target: '/settings/model' }
-  }
-]
-
-beforeEach(() => vi.useFakeTimers())
-afterEach(() => vi.useRealTimers())
 
 describe('HomeAnnouncements', () => {
-  it('rotates ticker content while keeping announcements available', () => {
-    render(<HomeAnnouncements ticker={ticker} announcements={announcements} onAction={vi.fn()} />)
+  it('renders every published item in the given order with a duplicate loop for seamless scrolling', () => {
+    render(<HomeAnnouncements items={items} />)
 
-    expect(screen.getByText('First update')).toBeInTheDocument()
-    expect(screen.getByText('Model launch')).toBeInTheDocument()
-    void act(() => vi.advanceTimersByTime(5000))
-    expect(screen.getByText('Second update')).toBeInTheDocument()
+    const region = screen.getByLabelText('homeLanding.announcements')
+    expect(within(region).getAllByText('First update')).toHaveLength(2)
+    expect(within(region).getAllByText('Second update')).toHaveLength(2)
+    expect(within(region).getAllByText('Third update')).toHaveLength(2)
+    expect(region.querySelector('.repeat')).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('opens a configured announcement action', () => {
-    const onAction = vi.fn()
-    render(<HomeAnnouncements ticker={[]} announcements={announcements} onAction={onAction} />)
+  it('shows one notice once and leaves no region for an empty list', () => {
+    const { rerender } = render(<HomeAnnouncements items={items.slice(0, 1)} />)
+    expect(screen.getAllByText('First update')).toHaveLength(1)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Model launch' }))
-    expect(onAction).toHaveBeenCalledWith({ type: 'route', target: '/settings/model' })
-  })
-
-  it('leaves no empty notice region when nothing is published', () => {
-    const { container } = render(<HomeAnnouncements ticker={[]} announcements={[]} onAction={vi.fn()} />)
-    expect(container).toBeEmptyDOMElement()
-  })
-
-  it('rotates published announcements in the second row', () => {
-    render(
-      <HomeAnnouncements
-        ticker={ticker.slice(0, 1)}
-        announcements={[...announcements, { id: 'next', slot: 'announcement', title: 'Second notice' }]}
-        onAction={vi.fn()}
-      />
-    )
-
-    expect(screen.getByText('Model launch')).toBeInTheDocument()
-    void act(() => vi.advanceTimersByTime(6000))
-    expect(screen.getByText('Second notice')).toBeInTheDocument()
-    expect(screen.queryByText('Model launch')).not.toBeInTheDocument()
+    rerender(<HomeAnnouncements items={[]} />)
+    expect(screen.queryByLabelText('homeLanding.announcements')).not.toBeInTheDocument()
   })
 })

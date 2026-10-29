@@ -2148,6 +2148,8 @@
   },
   "homeLanding": {
     "announcements": "首页公告",
+    "closeCartoonPush": "关闭卡通推送",
+    "disclaimer": "内容均由模型生成，其生成内容的准确性和完整性无法保证，不代表我们的态度或观点",
     "modelGuide": {
       "action": "开通模型",
       "description": "先选择并开通一个模型，就可以开始对话。",

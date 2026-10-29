@@ -1,41 +1,36 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { HomeContentItem } from '../homeContent'
+import type { HomePushItem } from '../homeContent'
 import HomeMascot from '../HomeMascot'
 
-const promotion: HomeContentItem = {
+const promotion: HomePushItem = {
   id: 'gift',
-  slot: 'avatar',
+  pushType: 'cartoon',
   title: 'New user gift',
   description: 'Open a model to claim it',
-  action: { type: 'route', target: '/settings/model' }
+  buttonText: 'View now',
+  buttonUrl: '/settings/model'
 }
 
 describe('HomeMascot', () => {
-  it('reveals managed content beside the mascot and opens its action', () => {
+  it('opens when content arrives, closes permanently for that item, and runs its configured action', () => {
     const onAction = vi.fn()
-    render(<HomeMascot promotion={promotion} onAction={onAction} />)
+    const { rerender } = render(<HomeMascot promotion={null} onAction={onAction} />)
+    rerender(<HomeMascot promotion={promotion} onAction={onAction} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'New user gift' }))
     expect(screen.getByText('Open a model to claim it')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /New user gift .+/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'View now' }))
     expect(onAction).toHaveBeenCalledWith({ type: 'route', target: '/settings/model' })
-  })
 
-  it('keeps the mascot without a misleading promotion when nothing is published', () => {
-    render(<HomeMascot promotion={null} onAction={vi.fn()} />)
-
-    expect(screen.getByRole('img', { name: 'AiOnly' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'homeLanding.closeCartoonPush' }))
+    expect(screen.queryByText('Open a model to claim it')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('keeps an automatically opened promotion visible until the user dismisses it', () => {
-    render(<HomeMascot promotion={promotion} onAction={vi.fn()} autoOpen />)
-
-    fireEvent.mouseLeave(screen.getByRole('img', { name: 'AiOnly' }).parentElement!)
-    expect(screen.getByText('Open a model to claim it')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'New user gift' }))
-    expect(screen.queryByText('Open a model to claim it')).not.toBeInTheDocument()
+  it('keeps the mascot without a promotion when the API returns nothing', () => {
+    render(<HomeMascot promotion={null} onAction={vi.fn()} />)
+    expect(screen.getByRole('img', { name: 'AiOnly' })).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })

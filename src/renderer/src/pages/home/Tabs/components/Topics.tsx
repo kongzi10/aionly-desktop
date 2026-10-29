@@ -67,9 +67,18 @@ interface Props {
   activeTopic: Topic
   setActiveTopic: (topic: Topic) => void
   position: 'left' | 'right'
+  compact?: boolean
+  searchQuery?: string
 }
 
-export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, setActiveTopic, position }) => {
+export const Topics: React.FC<Props> = ({
+  assistant: _assistant,
+  activeTopic,
+  setActiveTopic,
+  position,
+  compact = false,
+  searchQuery = ''
+}) => {
   const { t } = useTranslation()
   const { notesPath } = useNotesSettings()
   const { assistants } = useAssistants()
@@ -535,11 +544,11 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
     return assistant.topics
   }, [assistant.topics, pinTopicsToTop])
 
-  // Filter topics based on search text (only in manage mode)
+  // Filter topics in the sidebar or in manage mode.
   // Supports: case-insensitive, space-separated keywords (all must match)
-  const deferredSearchText = useDeferredValue(searchText)
+  const deferredSearchText = useDeferredValue(isManageMode ? searchText : searchQuery)
   const filteredTopics = useMemo(() => {
-    if (!isManageMode || !deferredSearchText.trim()) {
+    if (!deferredSearchText.trim()) {
       return sortedTopics
     }
     // Split by spaces and filter out empty strings
@@ -555,7 +564,7 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
       const lowerName = topic.name.toLowerCase()
       return keywords.every((keyword) => lowerName.includes(keyword))
     })
-  }, [sortedTopics, deferredSearchText, isManageMode])
+  }, [sortedTopics, deferredSearchText])
 
   const singlealone = topicPosition === 'right' && position === 'right'
 
@@ -566,8 +575,12 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
         className="topics-tab"
         list={filteredTopics}
         onUpdate={updateTopics}
-        style={{ height: '100%', padding: '8px 0 10px 10px', paddingBottom: isManageMode ? 70 : 10 }}
-        itemContainerStyle={{ paddingBottom: '8px' }}
+        style={{
+          height: '100%',
+          padding: compact ? '2px 8px 10px' : '8px 0 10px 10px',
+          paddingBottom: isManageMode ? 70 : 10
+        }}
+        itemContainerStyle={{ paddingBottom: compact ? '2px' : '8px' }}
         header={
           <HeaderRow>
             {/*<AddButton onClick={() => EventEmitter.emit(EVENT_NAMES.ADD_NEW_TOPIC)}>
@@ -582,7 +595,7 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
             </Tooltip>*/}
           </HeaderRow>
         }
-        disabled={isManageMode}>
+        disabled={isManageMode || !!deferredSearchText.trim()}>
         {(topic) => {
           const isActive = topic.id === activeTopic?.id
           const topicName = topic.name.replace('`', '')
@@ -613,13 +626,14 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
                 onContextMenu={() => setTargetTopic(topic)}
                 className={classNames(
                   isActive && !isManageMode ? 'active' : '',
+                  compact ? 'compact' : '',
                   singlealone ? 'singlealone' : '',
                   isManageMode && isSelected ? 'selected' : '',
                   isManageMode && !canSelect ? 'disabled' : ''
                 )}
                 onClick={editingTopicId === topic.id && isEditing ? undefined : handleItemClick}
                 style={{
-                  borderRadius,
+                  borderRadius: compact ? 8 : borderRadius,
                   cursor:
                     editingTopicId === topic.id && isEditing
                       ? 'default'
@@ -754,6 +768,33 @@ const TopicListItem = styled.div`
       &:hover {
         color: var(--color-text-2);
       }
+    }
+  }
+
+  &.compact {
+    width: calc(var(--assistants-width) - 16px);
+    min-height: 34px;
+    padding: 7px 10px;
+    color: var(--color-text-1);
+
+    &.active {
+      background-color: var(--color-list-item);
+      box-shadow: none;
+      color: var(--color-text-1);
+
+      .menu {
+        opacity: 0;
+      }
+    }
+
+    &:hover .menu,
+    &.active:hover .menu {
+      opacity: 1;
+    }
+
+    .prompt,
+    .time {
+      display: none;
     }
   }
   &.singlealone {

@@ -51,21 +51,23 @@ const PaintingsRoutePage: FC = () => {
   }, [provider, dispatch, validOptions])
 
   return (
-    <Routes>
-      <Route path="*" element={<NewApiPage Options={validOptions} />} />
-      <Route path="/zhipu" element={<ZhipuPage Options={validOptions} />} />
-      <Route path="/aihubmix" element={<AihubmixPage Options={validOptions} />} />
-      <Route path="/silicon" element={<SiliconPage Options={validOptions} />} />
-      <Route path="/dmxapi" element={<DmxapiPage Options={validOptions} />} />
-      <Route path="/tokenflux" element={<TokenFluxPage Options={validOptions} />} />
-      <Route path="/ovms" element={<OvmsPage Options={validOptions} />} />
-      <Route path="/ppio" element={<PpioPage Options={validOptions} />} />
-      <Route path="/new-api" element={<NewApiPage Options={validOptions} />} />
-      {/* new-api family providers are mounted dynamically below */}
-      {newApiProviders.map((p) => (
-        <Route key={p.id} path={`/${p.id}`} element={<NewApiPage Options={validOptions} />} />
-      ))}
-    </Routes>
+    <div className="page-container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <Routes>
+        <Route path="*" element={<NewApiPage Options={validOptions} />} />
+        <Route path="/zhipu" element={<ZhipuPage Options={validOptions} />} />
+        <Route path="/aihubmix" element={<AihubmixPage Options={validOptions} />} />
+        <Route path="/silicon" element={<SiliconPage Options={validOptions} />} />
+        <Route path="/dmxapi" element={<DmxapiPage Options={validOptions} />} />
+        <Route path="/tokenflux" element={<TokenFluxPage Options={validOptions} />} />
+        <Route path="/ovms" element={<OvmsPage Options={validOptions} />} />
+        <Route path="/ppio" element={<PpioPage Options={validOptions} />} />
+        <Route path="/new-api" element={<NewApiPage Options={validOptions} />} />
+        {/* new-api family providers are mounted dynamically below */}
+        {newApiProviders.map((p) => (
+          <Route key={p.id} path={`/${p.id}`} element={<NewApiPage Options={validOptions} />} />
+        ))}
+      </Routes>
+    </div>
   )
 }
 

@@ -1,19 +1,20 @@
 import background from '@renderer/assets/images/home/landing/background.png'
+import AgentRouterIcon from '@renderer/components/Icons/AgentRouterIcon'
 import { QuickPanelProvider } from '@renderer/components/QuickPanel'
 import { ensureAiOnlyModelsLoaded } from '@renderer/hooks/useAiOnlyModels'
 import { useAppSelector } from '@renderer/store'
 import { selectAiOnlyModels } from '@renderer/store/user'
 import type { Assistant, Topic } from '@renderer/types'
-import { Bot, Coins, MessagesSquare } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
+import RoundtableSidebarIcon from '../roundtable/RoundtableSidebarIcon'
 import HomeAnnouncements from './HomeAnnouncements'
-import { type HomeContent, type HomeContentAction, resolveHomeContentAction } from './homeContent'
-import { getPublishedHomeContent } from './homeContentApi'
+import { type HomeContentAction, type HomePushItem, resolveHomeContentAction } from './homeContent'
+import { getHomePushList } from './homeContentApi'
 import HomeMascot from './HomeMascot'
 import Inputbar from './Inputbar/Inputbar'
 import ModelGuidance from './ModelGuidance'
@@ -28,49 +29,18 @@ const LandingPage: FC<Props> = ({ assistant, activeTopic, setActiveTopic }) => {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const availableModels = useAppSelector(selectAiOnlyModels)
-  const [content, setContent] = useState<HomeContent>({ ticker: [], announcements: [], avatarPromotion: null })
+  const [topLoop, setTopLoop] = useState<HomePushItem[]>([])
+  const [cartoon, setCartoon] = useState<HomePushItem[]>([])
   const [modelsReady, setModelsReady] = useState(false)
-  const hasPublishedContent =
-    content.ticker.length > 0 || content.announcements.length > 0 || content.avatarPromotion !== null
-  const displayContent: HomeContent = hasPublishedContent
-    ? content
-    : {
-        ticker: [
-          {
-            id: 'built-in-multi-model',
-            slot: 'ticker',
-            title: t('homeLanding.modelGuide.action'),
-            description: t('homeLanding.modelGuide.description'),
-            action: { type: 'route', target: '/settings/model' }
-          }
-        ],
-        announcements: [
-          {
-            id: 'built-in-model-guide',
-            slot: 'announcement',
-            title: t('homeLanding.multiModel'),
-            description: t('homeLanding.viewPromotion'),
-            action: { type: 'route', target: '/chat' }
-          }
-        ],
-        avatarPromotion: {
-          id: 'built-in-model-promotion',
-          slot: 'avatar',
-          title: t('homeLanding.modelGuide.action'),
-          description: t('homeLanding.modelGuide.description'),
-          action: { type: 'route', target: '/settings/model' }
-        }
-      }
 
   useEffect(() => {
     let mounted = true
-    void getPublishedHomeContent()
-      .then((published) => {
-        if (mounted) setContent(published)
-      })
-      .catch(() => {
-        // Keep the landing page usable when content publishing is unavailable.
-      })
+    void getHomePushList('top_loop')
+      .then((items) => mounted && setTopLoop(items))
+      .catch(() => {})
+    void getHomePushList('cartoon')
+      .then((items) => mounted && setCartoon(items))
+      .catch(() => {})
     return () => {
       mounted = false
     }
@@ -92,7 +62,7 @@ const LandingPage: FC<Props> = ({ assistant, activeTopic, setActiveTopic }) => {
 
   const openContentAction = useCallback(
     (action: HomeContentAction) => {
-      const safeAction = resolveHomeContentAction(action)
+      const safeAction = resolveHomeContentAction(action.target)
       if (!safeAction) return
       if (safeAction.type === 'route') {
         navigate(safeAction.target)
@@ -106,21 +76,17 @@ const LandingPage: FC<Props> = ({ assistant, activeTopic, setActiveTopic }) => {
   return (
     <Container id="landing-page">
       <Content>
-        <HomeAnnouncements
-          ticker={displayContent.ticker}
-          announcements={displayContent.announcements}
-          onAction={openContentAction}
-        />
+        <HomeAnnouncements items={topLoop} />
         <h1>{t('homeLanding.title')}</h1>
         <QuickActions>
-          <button type="button" onClick={() => navigate('/chat')}>
-            <MessagesSquare size={15} /> {t('homeLanding.multiModel')}
+          <button type="button" onClick={() => navigate('/roundtable')}>
+            <RoundtableSidebarIcon width={15} height={15} /> {t('homeLanding.multiModel')}
           </button>
           <button type="button" onClick={() => navigate('/tokenPlan')}>
-            <Coins size={15} /> {t('tokenPlan.title')}
+            <i className="iconfont icon-ziyuan1" aria-hidden="true" /> {t('tokenPlan.title')}
           </button>
           <button type="button" onClick={() => navigate('/agent-router')}>
-            <Bot size={15} /> {t('agentRouter.title')}
+            <AgentRouterIcon width={15} height={15} /> {t('agentRouter.title')}
           </button>
         </QuickActions>
         <Composer>
@@ -134,17 +100,16 @@ const LandingPage: FC<Props> = ({ assistant, activeTopic, setActiveTopic }) => {
             />
           </QuickPanelProvider>
         </Composer>
-        {hasPublishedContent && (
-          <ModelGuidance
-            modelsReady={modelsReady}
-            hasModel={availableModels.length > 0}
-            onOpenModels={() => navigate('/settings/model')}
-          />
-        )}
+        <ModelGuidance
+          modelsReady={modelsReady}
+          hasModel={availableModels.length > 0}
+          onOpenModels={() => navigate('/settings/model')}
+        />
       </Content>
       <MascotPosition>
-        <HomeMascot promotion={displayContent.avatarPromotion} onAction={openContentAction} autoOpen />
+        <HomeMascot promotion={cartoon[0] ?? null} onAction={openContentAction} />
       </MascotPosition>
+      <FooterNote>{t('homeLanding.disclaimer')}</FooterNote>
     </Container>
   )
 }
@@ -189,7 +154,7 @@ const Content = styled.div`
 
 const QuickActions = styled.div`
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 18px;
@@ -197,25 +162,40 @@ const QuickActions = styled.div`
   button {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 5px;
-    padding: 6px 12px;
+    box-sizing: border-box;
+    min-width: 130px;
+    height: 40px;
+    padding: 0 14px;
     border: 1px solid var(--color-border);
-    border-radius: 100px;
+    border-radius: 12px;
     background: var(--color-background-opacity);
     color: var(--color-text-2);
     font-size: 12px;
     cursor: pointer;
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, color 180ms ease;
   }
 
   button:hover {
     color: var(--color-primary);
     border-color: var(--color-primary);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 18px rgb(54 111 205 / 15%);
   }
 
-  button:nth-child(2) {
-    color: #3474ed;
-    border-color: rgb(255 255 255 / 70%);
-    background: rgb(232 242 255 / 85%);
+  button:active {
+    transform: translateY(-1px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button {
+      transition: none;
+    }
+  }
+
+  button .iconfont {
+    font-size: 15px;
   }
 `
 
@@ -253,6 +233,19 @@ const MascotPosition = styled.div`
     transform: scale(0.75);
     transform-origin: top right;
   }
+`
+
+const FooterNote = styled.p`
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  width: calc(100% - 32px);
+  margin: 0;
+  color: #7d8496;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  transform: translateX(-50%);
 `
 
 export default LandingPage

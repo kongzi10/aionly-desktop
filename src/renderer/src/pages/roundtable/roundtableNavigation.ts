@@ -41,8 +41,8 @@ const BASE_MENUS: PrimarySidebarMenu[] = [
 const AGENT_ROUTER_MENU: PrimarySidebarMenu = {
   path: '/agent-router',
   name: 'agent_router',
-  icon: 'icon-lianjie',
-  iconActive: 'icon-lianjie'
+  icon: 'agent-router',
+  iconActive: 'agent-router'
 }
 
 export const getPrimarySidebarMenus = (hasTokenPlan: boolean): PrimarySidebarMenu[] => {

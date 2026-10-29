@@ -6,19 +6,12 @@ import { useNavbarPosition, useSettings } from '@renderer/hooks/useSettings'
 import { useShowTopics } from '@renderer/hooks/useStore'
 import { useAppDispatch } from '@renderer/store'
 import { setNarrowMode } from '@renderer/store/settings'
-import type { Assistant } from '@renderer/types'
 import { Tooltip } from 'antd'
 import { PanelLeftClose, PanelRightClose, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { styled } from 'styled-components'
 
-import SettingsButton from './SettingsButton'
-
-interface ToolsProps {
-  assistant?: Assistant
-}
-
-const Tools = ({ assistant }: ToolsProps) => {
+const Tools = () => {
   const { t } = useTranslation()
   const { showTopics, toggleShowTopics } = useShowTopics()
   const { isTopNavbar } = useNavbarPosition()
@@ -32,7 +25,6 @@ const Tools = ({ assistant }: ToolsProps) => {
 
   return (
     <HStack alignItems="center" gap={8}>
-      <SettingsButton assistant={assistant} />
       {isTopNavbar && (
         <Tooltip title={t('navbar.expand')} mouseEnterDelay={0.8}>
           <NarrowIcon onClick={handleNarrowModeToggle}>

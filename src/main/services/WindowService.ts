@@ -22,6 +22,8 @@ import { initSessionUserAgent } from './WebviewService'
 
 const DEFAULT_MINIWINDOW_WIDTH = 550
 const DEFAULT_MINIWINDOW_HEIGHT = 400
+const DEFAULT_MAINWINDOW_WIDTH = 1090
+const DEFAULT_MAINWINDOW_HEIGHT = 760
 
 // const logger = loggerService.withContext('WindowService')
 const logger = loggerService.withContext('WindowService')
@@ -55,11 +57,16 @@ export class WindowService {
 
     const hideMenuBar = configManager.getHideMenuBar()
     const mainWindowState = windowStateKeeper({
-      defaultWidth: MIN_WINDOW_WIDTH,
-      defaultHeight: MIN_WINDOW_HEIGHT,
+      defaultWidth: DEFAULT_MAINWINDOW_WIDTH,
+      defaultHeight: DEFAULT_MAINWINDOW_HEIGHT,
       fullScreen: false,
       maximize: false
     })
+    // Windows can persist the old 960x600 default with an extra 16px of frame height.
+    const usedPreviousDefaultSize =
+      mainWindowState.width === MIN_WINDOW_WIDTH &&
+      mainWindowState.height >= MIN_WINDOW_HEIGHT &&
+      mainWindowState.height <= MIN_WINDOW_HEIGHT + 16
     /*const windowsBackgroundMaterial = getWindowsBackgroundMaterial()
     let _mainWindowBackgroundColor: string | undefined
 
@@ -70,8 +77,8 @@ export class WindowService {
     this.mainWindow = new BrowserWindow({
       x: mainWindowState.x,
       y: mainWindowState.y,
-      width: mainWindowState.width,
-      height: mainWindowState.height,
+      width: usedPreviousDefaultSize ? DEFAULT_MAINWINDOW_WIDTH : mainWindowState.width,
+      height: usedPreviousDefaultSize ? DEFAULT_MAINWINDOW_HEIGHT : mainWindowState.height,
       minWidth: MIN_WINDOW_WIDTH,
       minHeight: MIN_WINDOW_HEIGHT,
       show: false,

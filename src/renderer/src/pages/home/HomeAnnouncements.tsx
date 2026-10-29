@@ -1,114 +1,98 @@
 import { Sparkles } from 'lucide-react'
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
-import type { HomeContentAction, HomeContentItem } from './homeContent'
+import type { HomePushItem } from './homeContent'
 
 interface Props {
-  ticker: HomeContentItem[]
-  announcements: HomeContentItem[]
-  onAction: (action: HomeContentAction) => void
+  items: HomePushItem[]
 }
 
-const HomeAnnouncements: FC<Props> = ({ ticker, announcements, onAction }) => {
+const HomeAnnouncements: FC<Props> = ({ items }) => {
   const { t } = useTranslation()
-  const [tickerIndex, setTickerIndex] = useState(0)
-  const [announcementIndex, setAnnouncementIndex] = useState(0)
+  if (items.length === 0) return null
 
-  useEffect(() => {
-    if (ticker.length < 2) return
-    const timer = window.setInterval(() => setTickerIndex((index) => (index + 1) % ticker.length), 5000)
-    return () => window.clearInterval(timer)
-  }, [ticker.length])
-
-  useEffect(() => {
-    if (announcements.length < 2) return
-    const timer = window.setInterval(() => setAnnouncementIndex((index) => (index + 1) % announcements.length), 6000)
-    return () => window.clearInterval(timer)
-  }, [announcements.length])
-
-  if (ticker.length === 0 && announcements.length === 0) return null
-
-  const renderRow = (item: HomeContentItem) => {
-    const content = (
-      <>
-        <Sparkles size={13} aria-hidden="true" />
-        <strong>{item.title}</strong>
-        {item.description && <small>{item.description}</small>}
-      </>
-    )
-
-    return (
-      <NoticeRow key={item.id} aria-live="polite">
-        {item.action ? (
-          <button type="button" onClick={() => onAction(item.action!)}>
-            {content}
-          </button>
-        ) : (
-          <span>{content}</span>
-        )}
-      </NoticeRow>
-    )
-  }
+  const renderItem = (item: HomePushItem, key: string) => (
+    <NoticeRow key={key}>
+      <Sparkles size={13} aria-hidden="true" />
+      <span>{item.content}</span>
+    </NoticeRow>
+  )
 
   return (
-    <Container aria-label={t('homeLanding.announcements')}>
-      {ticker.length > 0 && renderRow(ticker[tickerIndex % ticker.length])}
-      {announcements.length > 0 && renderRow(announcements[announcementIndex % announcements.length])}
-    </Container>
+    <Viewport aria-label={t('homeLanding.announcements')} $count={items.length}>
+      <Track $count={items.length}>
+        {items.map((item) => renderItem(item, item.id))}
+        {items.length > 1 && (
+          <div aria-hidden="true" className="repeat">
+            {items.map((item) => renderItem(item, `repeat-${item.id}`))}
+          </div>
+        )}
+      </Track>
+    </Viewport>
   )
 }
 
-const Container = styled.section`
+const Viewport = styled.section<{ $count: number }>`
+  width: min(100%, 340px);
+  height: ${({ $count }) => ($count > 1 ? '70px' : '31px')};
+  overflow: hidden;
+  ${({ $count }) =>
+    $count > 1 &&
+    `mask-image: linear-gradient(to bottom, transparent, black 13px, black calc(100% - 13px), transparent);`}
+`
+
+const Track = styled.div<{ $count: number }>`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: min(100%, 340px);
-  font-size: 12px;
+  animation: ${({ $count }) => ($count > 1 ? `push-scroll ${$count * 5}s linear infinite` : 'none')};
+
+  &:hover {
+    animation-play-state: paused;
+  }
+
+  .repeat {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  @keyframes push-scroll {
+    to {
+      transform: translateY(calc(-50% - 4px));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `
 
 const NoticeRow = styled.div`
+  display: flex;
+  flex: 0 0 31px;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
   width: 100%;
-
-  button,
-  span {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    width: 100%;
-    min-height: 31px;
-    padding: 5px 11px;
-    color: #44618a;
-    background: rgb(235 245 255 / 68%);
-    border: 1px solid rgb(129 174 237 / 23%);
-    border-radius: 100px;
-    text-align: left;
-    white-space: nowrap;
-  }
-
-  button:hover {
-    border-color: rgb(92 149 233 / 50%);
-    background: rgb(225 239 255 / 88%);
-  }
+  min-height: 31px;
+  padding: 5px 11px;
+  border: 1px solid rgb(129 174 237 / 23%);
+  border-radius: 100px;
+  background: rgb(235 245 255 / 68%);
+  color: #44618a;
+  font-size: 12px;
+  white-space: nowrap;
 
   svg {
     flex-shrink: 0;
     color: #5c7cff;
   }
 
-  strong {
-    flex-shrink: 0;
-    font-weight: 500;
-  }
-
-  small {
-    flex: 1;
+  span {
     overflow: hidden;
-    color: #667b9d;
-    font-size: 11px;
-    text-align: right;
     text-overflow: ellipsis;
   }
 `

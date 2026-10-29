@@ -76,7 +76,7 @@ const AppsPage: FC = () => {
   }, [fetchMiniProgramList])
 
   return (
-    <Container onContextMenu={handleContextMenu} className="page-container">
+    <Container onContextMenu={handleContextMenu} className="page-container nav-module-layout">
       <Navbar className={minappShow ? 'opacity-0' : ''}>
         <NavbarMain>
           {t('minapp.title')}
@@ -102,7 +102,7 @@ const AppsPage: FC = () => {
           />*/}
         </NavbarMain>
       </Navbar>
-      <ContentContainer id="content-container">
+      <ContentContainer id="content-container" className="nav-module-surface">
         <MainContainer>
           <RightContainer>
             {isTopNavbar && (

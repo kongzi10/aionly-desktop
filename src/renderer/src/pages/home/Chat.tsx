@@ -188,13 +188,15 @@ const Chat: FC<Props> = (props) => {
                 />
                 {messageNavigation === 'buttons' && <ChatNavigation containerId="messages" />}
                 <BottomFixedArea>
-                  <ChatNavbar
-                    activeAssistant={props.assistant}
-                    activeTopic={props.activeTopic}
-                    setActiveTopic={props.setActiveTopic}
-                    setActiveAssistant={props.setActiveAssistant}
-                    position="left"
-                  />
+                  {isTopNavbar && (
+                    <ChatNavbar
+                      activeAssistant={props.assistant}
+                      activeTopic={props.activeTopic}
+                      setActiveTopic={props.setActiveTopic}
+                      setActiveAssistant={props.setActiveAssistant}
+                      position="left"
+                    />
+                  )}
                   <Inputbar
                     assistant={assistant}
                     setActiveTopic={props.setActiveTopic}
@@ -234,22 +236,31 @@ const Chat: FC<Props> = (props) => {
 }
 
 const Container = styled.div`
-  &:has([data-mentioned-models]) .single-model-selector {
-    display: none;
-  }
-
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--navbar-height) - 10px);
   flex: 1;
   overflow: hidden;
-  background-color: var(--color-background);
-  border-radius: var(--base-border-radius);
+  background-color: transparent;
+  border-radius: 0;
+
+  body.light #home-page & {
+    .inputbar-container {
+      border: 1px solid rgb(255 255 255 / 76%);
+      border-radius: 12px;
+      background: rgb(246 249 255 / 88%);
+      backdrop-filter: blur(20px);
+      box-shadow:
+        0 -8px 28px rgb(48 79 133 / 10%),
+        0 5px 18px rgb(48 79 133 / 7%),
+        inset 0 1px rgb(255 255 255 / 75%);
+    }
+
+  }
+
   [navbar-position='top'] & {
     height: calc(100vh - var(--navbar-height) - 6px);
-    background-color: var(--color-background);
-    border-top-left-radius: 10px;
-    border-bottom-left-radius: 10px;
+    background-color: transparent;
   }
 `
 
@@ -265,6 +276,9 @@ const BottomFixedArea = styled.div`
   flex-shrink: 0;  // 不会被压缩
   display: flex;
   flex-direction: column;
+  align-self: center;
+  width: 100%;
+  max-width: 1036px;
   z-index: 2;
 `
 

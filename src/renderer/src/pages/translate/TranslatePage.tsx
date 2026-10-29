@@ -724,7 +724,7 @@ const TranslatePage: FC = () => {
   return (
     <Container
       id="translate-page"
-      className="page-container"
+      className="page-container nav-module-layout"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -732,7 +732,11 @@ const TranslatePage: FC = () => {
       <Navbar>
         <NavbarCenter style={{ borderRight: 'none', gap: 10 }}>{t('translate.title')}</NavbarCenter>
       </Navbar>
-      <ContentContainer id="content-container" ref={contentContainerRef} $historyDrawerVisible={historyDrawerVisible}>
+      <ContentContainer
+        id="content-container"
+        className="nav-module-surface"
+        ref={contentContainerRef}
+        $historyDrawerVisible={historyDrawerVisible}>
         <TranslateHistoryList
           onHistoryItemClick={onHistoryItemClick}
           isOpen={historyDrawerVisible}
@@ -897,11 +901,14 @@ const TranslatePage: FC = () => {
 }
 
 const Container = styled.div`
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-height: 0;
 `
 
 const ContentContainer = styled.div<{ $historyDrawerVisible: boolean }>`
-  height: calc(100vh - var(--navbar-height) - 10px);
+  min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;

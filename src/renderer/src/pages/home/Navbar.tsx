@@ -23,10 +23,11 @@ interface Props {
   setActiveAssistant: (assistant: Assistant) => void
   position: 'left' | 'right'
   titleKey?: string
+  showTitle?: boolean
   showAssistantToggle?: boolean
 }
 
-const HeaderNavbar: FC<Props> = ({ titleKey = 'assistants.title', showAssistantToggle = true }) => {
+const HeaderNavbar: FC<Props> = ({ titleKey = 'assistants.title', showTitle = true, showAssistantToggle = true }) => {
   const { showAssistants, toggleShowAssistants } = useShowAssistants()
   // const { topicPosition, narrowMode } = useSettings()
   // const { showTopics, toggleShowTopics } = useShowTopics()
@@ -42,20 +43,7 @@ const HeaderNavbar: FC<Props> = ({ titleKey = 'assistants.title', showAssistantT
   }*/
 
   return (
-    <Navbar className="home-navbar" style={{ position: 'relative' }}>
-      {showAssistantToggle && showAssistants && (
-        <Tooltip title={t('navbar.hide_sidebar')} mouseEnterDelay={0.8}>
-          <NavbarIcon
-            onClick={toggleShowAssistants}
-            style={{
-              position: 'absolute',
-              left: 'calc(var(--sidebar-width) + var(--assistants-width) - 18px)',
-              zIndex: 1
-            }}>
-            <i className="iconfont icon-choutishouqi" style={{ fontSize: 18 }} />
-          </NavbarIcon>
-        </Tooltip>
-      )}
+    <Navbar className="home-navbar">
       {/*<AnimatePresence initial={false}>
         {showAssistants && (
           <motion.div
@@ -75,14 +63,17 @@ const HeaderNavbar: FC<Props> = ({ titleKey = 'assistants.title', showAssistantT
         )}
       </AnimatePresence>*/}
       <NavbarCenter>
-        {t(titleKey)}
-        {showAssistantToggle && !showAssistants && (
-          <Tooltip title={t('navbar.show_sidebar')} mouseEnterDelay={0.8}>
-            <NavbarIcon onClick={toggleShowAssistants} style={{ marginLeft: 6 }}>
-              <i className="iconfont icon-choutizhankai" style={{ fontSize: 18 }} />
+        {showAssistantToggle && (
+          <Tooltip title={t(showAssistants ? 'navbar.hide_sidebar' : 'navbar.show_sidebar')} mouseEnterDelay={0.8}>
+            <NavbarIcon onClick={toggleShowAssistants} style={{ marginRight: showTitle ? 8 : 0 }}>
+              <i
+                className={`iconfont ${showAssistants ? 'icon-choutishouqi' : 'icon-choutizhankai'}`}
+                style={{ fontSize: 18 }}
+              />
             </NavbarIcon>
           </Tooltip>
         )}
+        {showTitle && t(titleKey)}
       </NavbarCenter>
       <NavbarRight
         style={{

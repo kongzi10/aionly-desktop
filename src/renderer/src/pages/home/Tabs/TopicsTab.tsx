@@ -8,6 +8,8 @@ interface Props {
   activeTopic: Topic
   setActiveTopic: (topic: Topic) => void
   position: 'left' | 'right'
+  compact?: boolean
+  searchQuery?: string
 }
 
 const TopicsTab: FC<Props> = (props) => {

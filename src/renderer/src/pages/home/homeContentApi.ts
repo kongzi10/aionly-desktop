@@ -1,6 +1,12 @@
-import type { HomeContent } from './homeContent'
+import http from '@renderer/utils/request'
 
-/** Replace this adapter when the management service exposes published desktop home content. */
-export async function getPublishedHomeContent(): Promise<HomeContent> {
-  return { ticker: [], announcements: [], avatarPromotion: null }
+import { type HomePushItem, normalizePushList, type PushType } from './homeContent'
+
+export async function getHomePushList(pushType: PushType): Promise<HomePushItem[]> {
+  const response: unknown = await http.get(
+    '/base/clientPushManage/getList',
+    { pushType },
+    { cancel: false, loading: false }
+  )
+  return normalizePushList(response, pushType)
 }

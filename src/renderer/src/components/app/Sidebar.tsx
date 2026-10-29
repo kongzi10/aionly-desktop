@@ -1,4 +1,5 @@
 import logo from '@renderer/assets/images/logo.png'
+import AgentRouterIcon from '@renderer/components/Icons/AgentRouterIcon'
 import UserAvatar from '@renderer/components/UserAvatar'
 import { isMac } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
@@ -205,7 +206,9 @@ const MainMenus: FC = () => {
           {menu.icon === 'home' ? (
             <House size={18} className="icon" />
           ) : menu.icon === 'roundtable' ? (
-            <RoundtableSidebarIcon active={isActive === 'active'} className="icon roundtable-icon" />
+            <RoundtableSidebarIcon active={isActive === 'active'} className="icon menu-svg-icon" />
+          ) : menu.icon === 'agent-router' ? (
+            <AgentRouterIcon className="icon menu-svg-icon" />
           ) : (
             <i className={`iconfont icon ${isActive ? menu.iconActive : menu.icon}`}></i>
           )}
@@ -273,7 +276,7 @@ const Icon = styled.div<{ theme: string }>`
   .icon {
     color: var(--color-icon);
   }
-  .roundtable-icon {
+  .menu-svg-icon {
     width: 18px;
     height: 18px;
   }

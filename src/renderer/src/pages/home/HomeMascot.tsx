@@ -1,48 +1,44 @@
 import mascot from '@renderer/assets/images/home/landing/mascot-reference.png'
+import { X } from 'lucide-react'
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
-import type { HomeContentAction, HomeContentItem } from './homeContent'
+import { type HomeContentAction, type HomePushItem, resolveHomeContentAction } from './homeContent'
 
 interface Props {
-  promotion: HomeContentItem | null
+  promotion: HomePushItem | null
   onAction: (action: HomeContentAction) => void
-  autoOpen?: boolean
 }
 
-const HomeMascot: FC<Props> = ({ promotion, onAction, autoOpen = false }) => {
+const HomeMascot: FC<Props> = ({ promotion, onAction }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(autoOpen && promotion !== null)
+  const [open, setOpen] = useState(false)
+  const promotionId = promotion?.id
+
+  useEffect(() => setOpen(Boolean(promotionId)), [promotionId])
+
+  const action = resolveHomeContentAction(promotion?.buttonUrl)
 
   return (
-    <Container onMouseLeave={autoOpen ? undefined : () => setOpen(false)}>
+    <Container>
       <img className="mascot" src={mascot} alt="AiOnly" />
-      {promotion && (
+      {promotion && open && (
         <>
-          <PromotionTrigger
-            type="button"
-            aria-label={promotion.title}
-            onMouseEnter={autoOpen ? undefined : () => setOpen(true)}
-            onFocus={() => setOpen(true)}
-            onClick={() => setOpen((current) => !current)}>
-            {promotion.imageUrl ? <img src={promotion.imageUrl} alt="" /> : <span>✦</span>}
-          </PromotionTrigger>
-          {open && (
-            <PromotionCard>
-              <strong>{promotion.title}</strong>
-              {promotion.description && <p>{promotion.description}</p>}
-              {promotion.action && (
-                <button
-                  type="button"
-                  aria-label={`${promotion.title} ${t('homeLanding.promotionAction')}`}
-                  onClick={() => onAction(promotion.action!)}>
-                  {t('homeLanding.viewPromotion')}
-                </button>
-              )}
-            </PromotionCard>
-          )}
+          <PromotionDecoration aria-hidden="true">✦</PromotionDecoration>
+          <PromotionCard>
+            <CloseButton type="button" aria-label={t('homeLanding.closeCartoonPush')} onClick={() => setOpen(false)}>
+              <X size={14} />
+            </CloseButton>
+            <strong>{promotion.title}</strong>
+            {promotion.description && <p>{promotion.description}</p>}
+            {promotion.buttonText && action && (
+              <ActionButton type="button" onClick={() => onAction(action)}>
+                {promotion.buttonText}
+              </ActionButton>
+            )}
+          </PromotionCard>
         </>
       )}
     </Container>
@@ -61,7 +57,7 @@ const Container = styled.div`
   }
 `
 
-const PromotionTrigger = styled.button`
+const PromotionDecoration = styled.span`
   position: absolute;
   top: 10%;
   right: -58px;
@@ -74,14 +70,6 @@ const PromotionTrigger = styled.button`
   background: linear-gradient(135deg, #59b9ff, #1776ee);
   color: white;
   box-shadow: 0 8px 24px #2589ed40;
-  cursor: pointer;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 9px;
-  }
 `
 
 const PromotionCard = styled.div`
@@ -103,15 +91,31 @@ const PromotionCard = styled.div`
     color: #667b9d;
     line-height: 1.5;
   }
+`
 
-  button {
-    border: 0;
-    border-radius: 6px;
-    padding: 6px 12px;
-    background: var(--color-primary);
-    color: white;
-    cursor: pointer;
-  }
+const CloseButton = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #7d8496;
+  cursor: pointer;
+`
+
+const ActionButton = styled.button`
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 12px;
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
 `
 
 export default HomeMascot

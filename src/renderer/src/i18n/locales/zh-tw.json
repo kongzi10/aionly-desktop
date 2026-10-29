@@ -2148,6 +2148,8 @@
   },
   "homeLanding": {
     "announcements": "[to be translated]:Home announcements",
+    "closeCartoonPush": "關閉卡通推送",
+    "disclaimer": "內容均由模型生成，其生成內容的準確性和完整性無法保證，不代表我們的態度或觀點",
     "modelGuide": {
       "action": "[to be translated]:Open models",
       "description": "[to be translated]:Choose and enable a model to start a conversation.",
