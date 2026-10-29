@@ -1,5 +1,4 @@
 import { DeleteOutlined, StarFilled, StarOutlined } from '@ant-design/icons'
-import { HStack } from '@renderer/components/Layout'
 import { DynamicVirtualList } from '@renderer/components/VirtualList'
 import db from '@renderer/databases'
 import useTranslate from '@renderer/hooks/useTranslate'
@@ -140,31 +139,33 @@ const TranslateHistoryList: FC<TranslateHistoryProps> = ({ isOpen, onHistoryItem
           overflow: 'hidden'
         },
         header: {
-          paddingTop: 'var(--navbar-height)'
+          paddingTop: 'var(--navbar-height)',
+          borderBottom: '1px solid var(--color-border-soft)'
+        },
+        content: {
+          borderRadius: 12
         }
       }}>
       <HistoryContainer>
         {/* Search Bar */}
-        <HStack style={{ padding: '0 12px', borderBottom: '1px solid var(--ant-color-split)' }}>
-          <Input
-            prefix={
-              <IconWrapper>
-                <SearchIcon size={18} />
-              </IconWrapper>
-            }
-            placeholder={t('translate.history.search.placeholder')}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-            }}
-            allowClear
-            autoFocus
-            spellCheck={false}
-            style={{ paddingLeft: 0, height: '3em' }}
-            variant="borderless"
-            size="middle"
-          />
-        </HStack>
+        <SearchArea>
+          <SearchField>
+            <IconWrapper>
+              <SearchIcon size={16} />
+            </IconWrapper>
+            <SearchInput
+              placeholder={t('translate.history.search.placeholder')}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+              }}
+              allowClear
+              autoFocus
+              spellCheck={false}
+              variant="borderless"
+            />
+          </SearchField>
+        </SearchArea>
 
         {/* Virtual List */}
         {deferredHistory.length > 0 ? (
@@ -212,9 +213,7 @@ const TranslateHistoryList: FC<TranslateHistoryProps> = ({ isOpen, onHistoryItem
                         </Flex>
                         <HistoryListItemTextContainer>
                           <HistoryListItemTitle>{item.sourceText}</HistoryListItemTitle>
-                          <HistoryListItemTitle style={{ color: 'var(--color-text-2)' }}>
-                            {item.targetText}
-                          </HistoryListItemTitle>
+                          <HistoryListItemTitle $muted>{item.targetText}</HistoryListItemTitle>
                         </HistoryListItemTextContainer>
                         <HistoryListItemDate>{item.createdAt}</HistoryListItemDate>
                       </Flex>
@@ -247,6 +246,53 @@ const HistoryContainer = styled.div`
   padding-bottom: 5px;
 `
 
+const SearchArea = styled.div`
+  padding: 10px 12px;
+`
+
+const SearchField = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+  background: var(--color-background-soft);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  body.light & {
+    border-color: rgb(111 115 139 / 10%);
+    background: rgb(244 248 255 / 78%);
+  }
+
+  &:focus-within {
+    border-color: var(--color-primary-soft);
+    box-shadow: 0 0 0 3px var(--color-primary-mute);
+  }
+`
+
+const SearchInput = styled(Input)`
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none !important;
+  font-size: 13px;
+
+  .ant-input {
+    background: transparent;
+    font-size: 13px;
+  }
+
+  &::placeholder {
+    color: var(--color-text-3);
+  }
+`
+
 const HistoryList = styled.div`
   flex: 1;
   display: flex;
@@ -256,21 +302,12 @@ const HistoryList = styled.div`
 
 const HistoryListItemContainer = styled.div`
   height: ${ITEM_HEIGHT}px;
-  padding: 10px 24px;
-  transition: background-color 0.2s;
+  padding: 6px 12px;
   position: relative;
   cursor: pointer;
-  &:hover {
-    background-color: var(--color-background-mute);
-    button {
-      opacity: 1;
-    }
-  }
 
-  border-top: 1px dashed var(--color-border-soft);
-
-  &:last-child {
-    border-bottom: 1px dashed var(--color-border-soft);
+  &:hover button {
+    opacity: 1;
   }
 `
 
@@ -278,6 +315,25 @@ const HistoryListItem = styled.div`
   width: 100%;
   height: 100%;
   overflow: hidden;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
+  background: var(--color-background-soft);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  body.light & {
+    border-color: rgb(132 172 226 / 14%);
+    background: rgb(246 249 255 / 72%);
+  }
+
+  &:hover {
+    border-color: rgb(94 154 232 / 28%);
+    background: var(--color-background-mute);
+    box-shadow: 0 8px 20px rgb(77 122 190 / 8%);
+  }
 
   button {
     opacity: 0;
@@ -285,39 +341,49 @@ const HistoryListItem = styled.div`
   }
 `
 
-const HistoryListItemTitle = styled.div`
+const HistoryListItemTitle = styled.div<{ $muted?: boolean }>`
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: ${({ $muted }) => ($muted ? 'var(--color-text-2)' : 'var(--color-text-1)')};
   font-size: 13px;
+  line-height: 1.5;
 `
 
 const HistoryListItemDate = styled.div`
-  font-size: 12px;
   color: var(--color-text-3);
+  font-size: 11px;
 `
 
 const HistoryListItemLanguage = styled.div`
-  font-size: 12px;
-  color: var(--color-text-3);
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgb(94 154 232 / 10%);
+  color: var(--color-primary);
+  font-size: 11px;
+  white-space: nowrap;
 `
 
 const HistoryListItemTextContainer = styled.div`
   display: flex;
   flex-direction: column;
+  gap: 2px;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 `
 
 const IconWrapper = styled.div`
   display: flex;
-  justify-content: center;
+  flex: 0 0 auto;
   align-items: center;
-  height: 30px;
-  width: 30px;
-  border-radius: 15px;
-  background-color: var(--color-background-soft);
+  justify-content: center;
+  color: var(--color-text-3);
 `
 
 export default TranslateHistoryList

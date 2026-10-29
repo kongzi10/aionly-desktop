@@ -44,17 +44,17 @@ import {
 } from '@renderer/utils/translate'
 import { documentExts } from '@shared/config/constant'
 import { imageExts, MB, textExts } from '@shared/config/constant'
-import { Button, Flex, FloatButton, Popover, Tooltip, Typography } from 'antd'
+import { Button, Flex, Popover, Tooltip } from 'antd'
 import type { TextAreaRef } from 'antd/es/input/TextArea'
 import TextArea from 'antd/es/input/TextArea'
 import { isEmpty, throttle } from 'lodash'
-import { Check, CirclePause, FolderClock, Settings2, UploadIcon } from 'lucide-react'
+import { Check, FolderClock, Settings2, UploadIcon } from 'lucide-react'
 import type { FC } from 'react'
 import React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
-import styled from 'styled-components'
+import styled, { css } from 'styled-components'
 
 import TranslateHistoryList from './TranslateHistory'
 import TranslateSettings from './TranslateSettings'
@@ -484,7 +484,8 @@ const TranslatePage: FC = () => {
 
     return (
       <LanguageSelect
-        style={{ width: 200 }}
+        variant="filled"
+        style={{ width: 190 }}
         value={targetLanguage.langCode}
         onChange={(value) => {
           setTargetLanguage(getLanguageByLangcode(value))
@@ -732,29 +733,28 @@ const TranslatePage: FC = () => {
       <Navbar>
         <NavbarCenter style={{ borderRight: 'none', gap: 10 }}>{t('translate.title')}</NavbarCenter>
       </Navbar>
-      <ContentContainer
-        id="content-container"
-        className="nav-module-surface"
-        ref={contentContainerRef}
-        $historyDrawerVisible={historyDrawerVisible}>
+      <ContentContainer id="content-container" className="nav-module-surface" ref={contentContainerRef}>
         <TranslateHistoryList
           onHistoryItemClick={onHistoryItemClick}
           isOpen={historyDrawerVisible}
           onClose={() => setHistoryDrawerVisible(false)}
         />
         <OperationBar>
-          <InnerOperationBar style={{ justifyContent: 'flex-start' }}>
-            <Button
-              className="nodrag"
-              color="default"
-              variant={historyDrawerVisible ? 'filled' : 'text'}
-              type="text"
-              icon={<FolderClock size={18} />}
-              onClick={() => setHistoryDrawerVisible(!historyDrawerVisible)}
-            />
+          <InnerOperationBar>
+            <Tooltip title={t('translate.history.title')} placement="bottom">
+              <IconButton
+                className="nodrag"
+                type="button"
+                $active={historyDrawerVisible}
+                aria-label={t('translate.history.title')}
+                onClick={() => setHistoryDrawerVisible(!historyDrawerVisible)}>
+                <FolderClock size={18} />
+              </IconButton>
+            </Tooltip>
             <LanguageSelect
               showSearch
-              style={{ width: 200 }}
+              variant="filled"
+              style={{ width: 190 }}
               value={sourceLanguage !== 'auto' ? sourceLanguage.langCode : 'auto'}
               optionFilterProp="label"
               onChange={(value) => {
@@ -772,13 +772,14 @@ const TranslatePage: FC = () => {
               ]}
             />
             <Tooltip title={t('translate.exchange.label')} placement="bottom">
-              <Button
-                type="text"
-                icon={<SwapOutlined />}
-                style={{ margin: '0 -2px' }}
+              <IconButton
+                type="button"
+                $compact
+                aria-label={t('translate.exchange.label')}
                 onClick={handleExchange}
-                disabled={!couldExchange}
-              />
+                disabled={!couldExchange}>
+                <SwapOutlined />
+              </IconButton>
             </Tooltip>
             {getLanguageDisplay()}
             <TranslateButton
@@ -797,17 +798,25 @@ const TranslatePage: FC = () => {
                   modelFilter={modelPredicate}
                   noTooltip={true}
                 />
-                <Button type="text" icon={<Settings2 size={18} />} onClick={() => setSettingsVisible(true)} />
+                <Tooltip title={t('translate.settings.title')} placement="bottom">
+                  <IconButton
+                    type="button"
+                    $compact
+                    aria-label={t('translate.settings.title')}
+                    onClick={() => setSettingsVisible(true)}>
+                    <Settings2 size={18} />
+                  </IconButton>
+                </Tooltip>
               </>
             ) : (
-              <Flex align="center" gap={5}>
-                <TipText className="tips">
+              <Flex align="center" gap={8}>
+                <TipText>
                   <WarningFilled />
                   {t('chat.topics.no_model')}
                 </TipText>
-                <Button type="primary" onClick={handleOpenModel}>
+                <TranslateAction type="primary" onClick={handleOpenModel}>
                   {t('chat.topics.open_model_text')}
-                </Button>
+                </TranslateAction>
               </Flex>
             )}
           </InnerOperationBar>
@@ -815,26 +824,17 @@ const TranslatePage: FC = () => {
         <AreaContainer>
           <InputContainer
             data-tour="translate-input"
-            style={isDraggingOnInput ? { border: '2px dashed var(--color-primary)' } : undefined}
+            $dragging={isDraggingOnInput}
             onDragEnter={handleDragEnterInput}
             onDragLeave={handleDragLeaveInput}
             onDragOver={handleDragOverInput}
             onDrop={handleDrop}>
             {(isDragging || isDraggingOnInput) && (
-              <InputContainerDraggingHintContainer>
-                <UploadIcon color="var(--color-text-3)" />
+              <DropHint>
+                <UploadIcon size={18} />
                 {t('translate.files.drag_text')}
-              </InputContainerDraggingHintContainer>
+              </DropHint>
             )}
-            <FloatButton
-              style={{ position: 'absolute', left: 10, bottom: 10, width: 35, height: 35 }}
-              className="float-button"
-              icon={<PlusOutlined />}
-              tooltip={t('common.upload_files')}
-              shape="circle"
-              type="primary"
-              onClick={handleSelectFile}
-            />
             <Textarea
               ref={textAreaRef}
               variant="borderless"
@@ -849,28 +849,29 @@ const TranslatePage: FC = () => {
               allowClear
             />
             <Footer>
+              <Tooltip title={t('common.upload_files')} placement="top">
+                <IconButton type="button" $compact aria-label={t('common.upload_files')} onClick={handleSelectFile}>
+                  <PlusOutlined />
+                </IconButton>
+              </Tooltip>
               <Popover content={t('chat.input.estimated_tokens.tip')}>
-                <Typography.Text style={{ color: 'var(--color-text-3)', paddingRight: 8 }}>
-                  {tokenCount}
-                </Typography.Text>
+                <TokenText>{tokenCount}</TokenText>
               </Popover>
             </Footer>
           </InputContainer>
 
           <OutputContainer data-tour="translate-output">
             <CopyButton
-              type="text"
-              size="small"
+              type="button"
+              aria-label={t('common.copy')}
               className="copy-button"
               onClick={onCopy}
-              disabled={!translatedContent}
-              icon={copied ? <Check size={16} color="var(--color-primary)" /> : <CopyIcon size={16} />}
-            />
+              disabled={!translatedContent}>
+              {copied ? <Check size={16} color="var(--color-primary)" /> : <CopyIcon size={16} />}
+            </CopyButton>
             <OutputText ref={outputTextRef} onScroll={handleOutputScroll} className={'selectable'}>
               {!translatedContent ? (
-                <div style={{ color: 'var(--color-text-3)', userSelect: 'none' }}>
-                  {t('translate.output.placeholder')}
-                </div>
+                <OutputPlaceholder>{t('translate.output.placeholder')}</OutputPlaceholder>
               ) : enableMarkdown ? (
                 <div className="markdown" dangerouslySetInnerHTML={{ __html: renderedMarkdown }} />
               ) : (
@@ -907,16 +908,15 @@ const Container = styled.div`
   min-height: 0;
 `
 
-const ContentContainer = styled.div<{ $historyDrawerVisible: boolean }>`
+const ContentContainer = styled.div`
   min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
   padding: 12px;
   position: relative;
-  background-color: var(--color-background);
   [navbar-position='left'] & {
     padding: 12px 16px;
   }
@@ -926,51 +926,70 @@ const AreaContainer = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   flex: 1;
-  gap: 8px;
+  min-height: 0;
+  gap: 10px;
 `
 
-const InputContainer = styled.div`
+const InputContainer = styled.div<{ $dragging: boolean }>`
   position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
-  padding: 10px 5px;
+  min-height: 0;
+  padding: 8px 4px 4px;
   border: 1px solid var(--color-border-soft);
-  border-radius: 10px;
-  height: calc(100vh - var(--navbar-height) - 70px);
+  border-radius: 12px;
+  background: var(--color-background-soft);
   overflow: hidden;
-  .float-button {
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  body.light & {
+    border-color: rgb(111 115 139 / 10%);
+    background: rgb(244 248 255 / 78%);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 14px 38px rgb(111 115 139 / 7%);
   }
 
-  &:hover {
-    .float-button {
-      opacity: 1;
-    }
+  &:focus-within {
+    border-color: var(--color-primary-soft);
+    box-shadow: 0 0 0 3px var(--color-primary-mute);
   }
+
+  ${({ $dragging }) =>
+    $dragging &&
+    css`
+      border: 1px dashed var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-mute);
+    `}
 `
 
-const InputContainerDraggingHintContainer = styled.div`
+const DropHint = styled.div`
   position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
+  inset: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  background: rgb(22 119 255 / 4%);
   color: var(--color-text-3);
+  font-size: 13px;
+  pointer-events: none;
 `
 
 const Textarea = styled(TextArea)`
   display: flex;
   flex: 1;
+  min-height: 0;
   border-radius: 0;
   .ant-input {
     resize: none;
-    padding: 5px 16px;
+    padding: 4px 16px;
+    font-size: 14px;
+    line-height: 1.7;
   }
   .ant-input-clear-icon {
     font-size: 16px;
@@ -981,8 +1000,17 @@ const Footer = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 10px;
+  padding: 2px 8px 0;
+`
+
+const TokenText = styled.span`
+  padding: 0 6px;
+  color: var(--color-text-3);
+  font-size: 11px;
+  line-height: 1;
+  cursor: default;
 `
 
 const OutputContainer = styled.div`
@@ -991,11 +1019,16 @@ const OutputContainer = styled.div`
   flex-direction: column;
   min-height: 0;
   position: relative;
-  background-color: var(--color-background-soft);
-  border-radius: 10px;
-  padding: 10px 5px;
-  height: calc(100vh - var(--navbar-height) - 70px);
+  padding: 8px 4px 4px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
+  background: var(--color-background);
   overflow: hidden;
+
+  body.light & {
+    border-color: rgb(132 172 226 / 16%);
+    box-shadow: 0 10px 26px rgb(77 122 190 / 6%);
+  }
 
   & > div > .markdown > pre {
     background-color: var(--color-background-mute) !important;
@@ -1007,22 +1040,45 @@ const OutputContainer = styled.div`
   }
 `
 
-const CopyButton = styled(Button)`
+const CopyButton = styled.button`
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 50%;
+  background: var(--color-background);
+  color: var(--color-text-2);
+  cursor: pointer;
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 0.2s ease-in-out,
-    visibility 0.2s ease-in-out;
+    opacity 0.2s ease,
+    visibility 0.2s ease,
+    color 0.2s ease,
+    background-color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    color: var(--color-primary);
+    background: var(--color-primary-mute);
+  }
+
+  &:disabled {
+    color: var(--color-text-3);
+    cursor: not-allowed;
+  }
 `
 
 const OutputText = styled.div`
   min-height: 0;
   flex: 1;
-  padding: 5px 16px;
+  padding: 8px 16px;
   overflow-y: auto;
 
   .plain {
@@ -1037,6 +1093,11 @@ const OutputText = styled.div`
       overflow-wrap: break-word;
     }
   }
+`
+
+const OutputPlaceholder = styled.div`
+  color: var(--color-text-3);
+  user-select: none;
 `
 
 const TranslateButton = ({
@@ -1064,49 +1125,135 @@ const TranslateButton = ({
         </div>
       }>
       {!translating && (
-        <Button type="primary" onClick={onTranslate} disabled={!couldTranslate} icon={<SendOutlined />}>
+        <TranslateAction type="primary" onClick={onTranslate} disabled={!couldTranslate} icon={<SendOutlined />}>
           {t('translate.button.translate')}
-        </Button>
+        </TranslateAction>
       )}
       {translating && (
-        <Button danger type="primary" onClick={onAbort} icon={<CirclePause size={14} />}>
+        <TranslateAction type="primary" onClick={onAbort} icon={<StopMark aria-hidden="true" />}>
           {t('common.stop')}
-        </Button>
+        </TranslateAction>
       )}
     </Tooltip>
   )
 }
 
+const StopMark = styled.span`
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #fff;
+`
+
 const BidirectionalLanguageDisplay = styled.div`
-  padding: 4px 11px;
-  border-radius: 6px;
-  background-color: var(--color-background);
-  border: 1px solid var(--color-border);
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  text-align: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 9px;
+  background: var(--color-background-soft);
+  color: var(--color-text-2);
+  font-size: 13px;
+  white-space: nowrap;
 `
 
 const OperationBar = styled.div`
   display: flex;
-  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
-  padding-bottom: 4px;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
+  background: var(--color-background-soft);
+
+  body.light & {
+    border-color: rgb(132 172 226 / 16%);
+    background: rgb(246 249 255 / 72%);
+    box-shadow: 0 8px 22px rgb(77 122 190 / 6%);
+  }
 `
 
 const InnerOperationBar = styled.div`
   display: flex;
-  flex-direction: row;
+  flex-flow: row wrap;
   align-items: center;
   gap: 8px;
-  overflow: hidden;
+  min-width: 0;
+`
+
+const IconButton = styled.button<{ $active?: boolean; $compact?: boolean }>`
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: ${({ $compact }) => ($compact ? '28px' : '32px')};
+  height: ${({ $compact }) => ($compact ? '28px' : '32px')};
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-2);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    color: var(--color-primary);
+    background: var(--color-primary-mute);
+  }
+
+  &:disabled {
+    color: var(--color-text-3);
+    cursor: not-allowed;
+  }
+
+  ${({ $active }) =>
+    $active &&
+    css`
+      color: var(--color-primary);
+      border-color: var(--color-primary-soft);
+      background: var(--color-primary-mute);
+    `}
+`
+
+const TranslateAction = styled(Button)`
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  box-shadow: 0 6px 16px rgb(22 119 255 / 22%);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgb(22 119 255 / 28%);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    box-shadow: none;
+  }
 `
 
 const TipText = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
   color: var(--color-red-600);
-  font-size: 14px;
+  font-size: 13px;
 `
 
 export default TranslatePage
