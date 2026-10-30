@@ -22,8 +22,16 @@ import { initSessionUserAgent } from './WebviewService'
 
 const DEFAULT_MINIWINDOW_WIDTH = 550
 const DEFAULT_MINIWINDOW_HEIGHT = 400
-const DEFAULT_MAINWINDOW_WIDTH = 1090
-const DEFAULT_MAINWINDOW_HEIGHT = 760
+const DEFAULT_MAINWINDOW_WIDTH = 1200
+const DEFAULT_MAINWINDOW_HEIGHT = 780
+
+// 历史版本的默认窗口尺寸。持久化尺寸命中这些值时，视为「用户从未手动调整过窗口」，
+// 升级到当前默认尺寸，避免老配置把新的默认值一直覆盖掉。
+const LEGACY_DEFAULT_MAINWINDOW_SIZES: { width: number; height: number; heightTolerance?: number }[] = [
+  // Windows 会额外持久化最多 20px 的窗口边框高度
+  { width: MIN_WINDOW_WIDTH, height: MIN_WINDOW_HEIGHT, heightTolerance: 20 },
+  { width: 1090, height: 760 }
+]
 
 // const logger = loggerService.withContext('WindowService')
 const logger = loggerService.withContext('WindowService')
@@ -62,11 +70,12 @@ export class WindowService {
       fullScreen: false,
       maximize: false
     })
-    // Windows can persist the old 960x600 default with an extra 16px of frame height.
-    const usedPreviousDefaultSize =
-      mainWindowState.width === MIN_WINDOW_WIDTH &&
-      mainWindowState.height >= MIN_WINDOW_HEIGHT &&
-      mainWindowState.height <= MIN_WINDOW_HEIGHT + 16
+    const usedPreviousDefaultSize = LEGACY_DEFAULT_MAINWINDOW_SIZES.some(
+      ({ width, height, heightTolerance = 0 }) =>
+        mainWindowState.width === width &&
+        mainWindowState.height >= height &&
+        mainWindowState.height <= height + heightTolerance
+    )
     /*const windowsBackgroundMaterial = getWindowsBackgroundMaterial()
     let _mainWindowBackgroundColor: string | undefined
 
