@@ -84,8 +84,9 @@ const AppsPage: FC = () => {
 
   return (
     <Container onContextMenu={handleContextMenu} className="page-container nav-module-layout">
+      {/* 不显示页面标题；NavbarMain 仅作弹性占位，把右侧余额 / 主题 / 窗口按钮推到最右 */}
       <Navbar className={minappShow ? 'opacity-0' : ''}>
-        <NavbarMain>{t('minapp.title')}</NavbarMain>
+        <NavbarMain />
       </Navbar>
       <ContentContainer id="content-container" className="nav-module-surface">
         <PageScroller>

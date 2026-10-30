@@ -730,8 +730,9 @@ const TranslatePage: FC = () => {
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={preventDrop}>
+      {/* 不显示页面标题；NavbarCenter 仅作弹性占位，把右侧余额 / 主题 / 窗口按钮推到最右 */}
       <Navbar>
-        <NavbarCenter style={{ borderRight: 'none', gap: 10 }}>{t('translate.title')}</NavbarCenter>
+        <NavbarCenter style={{ borderRight: 'none' }} />
       </Navbar>
       <ContentContainer id="content-container" className="nav-module-surface" ref={contentContainerRef}>
         <TranslateHistoryList
@@ -867,7 +868,11 @@ const TranslatePage: FC = () => {
               className="copy-button"
               onClick={onCopy}
               disabled={!translatedContent}>
-              {copied ? <Check size={16} color="var(--color-primary)" /> : <CopyIcon size={16} />}
+              {copied ? (
+                <Check size={16} className="lucide-custom" color="var(--color-primary)" />
+              ) : (
+                <CopyIcon size={16} />
+              )}
             </CopyButton>
             <OutputText ref={outputTextRef} onScroll={handleOutputScroll} className={'selectable'}>
               {!translatedContent ? (
