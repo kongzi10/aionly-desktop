@@ -67,11 +67,14 @@ describe('RouteList', () => {
     expect(onUpdateRoute.mock.calls[0][1]).not.toHaveProperty('displayName')
   })
 
-  it('fits the route table without forcing horizontal scrolling', () => {
+  it('renders one card row per route without a table', () => {
     const { container } = render(
       <RouteList
-        routes={[route]}
-        credentials={[{ id: 'credential-1', label: 'Key', maskedValue: '••••secret' }]}
+        routes={[route, { ...route, credentialId: 'credential-2', enabled: false }]}
+        credentials={[
+          { id: 'credential-1', label: 'Key', maskedValue: '••••secret' },
+          { id: 'credential-2', label: 'Key B', maskedValue: '••••other' }
+        ]}
         onRemove={vi.fn()}
         onUpdateRoute={vi.fn()}
         onEnabledChange={vi.fn()}
@@ -79,7 +82,9 @@ describe('RouteList', () => {
       />
     )
 
-    expect(container.querySelector('table')).not.toHaveStyle({ width: '760px' })
+    expect(container.querySelector('table')).toBeNull()
+    expect(screen.queryByRole('columnheader')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('route-row')).toHaveLength(2)
   })
 
   it('forces route switches off and disables them when the target config is not detected', () => {

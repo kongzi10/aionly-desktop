@@ -1,7 +1,6 @@
 import { DeleteOutlined, DownOutlined, EditOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
 import type { AgentRouteModel, UpdateAgentRouteRequest } from '@shared/agentRouter'
-import type { TableColumnsType } from 'antd'
-import { Button, Empty, Form, message, Modal, Select, Switch, Table, Tag } from 'antd'
+import { Form, message, Select, Switch } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -9,6 +8,7 @@ import styled from 'styled-components'
 import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterSources'
 import { useTokenPlanModels } from '../hooks/useTokenPlanModels'
 import { RouteModelTypes } from './RouteCapabilities'
+import { ConfirmDialog, getModalPopupContainer, RouteFormModal } from './RouteFormModal'
 
 interface EditFormValues {
   accessMode: 'api' | 'tokenPlan'
@@ -64,9 +64,6 @@ export const RouteList = ({
   const editModelTypes = editModel?.modelTypes ?? routeToEdit?.modelTypes
   const selectedEditKey = editCredentialId === CURRENT_CREDENTIAL ? revealedCurrentKey : selectedEditCredential?.value
 
-  if (!routes.length)
-    return <CompactEmpty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('agentRouter.noRoutes')} />
-
   const toggleEditKeyVisibility = async () => {
     if (showEditKey) {
       setShowEditKey(false)
@@ -78,107 +75,11 @@ export const RouteList = ({
     setShowEditKey(true)
   }
 
-  const columns: TableColumnsType<AgentRouteModel> = [
-    {
-      title: t('agentRouter.routeName'),
-      dataIndex: 'modelId',
-      key: 'modelId',
-      render: (_, route) => (
-        <RouteIdentity>
-          <NameLine>
-            <strong>{route.modelId}</strong>
-            <RouteModelTypes compact modelTypes={route.modelTypes} />
-          </NameLine>
-        </RouteIdentity>
-      )
-    },
-    {
-      title: t('agentRouter.accessMode'),
-      dataIndex: 'accessMode',
-      key: 'accessMode',
-      width: 80,
-      render: (accessMode: AgentRouteModel['accessMode']) => <Tag>{accessMode === 'api' ? 'API' : 'TokenPlan'}</Tag>
-    },
-    {
-      title: t('agentRouter.apiKey'),
-      dataIndex: 'credentialId',
-      key: 'credentialId',
-      width: 135,
-      render: (credentialId: string) => {
-        const credential = credentialsById.get(credentialId)
-        return credential ? (
-          <RouteIdentity>
-            <strong>{credential.label}</strong>
-            <MutedText>{credential.maskedValue}</MutedText>
-          </RouteIdentity>
-        ) : (
-          <MutedText>{t('agentRouter.credentialUnavailable')}</MutedText>
-        )
-      }
-    },
-    {
-      title: t('agentRouter.actions'),
-      key: 'actions',
-      width: 180,
-      align: 'left',
-      render: (_, route) => (
-        <RowActions>
-          <Switch
-            size="small"
-            checked={routeTogglesDisabled ? false : route.enabled}
-            disabled={busy || routeTogglesDisabled}
-            onChange={(enabled) => {
-              if (enabled && routes.some((item) => item.modelId === route.modelId && item.enabled)) {
-                setRouteToEnable(route)
-                return
-              }
-              onEnabledChange(route, enabled)
-            }}
-          />
-          <Button
-            type="text"
-            size="small"
-            disabled={busy}
-            icon={<EditOutlined />}
-            onClick={() => {
-              setRouteToEdit(route)
-              setShowEditKey(false)
-              setRevealedCurrentKey(undefined)
-              editForm.setFieldsValue({
-                accessMode: route.accessMode,
-                credentialId: CURRENT_CREDENTIAL
-              })
-            }}>
-            {t('agentRouter.edit')}
-          </Button>
-          <Button
-            type="text"
-            size="small"
-            danger
-            disabled={busy}
-            icon={<DeleteOutlined />}
-            onClick={() => setRouteToRemove(route)}>
-            {t('agentRouter.remove')}
-          </Button>
-        </RowActions>
-      )
-    }
-  ]
-
-  return (
-    <TableContainer>
-      {contextHolder}
-      <Table<AgentRouteModel>
-        dataSource={routes}
-        columns={columns}
-        pagination={false}
-        rowKey={(route) => `${route.modelId}:${route.credentialId}`}
-        size="small"
-        tableLayout="fixed"
-      />
-      <StyledEditModal
+  const modals = (
+    <>
+      <RouteFormModal
         open={Boolean(routeToEdit)}
-        width={560}
+        width={520}
         centered
         title={t('agentRouter.editRoute')}
         okText={t('common.save')}
@@ -213,10 +114,11 @@ export const RouteList = ({
             }
           }
         }}>
-        <Form form={editForm} labelCol={{ flex: '86px' }} labelAlign="left" colon={false} style={{ marginTop: 15 }}>
+        <Form form={editForm} labelCol={{ flex: '86px' }} labelAlign="left" colon={false}>
           <Form.Item name="accessMode" label={t('agentRouter.accessMode')}>
             <Select
               aria-label={t('agentRouter.accessMode')}
+              getPopupContainer={getModalPopupContainer}
               onChange={(accessMode) => {
                 editForm.setFieldValue(
                   'credentialId',
@@ -234,6 +136,7 @@ export const RouteList = ({
           <Form.Item name="credentialId" label={t('agentRouter.apiKey')} rules={[{ required: true }]}>
             <Select
               aria-label={t('agentRouter.apiKey')}
+              getPopupContainer={getModalPopupContainer}
               optionLabelProp="selectedLabel"
               onChange={() => setShowEditKey(false)}
               options={[
@@ -272,16 +175,15 @@ export const RouteList = ({
           <Form.Item label={t('agentRouter.modelId')}>
             <Select
               disabled
+              getPopupContainer={getModalPopupContainer}
               value={routeToEdit?.modelId}
               options={[{ value: routeToEdit?.modelId, label: routeToEdit?.modelId }]}
             />
           </Form.Item>
         </Form>
-      </StyledEditModal>
-      <OverwriteModal
+      </RouteFormModal>
+      <ConfirmDialog
         open={Boolean(routeToEnable)}
-        centered
-        width={380}
         title={t('agentRouter.confirmOverwriteModelId')}
         okText={t('agentRouter.overwrite')}
         cancelText={t('common.cancel')}
@@ -291,7 +193,7 @@ export const RouteList = ({
           setRouteToEnable(null)
         }}
       />
-      <Modal
+      <ConfirmDialog
         open={Boolean(routeToRemove)}
         title={t('agentRouter.confirmRemoveSelected')}
         okText={t('agentRouter.remove')}
@@ -303,61 +205,266 @@ export const RouteList = ({
           setRouteToRemove(null)
         }}
       />
-    </TableContainer>
+    </>
+  )
+
+  if (!routes.length)
+    return (
+      <Wrapper>
+        {contextHolder}
+        <EmptyBox data-testid="routes-empty">
+          <strong>{t('agentRouter.noRoutes')}</strong>
+          <span>{t('agentRouter.addModelsDescription')}</span>
+        </EmptyBox>
+        {modals}
+      </Wrapper>
+    )
+
+  return (
+    <Wrapper>
+      {contextHolder}
+      <Rows data-testid="routes-list">
+        {routes.map((route) => {
+          const credential = credentialsById.get(route.credentialId)
+          const togglesDisabled = busy || routeTogglesDisabled
+          return (
+            <Row
+              key={`${route.modelId}:${route.credentialId}`}
+              data-testid="route-row"
+              $inactive={!route.enabled}
+              $disabled={routeTogglesDisabled}>
+              <Identity>
+                <ModelLine>
+                  <strong>{route.modelId}</strong>
+                  <RouteModelTypes compact modelTypes={route.modelTypes} />
+                </ModelLine>
+                <CredentialLine>
+                  {credential ? (
+                    <>
+                      <strong>{credential.label}</strong>
+                      <MutedText>{credential.maskedValue}</MutedText>
+                    </>
+                  ) : (
+                    <MutedText>{t('agentRouter.credentialUnavailable')}</MutedText>
+                  )}
+                </CredentialLine>
+              </Identity>
+              <AccessChip $mode={route.accessMode}>{route.accessMode === 'api' ? 'API' : 'TokenPlan'}</AccessChip>
+              <RowActions>
+                <Switch
+                  size="small"
+                  checked={routeTogglesDisabled ? false : route.enabled}
+                  disabled={togglesDisabled}
+                  aria-label={`${route.modelId} ${route.accessMode === 'api' ? 'API' : 'TokenPlan'}`}
+                  onChange={(enabled) => {
+                    if (enabled && routes.some((item) => item.modelId === route.modelId && item.enabled)) {
+                      setRouteToEnable(route)
+                      return
+                    }
+                    onEnabledChange(route, enabled)
+                  }}
+                />
+                <IconKey
+                  type="button"
+                  aria-label={`${t('agentRouter.edit')} ${route.modelId}`}
+                  title={t('agentRouter.edit')}
+                  disabled={busy}
+                  onClick={() => {
+                    setRouteToEdit(route)
+                    setShowEditKey(false)
+                    setRevealedCurrentKey(undefined)
+                    editForm.setFieldsValue({
+                      accessMode: route.accessMode,
+                      credentialId: CURRENT_CREDENTIAL
+                    })
+                  }}>
+                  <EditOutlined />
+                </IconKey>
+                <IconKey
+                  type="button"
+                  $danger
+                  aria-label={`${t('agentRouter.remove')} ${route.modelId}`}
+                  title={t('agentRouter.remove')}
+                  disabled={busy}
+                  onClick={() => setRouteToRemove(route)}>
+                  <DeleteOutlined />
+                </IconKey>
+              </RowActions>
+            </Row>
+          )
+        })}
+      </Rows>
+      {modals}
+    </Wrapper>
   )
 }
 
-const CompactEmpty = styled(Empty)`
-  margin: 13px 0 12px;
-  .ant-empty-image { height: 30px; margin-bottom: 4px; }
-  .ant-empty-description { font-size: 11px; }
+const Wrapper = styled.div`
+  padding: 1px 0 2px;
 `
 
-const TableContainer = styled.div`
-  .ant-table { background: transparent; }
-  .ant-table-thead > tr > th { color: var(--color-text-3); font-size: 11px; font-weight: 600; background: transparent; }
-  .ant-table-tbody > tr > td { height: 58px; }
+const Rows = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 `
 
-const RouteIdentity = styled.div`
-  min-width: 0; display: flex; flex-direction: column; gap: 2px;
-  > span { overflow: hidden; color: var(--color-text-3); font-family: monospace; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
+const Row = styled.div<{ $inactive: boolean; $disabled: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  min-height: 62px;
+  padding: 9px 10px 9px 14px;
+  border: 1px solid rgb(132 172 226 / 18%);
+  border-radius: 12px;
+  background: ${(props) => (props.$inactive ? 'rgb(249 251 254)' : 'rgb(246 250 255)')};
+  opacity: ${(props) => (props.$disabled ? 0.62 : 1)};
+  transition: box-shadow 0.2s ease;
+
+  body.dark & {
+    background: ${(props) => (props.$inactive ? 'rgb(255 255 255 / 3%)' : 'rgb(255 255 255 / 5%)')};
+  }
+
+  &:hover {
+    box-shadow: 0 8px 20px rgb(77 122 190 / 10%);
+  }
 `
 
-const NameLine = styled.div`
-  min-width: 0; display: flex; align-items: center; gap: 5px;
-  strong { flex: 0 1 auto; min-width: 80px; overflow: hidden; color: var(--color-text-1); font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+const Identity = styled.div`
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 `
 
-const RowActions = styled.div`
-  display: flex; align-items: center; justify-content: flex-start; gap: 0;
-  .ant-btn { padding-inline: 5px; font-size: 11px; }
+const ModelLine = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+
+  strong {
+    flex: 0 1 auto;
+    min-width: 60px;
+    overflow: hidden;
+    color: var(--color-text-1);
+    font-size: 13px;
+    font-weight: 650;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+`
+
+const CredentialLine = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+
+  strong {
+    flex: 0 1 auto;
+    overflow: hidden;
+    color: var(--color-text-2);
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 `
 
 const MutedText = styled.span`
+  overflow: hidden;
   color: var(--color-text-3);
-  font-size: 12px;
+  font-family: monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 `
 
-const StyledEditModal = styled(Modal)`
-  .ant-modal-content { padding: 22px 18px 14px; border-radius: 12px; }
-  .ant-modal-header { margin: 0 0 20px; }
-  .ant-modal-title { font-size: 16px; font-weight: 700; }
-  .ant-modal-footer { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-border); }
-  .ant-form-item { margin-bottom: 16px; }
-  .ant-form-item-label > label { font-weight: 650; }
-  .ant-input { height: 36px; border-radius: 9px; background: var(--color-background-soft); }
-  .ant-select-single { height: 36px; }
-  .ant-select-selector { height: 36px !important; min-height: 36px !important; border-radius: 9px !important; background: var(--color-background-soft) !important; }
-  .ant-select-selection-wrap { height: 34px; align-self: stretch; align-items: center; }
-  .ant-select-selection-item { line-height: 34px !important; }
-  .ant-select-arrow { inset-block-start: 50%; margin-top: 0; display: flex; align-items: center; transform: translateY(-50%); }
+const AccessChip = styled.span<{ $mode: 'api' | 'tokenPlan' }>`
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: ${(props) => (props.$mode === 'api' ? 'rgb(228 238 255)' : 'rgb(220 245 247)')};
+  color: ${(props) => (props.$mode === 'api' ? 'rgb(64 116 234)' : 'rgb(6 158 176)')};
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  body.dark & {
+    background: ${(props) => (props.$mode === 'api' ? 'rgb(64 116 234 / 20%)' : 'rgb(6 158 176 / 20%)')};
+    color: ${(props) => (props.$mode === 'api' ? 'rgb(140 174 255)' : 'rgb(120 214 226)')};
+  }
+`
+
+const RowActions = styled.div`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+`
+
+const IconKey = styled.button<{ $danger?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: ${(props) => (props.$danger ? 'var(--color-error, #d9534f)' : 'var(--color-text-3)')};
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: ${(props) => (props.$danger ? 'rgb(217 83 79 / 12%)' : 'rgb(96 150 255 / 12%)')};
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+`
+
+const EmptyBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0;
+  padding: 40px 16px;
+  border: 1px dashed rgb(132 172 226 / 30%);
+  border-radius: 14px;
+  text-align: center;
+
+  strong {
+    color: var(--color-text-2);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  span {
+    color: var(--color-text-3);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
 `
 
 const SuffixControls = styled.span`height:100%;display:inline-flex;align-items:center;gap:8px;`
 const KeyVisibility = styled.button`padding:0;display:inline-flex;align-items:center;border:0;background:transparent;color:var(--color-text-3);cursor:pointer;`
-
-const OverwriteModal = styled(Modal)`
-  .ant-modal-content { border-radius: 6px; }
-  .ant-modal-header { margin-bottom: 18px; }
-`

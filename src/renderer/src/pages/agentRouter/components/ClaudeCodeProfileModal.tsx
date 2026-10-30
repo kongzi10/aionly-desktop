@@ -1,6 +1,5 @@
 import type { ClaudeCodeRouteProfile } from '@shared/agentRouter'
 import { useTranslation } from 'react-i18next'
-import styled from 'styled-components'
 
 import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterSources'
 import type { ClaudeCodeFormValue } from './ClaudeCodeRouteForm'
@@ -32,7 +31,7 @@ export const ClaudeCodeProfileModal = ({
 }: Props) => {
   const { t } = useTranslation()
   return (
-    <StyledModal
+    <RouteFormModal
       open={open}
       title={isNew ? t('agentRouter.claudeCode.newProfile') : t('agentRouter.claudeCode.editProfile')}
       width={640}
@@ -49,11 +48,6 @@ export const ClaudeCodeProfileModal = ({
         onSave={onSave}
         onCancel={onCancel}
       />
-    </StyledModal>
+    </RouteFormModal>
   )
 }
-
-const StyledModal = styled(RouteFormModal)`
-  .ant-radio-group { display: flex; width: 100%; }
-  .ant-radio-button-wrapper { flex: 1; text-align: center; }
-`

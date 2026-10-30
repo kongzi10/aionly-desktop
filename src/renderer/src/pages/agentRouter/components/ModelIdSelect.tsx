@@ -63,14 +63,18 @@ export const ModelIdSelect = ({ id, models, value = [], onChange, disabled, load
           onChange?.(draft)
           setOpen(false)
         }}>
-        <Input
-          prefix={<SearchOutlined />}
-          placeholder={t('agentRouter.searchModelId')}
-          value={search}
-          allowClear
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <SelectionCount>{t('agentRouter.selectedModels', { count: draft.length })}</SelectionCount>
+        <SearchBar>
+          <Input
+            prefix={<SearchOutlined />}
+            placeholder={t('agentRouter.searchModelId')}
+            value={search}
+            allowClear
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <SelectionCount $active={draft.length > 0}>
+            {t('agentRouter.selectedModels', { count: draft.length })}
+          </SelectionCount>
+        </SearchBar>
         <ModelList>
           {filtered.length ? (
             filtered.map((model) => (
@@ -87,7 +91,9 @@ export const ModelIdSelect = ({ id, models, value = [], onChange, disabled, load
               </ModelOption>
             ))
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            <EmptyBox>
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            </EmptyBox>
           )}
         </ModelList>
       </RouteFormModal>
@@ -96,21 +102,136 @@ export const ModelIdSelect = ({ id, models, value = [], onChange, disabled, load
 }
 
 const Trigger = styled.button`
-  width: 100%; min-height: 36px; padding: 7px 11px; display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; border: 1px solid var(--color-border, #d9d9d9); border-radius: 8px;
-  background: var(--color-background-soft, #f5f5f5); color: var(--color-text, #333); font: inherit; text-align: left; cursor: pointer;
-  &:hover:not(:disabled), &:focus-visible { border-color: var(--color-primary, #1677ff); }
-  &:focus-visible { outline: 2px solid var(--color-primary, #1677ff); outline-offset: 2px; }
-  &:disabled { color: var(--color-text-3, #aaa); cursor: not-allowed; }
-  > .anticon { color: var(--color-text-3, #888); }
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-background);
+  color: var(--color-text-2);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-text-3);
+    color: var(--color-text-1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ar-accent);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    color: var(--color-text-3);
+    /* 不用 not-allowed：这个按钮绝大多数时候是被上游（未选密钥）禁用，
+       禁止光标会让人以为整个表单走不通，这里只用颜色弱化表达 */
+    cursor: default;
+  }
+
+  > .anticon {
+    color: var(--color-text-3);
+  }
 `
-const SelectedModels = styled.div`display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;max-height:100px;overflow:auto;`
-const ModelTag = styled.span`max-width:100%;padding:3px 7px;border-radius:5px;background:var(--color-background-soft, #f5f5f5);color:var(--color-text-2, #555);font-size:12px;line-height:18px;overflow-wrap:anywhere;`
-const SelectionCount = styled.div`margin:14px 0 10px;color:var(--color-text-3, #888);font-size:12px;`
-const ModelList = styled.div`height:320px;max-height:45vh;overflow:auto;display:flex;flex-direction:column;gap:6px;`
+
+const SelectedModels = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 100px;
+  overflow: auto;
+`
+
+const ModelTag = styled.span`
+  max-width: 100%;
+  padding: 2px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-background-soft);
+  color: var(--color-text-2);
+  font-size: 11px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+`
+
+const SearchBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+
+  .ant-input-affix-wrapper {
+    flex: 1;
+    min-width: 0;
+    border-radius: 999px !important;
+    background: var(--color-background) !important;
+  }
+`
+
+const SelectionCount = styled.span<{ $active: boolean }>`
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid ${(props) => (props.$active ? 'transparent' : 'var(--color-border)')};
+  border-radius: 999px;
+  background: ${(props) => (props.$active ? 'var(--ar-accent)' : 'transparent')};
+  color: ${(props) => (props.$active ? 'var(--ar-accent-ink)' : 'var(--color-text-3)')};
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+`
+
+const ModelList = styled.div`
+  height: 320px;
+  max-height: 45vh;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+`
+
 const ModelOption = styled.div<{ $selected: boolean }>`
-  border:1px solid ${({ $selected }) => ($selected ? 'var(--color-primary, #1677ff)' : 'var(--color-border, #eee)')};
-  border-radius:8px;background:${({ $selected }) => ($selected ? 'var(--color-primary-soft, #e6f4ff)' : 'transparent')};
-  .ant-checkbox-wrapper { display:flex;align-items:center;width:100%;padding:11px 12px;margin:0;font-size:13px;overflow-wrap:anywhere; }
-  .ant-checkbox + span { min-width:0; }
+  background: ${(props) => (props.$selected ? 'var(--ar-accent-tint)' : 'transparent')};
+  box-shadow: ${(props) => (props.$selected ? 'inset 2px 0 0 var(--ar-accent)' : 'none')};
+
+  & + & {
+    border-top: 1px solid var(--color-border-soft);
+  }
+
+  &:hover {
+    background: var(--color-background-soft);
+  }
+
+  .ant-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    overflow-wrap: anywhere;
+  }
+
+  .ant-checkbox + span {
+    min-width: 0;
+  }
+`
+
+const EmptyBox = styled.div`
+  padding: 40px 0;
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
 `

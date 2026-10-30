@@ -1,6 +1,5 @@
 import type { CodexRouteProfile } from '@shared/agentRouter'
 import { useTranslation } from 'react-i18next'
-import styled from 'styled-components'
 
 import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterSources'
 import type { CodexFormValue } from './CodexProfileForm'
@@ -34,7 +33,7 @@ export const CodexProfileModal = ({
 }: Props) => {
   const { t } = useTranslation()
   return (
-    <StyledModal
+    <RouteFormModal
       open={open}
       title={isNew ? t('agentRouter.codex.newProfile') : t('agentRouter.codex.editProfile')}
       width={640}
@@ -52,11 +51,6 @@ export const CodexProfileModal = ({
         onRemove={onRemove}
         onCancel={onCancel}
       />
-    </StyledModal>
+    </RouteFormModal>
   )
 }
-
-const StyledModal = styled(RouteFormModal)`
-  .ant-radio-group { display: flex; width: 100%; }
-  .ant-radio-button-wrapper { flex: 1; text-align: center; }
-`

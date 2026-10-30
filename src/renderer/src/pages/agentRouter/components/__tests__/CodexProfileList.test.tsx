@@ -30,7 +30,7 @@ describe('CodexProfileList', () => {
     })
   })
 
-  it('uses the WorkBuddy table layout while preserving profile actions', async () => {
+  it('uses the shared card row layout while preserving profile actions', async () => {
     const user = userEvent.setup()
     const onEdit = vi.fn()
     const onToggle = vi.fn()
@@ -42,17 +42,14 @@ describe('CodexProfileList', () => {
         onEdit={onEdit}
         onToggle={onToggle}
         onRemove={onRemove}
-        onNew={vi.fn()}
         credentials={[{ id: 'key-1', kind: 'api', label: 'Primary key', value: 'sk-secret-value' }]}
       />
     )
 
-    const table = screen.getByTestId('codex-profile-cards').querySelector('.ant-table')
-    expect(table).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'agentRouter.routeName' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'agentRouter.accessMode' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'agentRouter.apiKey' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'agentRouter.actions' })).toBeInTheDocument()
+    const list = screen.getByTestId('codex-profile-cards')
+    expect(list.querySelector('.ant-table')).toBeNull()
+    expect(list.querySelector('table')).toBeNull()
+    expect(screen.queryByRole('columnheader')).not.toBeInTheDocument()
     expect(screen.getByText('Codex Main')).toBeInTheDocument()
     expect(screen.getByText('Primary key')).toBeInTheDocument()
     expect(screen.getByText('sk-s••••alue')).toBeInTheDocument()
@@ -63,10 +60,10 @@ describe('CodexProfileList', () => {
     await user.click(screen.getByRole('switch'))
     expect(onToggle).not.toHaveBeenCalled()
 
-    await user.click(screen.getByText('agentRouter.edit'))
+    await user.click(screen.getByRole('button', { name: /^agentRouter.edit/ }))
     expect(onEdit).toHaveBeenCalledWith(profile.id)
 
-    await user.click(screen.getByText('agentRouter.remove'))
+    await user.click(screen.getByRole('button', { name: /^agentRouter.remove/ }))
     const confirmation = screen.getByRole('dialog')
     expect(confirmation).toHaveTextContent('agentRouter.codex.confirmRemoveProfile')
     expect(confirmation).not.toHaveTextContent('Codex Main')

@@ -8,6 +8,7 @@ import styled from 'styled-components'
 import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterSources'
 import { useTokenPlanModels } from '../hooks/useTokenPlanModels'
 import { AgentCredentialSelect } from './AgentCredentialSelect'
+import { getModalPopupContainer } from './RouteFormModal'
 
 export interface CodexFormValue {
   profileId?: string
@@ -108,13 +109,14 @@ export const CodexProfileForm = ({
         <Select
           value={model}
           options={modelOptions}
+          getPopupContainer={getModalPopupContainer}
           onChange={setModel}
           disabled={!credential || modelsUnavailable}
           allowClear
           showSearch
           suffixIcon={
             <SelectSuffix>
-              <Tooltip title={t('agentRouter.codex.responsesOnlyHint')}>
+              <Tooltip title={t('agentRouter.codex.responsesOnlyHint')} getPopupContainer={getModalPopupContainer}>
                 <ExclamationCircleOutlined aria-label={t('agentRouter.codex.responsesOnlyHint')} />
               </Tooltip>
               <DownOutlined aria-hidden="true" />
@@ -154,10 +156,34 @@ export const CodexProfileForm = ({
 }
 
 const Panel = styled.div`
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .ant-select-single {
+    height: 32px;
+    width: 100%;
+  }
 `
-const Field = styled(Form.Item)`margin-bottom:0;`
-const Hint = styled.div`color: var(--color-error);`
+const Field = styled(Form.Item)`
+  margin-bottom: 0;
+
+  .ant-form-item-label {
+    flex: 0 0 92px;
+    padding: 0;
+  }
+
+  .ant-form-item-label > label {
+    height: 32px;
+    color: var(--color-text-2);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+`
+const Hint = styled.div`
+  color: var(--color-error);
+  font-size: 11.5px;
+`
 const SelectSuffix = styled.span`
   display: flex;
   align-items: center;
@@ -170,5 +196,10 @@ const SelectSuffix = styled.span`
   }
 `
 const Actions = styled.div`
-  display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-soft);
 `

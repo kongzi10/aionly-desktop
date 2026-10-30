@@ -1,6 +1,5 @@
 import { DeleteOutlined } from '@ant-design/icons'
 import type { AgentRouteTemplate } from '@shared/agentRouter'
-import { Button, Empty, Tag } from 'antd'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -14,8 +13,15 @@ export const GlobalTemplateList = ({
   onDelete: (templateId: string) => void
 }) => {
   const { t } = useTranslation()
+
   if (templates.length === 0)
-    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('agentRouter.noGlobalTemplates')} />
+    return (
+      <EmptyBox>
+        <strong>{t('agentRouter.noGlobalTemplates')}</strong>
+        <span>{t('agentRouter.globalTemplatesDescription')}</span>
+      </EmptyBox>
+    )
+
   return (
     <List>
       {templates.map((template) => (
@@ -25,36 +31,168 @@ export const GlobalTemplateList = ({
               <strong>{template.modelId}</strong>
               <RouteModelTypes compact modelTypes={template.modelTypes} />
             </ModelLine>
-          </Identity>
-          <Meta>
-            <AccessMode>{template.accessMode === 'api' ? 'API' : 'TokenPlan'}</AccessMode>
-            <KeyIdentity>
+            <KeyLine>
               <span>{template.credentialName}</span>
-              <Masked>{template.maskedKey}</Masked>
-            </KeyIdentity>
-            <DeleteButton
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              aria-label={t('agentRouter.deleteGlobalTemplate')}
-              onClick={() => onDelete(template.templateId)}>
-              {t('agentRouter.remove')}
-            </DeleteButton>
-          </Meta>
+              <code>{template.maskedKey}</code>
+            </KeyLine>
+          </Identity>
+          <AccessChip $mode={template.accessMode}>{template.accessMode === 'api' ? 'API' : 'TokenPlan'}</AccessChip>
+          <IconKey
+            type="button"
+            $danger
+            aria-label={t('agentRouter.deleteGlobalTemplate')}
+            title={t('agentRouter.deleteGlobalTemplate')}
+            onClick={() => onDelete(template.templateId)}>
+            <DeleteOutlined />
+          </IconKey>
         </Row>
       ))}
     </List>
   )
 }
 
-const List = styled.div`padding:8px;display:flex;flex-direction:column;gap:6px;`
-const Row = styled.div`min-height:58px;padding:9px 8px 9px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;border:1px solid transparent;border-radius:9px;background:var(--color-background-soft);transition:border-color .16s ease,background .16s ease;&:hover{border-color:var(--color-border);background:color-mix(in srgb,var(--color-background-soft) 82%,var(--color-primary) 3%)}`
-const Identity = styled.div`min-width:0;`
-const ModelLine = styled.div`min-width:0;display:flex;align-items:center;gap:8px;strong{flex:0 1 auto;min-width:80px;overflow:hidden;font-size:12px;white-space:nowrap;text-overflow:ellipsis}`
-const Meta = styled.div`min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:6px;`
-const AccessMode = styled(Tag)`min-width:62px;margin:0;text-align:center;`
-const Masked = styled.code`min-width:92px;color:var(--color-text-3);font-size:11px;`
-const DeleteButton = styled(Button)`padding-inline:5px;font-size:11px;`
+const List = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 1px 0 2px;
+`
 
-const KeyIdentity = styled.div`min-width:0;display:flex;flex-direction:column;gap:2px;span{font-size:11px;}`
+const Row = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  min-height: 62px;
+  padding: 9px 10px 9px 14px;
+  border: 1px solid rgb(132 172 226 / 18%);
+  border-radius: 12px;
+  background: rgb(246 250 255);
+  transition: box-shadow 0.2s ease;
+
+  body.dark & {
+    background: rgb(255 255 255 / 5%);
+  }
+
+  &:hover {
+    box-shadow: 0 8px 20px rgb(77 122 190 / 10%);
+  }
+`
+
+const Identity = styled.div`
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+`
+
+const ModelLine = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+
+  strong {
+    flex: 0 1 auto;
+    min-width: 60px;
+    overflow: hidden;
+    color: var(--color-text-1);
+    font-size: 13px;
+    font-weight: 650;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+`
+
+const KeyLine = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+
+  span {
+    overflow: hidden;
+    color: var(--color-text-2);
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  code {
+    color: var(--color-text-3);
+    font-family: monospace;
+    font-size: 11px;
+  }
+`
+
+const AccessChip = styled.span<{ $mode: 'api' | 'tokenPlan' }>`
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: ${(props) => (props.$mode === 'api' ? 'rgb(228 238 255)' : 'rgb(220 245 247)')};
+  color: ${(props) => (props.$mode === 'api' ? 'rgb(64 116 234)' : 'rgb(6 158 176)')};
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  body.dark & {
+    background: ${(props) => (props.$mode === 'api' ? 'rgb(64 116 234 / 20%)' : 'rgb(6 158 176 / 20%)')};
+    color: ${(props) => (props.$mode === 'api' ? 'rgb(140 174 255)' : 'rgb(120 214 226)')};
+  }
+`
+
+const IconKey = styled.button<{ $danger?: boolean }>`
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: ${(props) => (props.$danger ? 'var(--color-error, #d9534f)' : 'var(--color-text-3)')};
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: ${(props) => (props.$danger ? 'rgb(217 83 79 / 12%)' : 'rgb(96 150 255 / 12%)')};
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+`
+
+const EmptyBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0;
+  padding: 44px 16px;
+  border: 1px dashed rgb(132 172 226 / 30%);
+  border-radius: 14px;
+  text-align: center;
+
+  strong {
+    color: var(--color-text-2);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  span {
+    color: var(--color-text-3);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+`

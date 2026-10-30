@@ -1,14 +1,14 @@
 import { DownOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
 import type { AgentRouteTemplate, CreateAgentRouteRequest, RedactedTargetEntry } from '@shared/agentRouter'
-import { Button, Checkbox, Empty, Form, message, Modal, Radio, Select, Tabs } from 'antd'
-import { useState } from 'react'
+import { Button, Checkbox, Empty, Form, message, Radio, Select } from 'antd'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterSources'
 import { useTokenPlanModels } from '../hooks/useTokenPlanModels'
 import { ModelIdSelect } from './ModelIdSelect'
-import { RouteFormModal } from './RouteFormModal'
+import { ConfirmDialog, getModalPopupContainer, ModalHint, RouteFormModal } from './RouteFormModal'
 
 interface FormValues {
   accessMode: 'api' | 'tokenPlan'
@@ -57,6 +57,15 @@ export const AddRouteModal = ({
   const { models: tokenPlanModels, loading: modelsLoading } = useTokenPlanModels(open ? credential : undefined)
   const models = accessMode === 'api' ? apiModels : tokenPlanModels
   const selectedModels = models.filter((model) => modelIds.includes(model.id))
+
+  // 当前方式下只有一个凭据时直接选中它。否则用户选完 API 还得手动点一次密钥，
+  // 在选中之前「模型 ID」和「创建路由」都会因为 credential 为空而处于禁用态。
+  useEffect(() => {
+    if (!open || path !== 'create') return
+    if (credentialId) return
+    if (credentials.length !== 1) return
+    form.setFieldValue('credentialId', credentials[0].id)
+  }, [open, path, credentialId, credentials, form])
 
   const close = () => {
     form.resetFields()
@@ -145,16 +154,28 @@ export const AddRouteModal = ({
               : t('agentRouter.addSelectedModels', { count: selectedIds.length })}
           </Button>
         ]}>
-        <Tabs
-          activeKey={path}
-          onChange={(key) => {
-            if (!saving && !checking) setPath(key as 'create' | 'global')
-          }}
-          items={[
-            { key: 'create', label: t('agentRouter.createRoute') },
-            { key: 'global', label: t('agentRouter.useGlobalConfiguration') }
-          ]}
-        />
+        <PathSwitch role="tablist" aria-label={t('agentRouter.addModelsToWorkBuddy')}>
+          <PathTab
+            type="button"
+            role="tab"
+            aria-selected={path === 'create'}
+            $active={path === 'create'}
+            onClick={() => {
+              if (!saving && !checking) setPath('create')
+            }}>
+            {t('agentRouter.createRoute')}
+          </PathTab>
+          <PathTab
+            type="button"
+            role="tab"
+            aria-selected={path === 'global'}
+            $active={path === 'global'}
+            onClick={() => {
+              if (!saving && !checking) setPath('global')
+            }}>
+            {t('agentRouter.useGlobalConfiguration')}
+          </PathTab>
+        </PathSwitch>
         {path === 'create' ? (
           <Form
             form={form}
@@ -178,7 +199,9 @@ export const AddRouteModal = ({
             </Form.Item>
             <Form.Item name="credentialId" label={t('agentRouter.apiKey')}>
               <Select
+                placeholder={t('agentRouter.selectCredential')}
                 onChange={() => form.setFieldValue('modelIds', [])}
+                getPopupContainer={getModalPopupContainer}
                 optionLabelProp="selectedLabel"
                 options={credentials.map((item) => ({
                   value: item.id,
@@ -212,16 +235,18 @@ export const AddRouteModal = ({
           </Form>
         ) : (
           <>
-            <Hint>{t('agentRouter.selectGlobalTemplates')}</Hint>
-            <List>
-              {templates.length === 0 ? (
+            <ModalHint>{t('agentRouter.selectGlobalTemplates')}</ModalHint>
+            {templates.length === 0 ? (
+              <EmptyBox>
                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('agentRouter.noGlobalTemplates')} />
-              ) : (
-                templates.map((template) => {
+              </EmptyBox>
+            ) : (
+              <TemplateList>
+                {templates.map((template) => {
                   const joined = template.joined === true
                   const selected = selectedIds.includes(template.templateId)
                   return (
-                    <Card key={template.templateId} $selected={selected} $disabled={joined}>
+                    <TemplateRow key={template.templateId} $selected={selected} $disabled={joined}>
                       <Checkbox
                         checked={selected}
                         disabled={joined}
@@ -234,25 +259,24 @@ export const AddRouteModal = ({
                         }>
                         <Identity>
                           <strong>{template.modelId}</strong>
-                          <span>
-                            {template.accessMode === 'api' ? 'API' : 'TokenPlan'} · {template.credentialName} ·{' '}
-                            {template.maskedKey}
-                          </span>
+                          <Meta>
+                            <ModeChip>{template.accessMode === 'api' ? 'API' : 'TokenPlan'}</ModeChip>
+                            <span>{template.credentialName}</span>
+                            <Masked>{template.maskedKey}</Masked>
+                          </Meta>
                         </Identity>
                       </Checkbox>
-                      <CardMeta>{joined ? <Joined>{t('agentRouter.alreadyAdded')}</Joined> : null}</CardMeta>
-                    </Card>
+                      {joined ? <Joined>{t('agentRouter.alreadyAdded')}</Joined> : null}
+                    </TemplateRow>
                   )
-                })
-              )}
-            </List>
+                })}
+              </TemplateList>
+            )}
           </>
         )}
       </RouteFormModal>
-      <Modal
+      <ConfirmDialog
         open={confirming}
-        centered
-        width={400}
         title={t('agentRouter.confirmCloseSameModel', { modelIds: conflictingModelIds.join('、') })}
         okText={t('common.confirm')}
         cancelText={t('common.cancel')}
@@ -266,14 +290,161 @@ export const AddRouteModal = ({
   )
 }
 
-const SuffixControls = styled.span`height:100%;display:inline-flex;align-items:center;gap:8px;`
-const KeyVisibility = styled.button`padding:0;display:inline-flex;align-items:center;border:0;background:transparent;color:var(--color-text-3);cursor:pointer;`
-const Hint = styled.p`margin:0 0 10px;color:var(--color-text-3);font-size:11px;`
-const List = styled.div`max-height:320px;padding:7px;display:flex;flex-direction:column;gap:5px;overflow:auto;border:1px solid var(--color-border);border-radius:10px;background:var(--color-background-soft);`
-const Card = styled.div<{
-  $selected: boolean
-  $disabled: boolean
-}>`min-height:50px;padding:7px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid ${({ $selected }) => ($selected ? 'color-mix(in srgb,var(--color-primary) 35%,var(--color-border))' : 'transparent')};border-radius:8px;background:${({ $selected }) => ($selected ? 'color-mix(in srgb,var(--color-primary) 10%,var(--color-background))' : 'var(--color-background)')};opacity:${({ $disabled }) => ($disabled ? 0.55 : 1)};.ant-checkbox-wrapper{min-width:0;flex:1}`
-const Identity = styled.span`display:flex;flex-direction:column;gap:2px;strong{font-size:12px}span{color:var(--color-text-3);font-size:10px}`
-const CardMeta = styled.span`display:flex;align-items:center;gap:7px;`
-const Joined = styled.span`color:var(--color-text-3);font-size:10px;`
+const PathSwitch = styled.div`
+  display: flex;
+  gap: 2px;
+  margin-bottom: 16px;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-background-soft);
+`
+
+const PathTab = styled.button<{ $active: boolean }>`
+  flex: 1;
+  height: 28px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: ${(props) => (props.$active ? 'var(--modal-background)' : 'transparent')};
+  color: ${(props) => (props.$active ? 'var(--ar-accent-strong)' : 'var(--color-text-3)')};
+  font-size: 12.5px;
+  font-weight: ${(props) => (props.$active ? 650 : 500)};
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: ${(props) => (props.$active ? '0 2px 6px rgb(0 0 0 / 8%)' : 'none')};
+  transition:
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    color: var(--color-text-1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ar-accent);
+    outline-offset: 1px;
+  }
+`
+
+const TemplateList = styled.div`
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+`
+
+const TemplateRow = styled.div<{ $selected: boolean; $disabled: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 54px;
+  padding: 8px 12px;
+  background: ${(props) => (props.$selected ? 'var(--ar-accent-tint)' : 'transparent')};
+  opacity: ${(props) => (props.$disabled ? 0.5 : 1)};
+  box-shadow: ${(props) => (props.$selected ? 'inset 2px 0 0 var(--ar-accent)' : 'none')};
+
+  & + & {
+    border-top: 1px solid var(--color-border-soft);
+  }
+
+  &:hover {
+    background: var(--color-background-soft);
+  }
+
+  .ant-checkbox-wrapper {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    align-items: center;
+  }
+
+  .ant-checkbox + span {
+    flex: 1;
+    min-width: 0;
+    padding-inline-start: 10px;
+  }
+`
+
+const Identity = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  strong {
+    overflow: hidden;
+    color: var(--color-text-1);
+    font-size: 12.5px;
+    font-weight: 650;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+`
+
+const Meta = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-text-3);
+  font-size: 11px;
+  white-space: nowrap;
+
+  > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+`
+
+const ModeChip = styled.span`
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-background);
+  color: var(--color-text-2);
+  font-size: 10px;
+  font-weight: 600;
+`
+
+const Masked = styled.span`
+  font-family: monospace;
+  font-size: 10.5px;
+`
+
+const Joined = styled.span`
+  flex: 0 0 auto;
+  color: var(--color-text-3);
+  font-size: 10.5px;
+`
+
+const EmptyBox = styled.div`
+  padding: 16px 0;
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+`
+
+const SuffixControls = styled.span`
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+`
+
+const KeyVisibility = styled.button`
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-3);
+  cursor: pointer;
+`

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import type { AgentRouterCredential } from '../hooks/useAgentRouterSources'
+import { getModalPopupContainer } from './RouteFormModal'
 
 const HIDDEN_API_KEY = '••••••••••••••••••••••••'
 
@@ -22,6 +23,7 @@ export const AgentCredentialSelect = ({ value, credentials, placeholder, onChang
   return (
     <Select
       value={value}
+      getPopupContainer={getModalPopupContainer}
       optionLabelProp="selectedLabel"
       options={credentials.map((credential) => ({
         value: credential.id,

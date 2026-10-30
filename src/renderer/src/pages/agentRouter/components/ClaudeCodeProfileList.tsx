@@ -12,7 +12,6 @@ interface Props {
   onEdit: (profileId: string) => void
   onToggle: (profile: ClaudeCodeRouteProfile, enabled: boolean) => void
   onRemove?: (profile: ClaudeCodeRouteProfile) => void
-  onNew: () => void
 }
 
 export const ClaudeCodeProfileList = ({
@@ -22,8 +21,7 @@ export const ClaudeCodeProfileList = ({
   busy = false,
   onEdit,
   onToggle,
-  onRemove = () => undefined,
-  onNew
+  onRemove = () => undefined
 }: Props) => {
   const { t } = useTranslation()
   return (
@@ -34,12 +32,10 @@ export const ClaudeCodeProfileList = ({
       activeProfileId={activeProfileId}
       busy={busy}
       emptyDescription={t('agentRouter.claudeCode.profilesEmpty')}
-      newLabel={t('agentRouter.claudeCode.newProfile')}
       removeConfirmationTitle={t('agentRouter.claudeCode.confirmRemoveProfile')}
       onEdit={onEdit}
       onToggle={onToggle}
       onRemove={onRemove}
-      onNew={onNew}
     />
   )
 }

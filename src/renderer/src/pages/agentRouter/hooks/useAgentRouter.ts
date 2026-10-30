@@ -262,7 +262,7 @@ export const useAgentRouter = () => {
     await refresh()
   }
 
-  const workBuddyEdition: WorkBuddyEdition = target?.configPath.toLowerCase().includes('.workbuddy-ai')
+  const workBuddyEdition: WorkBuddyEdition = target?.configPath?.toLowerCase().includes('.workbuddy-ai')
     ? 'overseas'
     : 'domestic'
 

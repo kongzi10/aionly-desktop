@@ -1,8 +1,9 @@
-import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons'
+import { CheckCircleFilled, ExclamationCircleFilled, InfoCircleFilled } from '@ant-design/icons'
 import type { TargetSnapshot } from '@shared/agentRouter'
-import { Button } from 'antd'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
+
+type Tone = 'success' | 'neutral' | 'warning'
 
 export const TargetStatusCard = ({
   target,
@@ -18,9 +19,19 @@ export const TargetStatusCard = ({
   const { t } = useTranslation()
   const ready = Boolean(target?.exists && target.readable && target.writable)
   const willCreateConfig = missingConfigWillBeCreated && target?.detectionState === 'notFound'
+  const tone: Tone = ready ? 'success' : willCreateConfig ? 'neutral' : 'warning'
+
   return (
-    <Card $ready={ready}>
-      <StateIcon $ready={ready}>{ready ? <CheckCircleFilled /> : <ExclamationCircleFilled />}</StateIcon>
+    <StatusBar $tone={tone} data-testid="target-status-bar">
+      <StateIcon $tone={tone} aria-hidden="true">
+        {tone === 'success' ? (
+          <CheckCircleFilled />
+        ) : tone === 'warning' ? (
+          <ExclamationCircleFilled />
+        ) : (
+          <InfoCircleFilled />
+        )}
+      </StateIcon>
       <Copy>
         <strong>
           {ready
@@ -37,35 +48,151 @@ export const TargetStatusCard = ({
           </span>
         ) : null}
       </Copy>
-      {showEntryCounts ? (
+      {ready && showEntryCounts ? (
         <Facts>
           <Fact>
             <b>{target?.managedEntryCount ?? 0}</b>
             <span>{t('agentRouter.managedEntries')}</span>
           </Fact>
-          <Divider />
+          <Divider aria-hidden="true" />
           <Fact>
             <b>{target?.externalEntryCount ?? 0}</b>
             <span>{t('agentRouter.externalEntries')}</span>
           </Fact>
         </Facts>
       ) : null}
-      {!ready && !willCreateConfig ? (
-        <Button size="small" onClick={onSelect}>
-          {t('agentRouter.changeConfig')}
-        </Button>
-      ) : null}
-    </Card>
+      <Action type="button" onClick={onSelect}>
+        {t('agentRouter.changeConfig')}
+      </Action>
+    </StatusBar>
   )
 }
 
-const Card = styled.div<{
-  $ready: boolean
-}>`min-height: 76px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid ${({ $ready }) => ($ready ? 'rgba(34,170,120,.3)' : 'rgba(233,154,46,.35)')}; border-radius: 12px; background: color-mix(in srgb, ${({ $ready }) => ($ready ? '#22aa78' : '#e99a2e')} 7%, var(--color-background));`
-const StateIcon = styled.div<{
-  $ready: boolean
-}>`width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 50%; color: ${({ $ready }) => ($ready ? '#1f9d70' : '#d4861e')}; background: color-mix(in srgb, ${({ $ready }) => ($ready ? '#22aa78' : '#e99a2e')} 14%, var(--color-background)); font-size: 17px;`
-const Copy = styled.div`min-width: 0; flex: 1; display: flex; flex-direction: column; strong { font-size: 14px; } span { margin-top: 2px; color: var(--color-text-3); font-size: 11px; line-height: 1.4; }`
-const Facts = styled.div`display: flex; align-items: center; gap: 12px;`
-const Fact = styled.div`min-width: 54px; display: flex; flex-direction: column; align-items: center; b { color: var(--color-text); font-size: 16px; } span { color: var(--color-text-3); font-size: 10px; white-space: nowrap; }`
-const Divider = styled.div`width: 1px; height: 26px; background: var(--color-border);`
+const toneColor = (tone: Tone) => (tone === 'success' ? '34 170 120' : tone === 'warning' ? '233 154 46' : '96 150 255')
+
+const StatusBar = styled.div<{ $tone: Tone }>`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 6px 10px 6px 12px;
+  border: 1px solid rgb(${(props) => toneColor(props.$tone)} / 22%);
+  border-radius: 12px;
+  background: rgb(${(props) => toneColor(props.$tone)} / 8%);
+
+  body.dark & {
+    background: rgb(${(props) => toneColor(props.$tone)} / 14%);
+  }
+`
+
+const StateIcon = styled.span<{ $tone: Tone }>`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: rgb(${(props) => toneColor(props.$tone)});
+  font-size: 15px;
+
+  body.light & {
+    color: ${(props) =>
+      props.$tone === 'success' ? '#1f9d70' : props.$tone === 'warning' ? '#d4861e' : 'rgb(64 116 234)'};
+  }
+`
+
+const Copy = styled.div`
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+
+  strong {
+    color: var(--color-text);
+    font-size: 12.5px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+
+  span {
+    overflow: hidden;
+    color: var(--color-text-3);
+    font-size: 11.5px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+  }
+`
+
+const Facts = styled.div`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+`
+
+const Fact = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 78%);
+
+  body.dark & {
+    background: rgb(255 255 255 / 8%);
+  }
+
+  b {
+    color: var(--color-text);
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  span {
+    color: var(--color-text-3);
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+`
+
+const Divider = styled.span`
+  width: 1px;
+  height: 14px;
+  background: var(--color-border);
+`
+
+const Action = styled.button`
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid rgb(132 172 226 / 34%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 92%);
+  color: var(--color-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: rgb(90 143 215 / 52%);
+    box-shadow: 0 4px 12px rgb(96 150 255 / 16%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+
+  body.dark & {
+    background: rgb(255 255 255 / 8%);
+  }
+`

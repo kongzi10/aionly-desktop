@@ -8,7 +8,7 @@ import styled from 'styled-components'
 import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterSources'
 import { useTokenPlanModels } from '../hooks/useTokenPlanModels'
 import { ModelIdSelect } from './ModelIdSelect'
-import { RouteFormModal } from './RouteFormModal'
+import { getModalPopupContainer, RouteFormModal } from './RouteFormModal'
 
 interface FormValues {
   accessMode: 'api' | 'tokenPlan'
@@ -107,6 +107,7 @@ export const CreateGlobalTemplateModal = ({
         <Form.Item name="credentialId" label={t('agentRouter.apiKey')}>
           <Select
             onChange={() => form.setFieldValue('modelIds', [])}
+            getPopupContainer={getModalPopupContainer}
             optionLabelProp="selectedLabel"
             options={credentials.map((item) => ({
               value: item.id,

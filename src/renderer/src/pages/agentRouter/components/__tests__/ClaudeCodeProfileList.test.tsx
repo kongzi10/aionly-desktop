@@ -43,16 +43,13 @@ describe('ClaudeCodeProfileList', () => {
         activeProfileId="p1"
         onEdit={onEdit}
         onToggle={vi.fn()}
-        onNew={vi.fn()}
       />
     )
 
-    expect(screen.getByTestId('claude-code-profile-cards')).toBeInTheDocument()
-    expect(screen.getByTestId('claude-code-profile-cards').querySelector('.ant-table')).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'agentRouter.routeName' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'agentRouter.accessMode' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'agentRouter.apiKey' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'agentRouter.actions' })).toBeInTheDocument()
+    const list = screen.getByTestId('claude-code-profile-cards')
+    expect(list).toBeInTheDocument()
+    expect(list.querySelector('.ant-table')).toBeNull()
+    expect(screen.queryByRole('columnheader')).not.toBeInTheDocument()
     expect(screen.getByText('Profile One')).toBeInTheDocument()
     expect(screen.getByText('Profile Two')).toBeInTheDocument()
 
@@ -66,7 +63,7 @@ describe('ClaudeCodeProfileList', () => {
     await user.click(screen.getByText('Profile Two'))
     expect(onEdit).toHaveBeenCalledWith('p2')
 
-    await user.click(screen.getAllByRole('button', { name: /agentRouter.edit$/ })[0])
+    await user.click(screen.getAllByRole('button', { name: /agentRouter.edit/ })[0])
     expect(onEdit).toHaveBeenCalledWith('p1')
   })
 
@@ -82,7 +79,6 @@ describe('ClaudeCodeProfileList', () => {
         activeProfileId="p1"
         onEdit={vi.fn()}
         onToggle={onToggle}
-        onNew={vi.fn()}
       />
     )
 
@@ -104,23 +100,20 @@ describe('ClaudeCodeProfileList', () => {
         onEdit={vi.fn()}
         onToggle={vi.fn()}
         onRemove={vi.fn()}
-        onNew={vi.fn()}
       />
     )
 
-    await user.click(screen.getByText('agentRouter.remove'))
+    await user.click(screen.getByRole('button', { name: /^agentRouter.remove/ }))
     const confirmation = screen.getByRole('dialog')
     expect(confirmation).toHaveTextContent('agentRouter.claudeCode.confirmRemoveProfile')
     expect(confirmation).not.toHaveTextContent('Profile One')
   })
 
-  it('renders empty state with new profile action', async () => {
-    const user = userEvent.setup()
-    const onNew = vi.fn()
-    render(<ClaudeCodeProfileList profiles={[]} onEdit={vi.fn()} onToggle={vi.fn()} onNew={onNew} />)
+  it('renders the empty state without a duplicate new-profile action', () => {
+    render(<ClaudeCodeProfileList profiles={[]} onEdit={vi.fn()} onToggle={vi.fn()} />)
 
     expect(screen.getByText('agentRouter.claudeCode.profilesEmpty')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'agentRouter.claudeCode.newProfile' }))
-    expect(onNew).toHaveBeenCalled()
+    // 新建入口统一收在页面顶部主操作，列表空态不再重复一个 CTA
+    expect(screen.queryByRole('button', { name: /agentRouter\.claudeCode\.newProfile/ })).not.toBeInTheDocument()
   })
 })
