@@ -10,8 +10,6 @@ import { PanelLeftClose, PanelRightClose } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
-import SettingsButton from './SettingsButton'
-
 const Tools = () => {
   const { t } = useTranslation()
   const { showTopics, toggleShowTopics } = useShowTopics()
@@ -26,7 +24,6 @@ const Tools = () => {
 
   return (
     <HStack alignItems="center" gap={8}>
-      <SettingsButton />
       {isTopNavbar && (
         <Tooltip title={t('navbar.expand')} mouseEnterDelay={0.8}>
           <NarrowIcon onClick={handleNarrowModeToggle}>

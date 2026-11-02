@@ -14,6 +14,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import type { PropsWithChildren } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import styled from 'styled-components'
 
 import AgentChat from './AgentChat'
 import AgentNavbar from './AgentNavbar'
@@ -97,13 +98,12 @@ const AgentPage = () => {
   return (
     <Container>
       <AgentNavbar showSidebar={showAgentSidebar} toggleSidebar={toggleAgentSidebar} />
-      <div
-        id={isLeftNavbar ? 'content-container' : undefined}
-        className="flex min-w-0 flex-1 shrink flex-row gap-2 overflow-hidden">
+      <ContentContainer id={isLeftNavbar ? 'content-container' : undefined} className="nav-module-surface">
         <AnimatePresence initial={false}>
           {showAgentSidebar && (
             <ErrorBoundary>
               <motion.div
+                className="agent-history-panel"
                 initial={{ width: 0, opacity: 0 }}
                 animate={{ width: 'var(--assistants-width)', opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
@@ -117,17 +117,52 @@ const AgentPage = () => {
         <ErrorBoundary>
           <AgentChat />
         </ErrorBoundary>
-      </div>
+      </ContentContainer>
     </Container>
   )
 }
 
 const Container = ({ children, className }: PropsWithChildren<{ className?: string }>) => {
   return (
-    <div id="agent-page" className={cn('page-container flex flex-1 flex-col overflow-hidden', className)}>
+    <div
+      id="agent-page"
+      className={cn('page-container nav-module-layout flex flex-1 flex-col overflow-hidden', className)}
+      style={{ '--assistants-width': 'clamp(200px, 22vw, 230px)' } as React.CSSProperties}>
       {children}
     </div>
   )
 }
+
+/**
+ * 与对话页 ContentContainer 一致的统一外壳：
+ * 侧栏靠一条 1px 分割线与内容区分开，输入框在浅色主题下玻璃化，不再嵌套第二层圆角面板。
+ */
+const ContentContainer = styled.div`
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  min-width: 0;
+  gap: 0;
+  overflow: hidden;
+
+  .agent-history-panel {
+    border-right: 1px solid var(--color-border);
+  }
+
+  body.light & .agent-history-panel {
+    border-right-color: rgb(132 172 226 / 15%);
+  }
+
+  body.light & .inputbar-container {
+    border: 1px solid rgb(255 255 255 / 76%);
+    border-radius: 12px;
+    background: rgb(246 249 255 / 88%);
+    backdrop-filter: blur(20px);
+    box-shadow:
+      0 -8px 28px rgb(48 79 133 / 10%),
+      0 5px 18px rgb(48 79 133 / 7%),
+      inset 0 1px rgb(255 255 255 / 75%);
+  }
+`
 
 export default AgentPage

@@ -35,6 +35,8 @@ interface Props {
   iconSize?: number
   /** Custom className for the inner container (e.g., for justify-between) */
   containerClassName?: string
+  /** Hide the trailing `| serviceName` segment (inputbar bottom bar keeps only the model name) */
+  hideServiceName?: boolean
   selectedModel?: ApiModel | any
 }
 
@@ -49,6 +51,7 @@ const SelectAgentBaseModelButton = ({
   fontSize = 12,
   iconSize = 14,
   containerClassName,
+  hideServiceName = false,
   selectedModel
 }: Props) => {
   const { t } = useTranslation()
@@ -67,16 +70,16 @@ const SelectAgentBaseModelButton = ({
   // 如果传入了 selectedModel，使用它；否则从 API 获取
   // const apiModel = useApiModel({ id: agent?.model })
   // id aionly:doubao-seed-2-0-code-preview-260215
-  const [model, setModel] = useState(selectedModel || localCacheModel || apiModel)
+  const nextModel = selectedModel || localCacheModel || apiModel
+  const [model, setModel] = useState(nextModel)
 
-  // 只在依赖真正变化且计算出的值与当前 model 不同时才更新
+  // 只在计算出的值真正变化时才更新（依赖用对象本身，内部再按 id 比较）
   useEffect(() => {
-    const newModel = selectedModel || localCacheModel || apiModel
     // 比较模型 ID 而不是对象引用，避免不必要的更新
-    if (newModel?.id !== model?.id) {
-      setModel(newModel)
+    if (nextModel?.id !== model?.id) {
+      setModel(nextModel)
     }
-  }, [selectedModel?.id, localCacheModel?.id, apiModel?.id])
+  }, [nextModel, model?.id])
 
   // console.log('agent', agent)
 
@@ -135,7 +138,7 @@ const SelectAgentBaseModelButton = ({
           {shouldShowFallback && model && <ModelAvatar model={model} size={avatarSize} />}
           <span className="truncate text-(--color-text)">
             {shouldShowFallback && model ? model.modelName || model.name : t('button.select_model')}
-            {shouldShowFallback && model?.serviceName && (
+            {shouldShowFallback && model?.serviceName && !hideServiceName && (
               <span className="text-gray-500 text-xs"> | {model?.serviceName}</span>
             )}
           </span>

@@ -1,3 +1,4 @@
+import SearchPopup from '@renderer/components/Popups/SearchPopup'
 import { QuickPanelProvider } from '@renderer/components/QuickPanel'
 import { useActiveAgent } from '@renderer/hooks/agents/useActiveAgent'
 import { useAgents } from '@renderer/hooks/agents/useAgents'
@@ -24,13 +25,14 @@ import Sessions from './components/Sessions'
 const AgentChat = () => {
   const { t } = useTranslation()
   const { messageNavigation, messageStyle, topicPosition } = useSettings()
+  const { isTopNavbar } = useNavbarPosition()
   const { showTopics } = useShowTopics()
   const { chat } = useRuntime()
   const { activeAgentId, activeSessionIdMap, isMultiSelectMode } = chat
   const activeSessionId = activeAgentId ? activeSessionIdMap[activeAgentId] : null
   // undefined = session not yet initialized, null = initialized but no sessions
   const isSessionInitialized = !activeAgentId || activeAgentId in activeSessionIdMap
-  const { agent: activeAgent, isLoading: isAgentLoading } = useActiveAgent()
+  const { isLoading: isAgentLoading } = useActiveAgent()
   const { isLoading: isAgentsLoading, agents } = useAgents()
   const { createDefaultSession } = useCreateDefaultSession(activeAgentId)
 
@@ -40,6 +42,10 @@ const AgentChat = () => {
     isAgentsLoading || isAgentLoading || !isSessionInitialized || !agents || (!activeAgentId && agents.length > 0)
 
   const showRightSessions = topicPosition === 'right' && showTopics && !!activeAgentId
+
+  useShortcut('search_message', () => {
+    void SearchPopup.show()
+  })
 
   useShortcut(
     'new_topic',
@@ -105,10 +111,16 @@ const AgentChat = () => {
             </div>
             {messageNavigation === 'buttons' && <ChatNavigation containerId="messages" />}
           </div>
-          {/* Header */}
-          {activeAgent && <AgentChatNavbar className="min-w-0" activeAgent={activeAgent} />}
-          {/* Inputbar */}
-          <AgentSessionInputbar agentId={activeAgentId} sessionId={activeSessionId} />
+          {/* 顶栏：仅顶部导航模式下渲染，左侧导航模式下所有控件都在输入框内 */}
+          <div className="flex w-full shrink-0 flex-col">
+            {isTopNavbar && (
+              <NarrowLayout style={{ width: '100%' }}>
+                <AgentChatNavbar className="min-w-0" />
+              </NarrowLayout>
+            )}
+            {/* Inputbar */}
+            <AgentSessionInputbar agentId={activeAgentId} sessionId={activeSessionId} />
+          </div>
         </div>
       </QuickPanelProvider>
 
@@ -138,7 +150,7 @@ const Container = ({ children, className }: PropsWithChildren<{ className?: stri
   return (
     <div
       className={cn(
-        'flex flex-1 overflow-hidden rounded-(--base-border-radius) bg-(--color-background)',
+        'flex flex-1 overflow-hidden',
         isTopNavbar && 'rounded-tl-[10px] rounded-bl-[10px] bg-(--color-background)',
         className
       )}>

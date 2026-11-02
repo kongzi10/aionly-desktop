@@ -1,3 +1,4 @@
+import { WarningFilled } from '@ant-design/icons'
 import { loggerService } from '@logger'
 import { getAnthropicReasoningParams } from '@renderer/aiCore/utils/reasoning'
 import type { QuickPanelTriggerInfo } from '@renderer/components/QuickPanel'
@@ -5,10 +6,13 @@ import { QuickPanelReservedSymbol, useQuickPanel } from '@renderer/components/Qu
 import { isGenerateImageModel, isVisionModel } from '@renderer/config/models'
 import { useAgent } from '@renderer/hooks/agents/useAgent'
 import { useSession } from '@renderer/hooks/agents/useSession'
-import { transformToModel } from '@renderer/hooks/useAiOnlyModels'
+import { useUpdateAgent } from '@renderer/hooks/agents/useUpdateAgent'
+import { useUpdateSession } from '@renderer/hooks/agents/useUpdateSession'
+import { transformToModel, useFetchAndSetupModels } from '@renderer/hooks/useAiOnlyModels'
 import { useInputText } from '@renderer/hooks/useInputText'
 import { selectNewTopicLoading } from '@renderer/hooks/useMessageOperations'
 // import { getModel } from '@renderer/hooks/useModel'
+import { useProvider } from '@renderer/hooks/useProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useTextareaResize } from '@renderer/hooks/useTextareaResize'
 import { useTimer } from '@renderer/hooks/useTimer'
@@ -24,6 +28,7 @@ import { getInputbarConfig } from '@renderer/pages/home/Inputbar/registry'
 import type { ToolContext } from '@renderer/pages/home/Inputbar/types'
 import { TopicType } from '@renderer/pages/home/Inputbar/types'
 import { isSoulModeEnabled } from '@renderer/pages/settings/AgentSettings/shared'
+import AiOnlyAddModelPopup from '@renderer/pages/settings/ProviderSettings/AiOnlyModel/add/AddModelPopup'
 import { CacheService } from '@renderer/services/CacheService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { pauseTrace } from '@renderer/services/SpanManagerService'
@@ -31,8 +36,9 @@ import { estimateUserPromptUsage } from '@renderer/services/TokenService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { newMessagesActions, selectMessagesForTopic } from '@renderer/store/newMessage'
 import { sendMessage as dispatchSendMessage } from '@renderer/store/thunk/messageThunk'
-import type { Assistant, Message, ThinkingOption } from '@renderer/types'
-import type { FileMetadata } from '@renderer/types'
+import { selectAiOnlyModels } from '@renderer/store/user'
+import type { ApiModel, Assistant, Message, ThinkingOption } from '@renderer/types'
+import type { AgentSessionEntity, FileMetadata } from '@renderer/types'
 import type { MessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockStatus } from '@renderer/types/newMessage'
 import { abortCompletion } from '@renderer/utils/abortController'
@@ -41,11 +47,18 @@ import { getCachedAiOnlyModel } from '@renderer/utils/aionly-model-cache'
 import { getSendMessageShortcutLabel } from '@renderer/utils/input'
 import { createMainTextBlock, createMessage } from '@renderer/utils/messageUtils/create'
 import { documentExts, imageExts, textExts } from '@shared/config/constant'
+import { Button } from 'antd'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector } from 'react-redux'
 import styled from 'styled-components'
 import { v4 as uuid } from 'uuid'
+
+import AgentModelSelectButton from './AgentModelSelectButton'
+import AgentNameButton from './AgentNameButton'
+import AgentSettingsButton from './AgentSettingsButton'
+import OpenExternalAppButton from './OpenExternalAppButton'
 
 const logger = loggerService.withContext('AgentSessionInputbar')
 
@@ -142,6 +155,7 @@ const AgentSessionInputbar = ({ agentId, sessionId }: Props) => {
         assistant={assistantStub}
         agentId={agentId}
         sessionId={sessionId}
+        session={session}
         sessionData={sessionData}
         actionsRef={actionsRef}
       />
@@ -153,6 +167,7 @@ interface InnerProps {
   assistant: Assistant
   agentId: string
   sessionId: string
+  session?: AgentSessionEntity
   sessionData?: ToolContext['session']
   actionsRef: React.MutableRefObject<{
     resizeTextArea: () => void
@@ -161,10 +176,44 @@ interface InnerProps {
   }>
 }
 
-const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, sessionId, sessionData, actionsRef }) => {
+const AgentSessionInputbarInner: FC<InnerProps> = ({
+  assistant,
+  agentId,
+  sessionId,
+  session,
+  sessionData,
+  actionsRef
+}) => {
   const { agent: agentBase } = useAgent(agentId)
+  const { updateAgent } = useUpdateAgent()
+  const { updateModel: updateSessionModel } = useUpdateSession(agentId)
+  const { provider } = useProvider('aionly')
+  const aiOnlyModels = useSelector(selectAiOnlyModels)
+  const setupModels = useFetchAndSetupModels()
   const scope = TopicType.Session
   const config = getInputbarConfig(scope)
+
+  // 没有可用模型时，右下角显示“去开通”；否则显示与对话页同款的模型选择按钮
+  const noModels = useMemo(() => !!aiOnlyModels && aiOnlyModels.length === 0, [aiOnlyModels])
+
+  const handleUpdateModel = useCallback(
+    async (model: ApiModel) => {
+      if (!agentBase || !session) return
+
+      const updatedAgent = await updateAgent({ id: agentBase.id, model: model.id }, { showSuccessToast: false })
+      if (!updatedAgent) return
+
+      await updateSessionModel(session.id, model.id, { showSuccessToast: false })
+    },
+    [agentBase, session, updateAgent, updateSessionModel]
+  )
+
+  const handleOpenModel = useCallback(async () => {
+    const result = await AiOnlyAddModelPopup.show({ provider })
+    if (result.success) {
+      await setupModels(10)
+    }
+  }, [provider, setupModels])
 
   // console.log('<============assistant=======>', assistant)
 
@@ -497,16 +546,42 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
     return { ...sessionData, reasoningEffort, onReasoningEffortChange: setReasoningEffort }
   }, [sessionData, reasoningEffort])
 
+  const workdir = session?.accessible_paths?.[0]
+
+  // 底栏左侧：工具按钮 → 智能体按钮 → 选择外部编辑器（均与工具按钮同一行）
   const leftToolbar = useMemo(
     () => (
       <ToolbarGroup>
         {config.showTools && (
           <InputbarTools scope={scope} assistant={assistant} model={assistant.model!} session={toolsSession} />
         )}
+        {agentBase && <AgentNameButton agent={agentBase} />}
+        {workdir && <OpenExternalAppButton workdir={workdir} variant="compact" />}
       </ToolbarGroup>
     ),
-    [config.showTools, scope, assistant, toolsSession]
+    [config.showTools, scope, assistant, toolsSession, agentBase, workdir]
   )
+
+  // 底栏右侧：模型选择（与对话页同款样式），无模型时退化为“去开通”
+  const rightToolbar = useMemo(() => {
+    if (noModels) {
+      return (
+        <NoModelHint>
+          <WarningFilled />
+          <span>{t('chat.topics.no_model')}</span>
+          <Button type="primary" size="small" onClick={() => void handleOpenModel()}>
+            {t('chat.topics.open_model_text')}
+          </Button>
+        </NoModelHint>
+      )
+    }
+
+    if (!session) {
+      return null
+    }
+
+    return <AgentModelSelectButton agentBase={session} onSelect={handleUpdateModel} />
+  }, [noModels, session, t, handleOpenModel, handleUpdateModel])
   const placeholderText = useMemo(() => {
     if (isSoulModeEnabled(agentBase?.configuration)) {
       return t('agent.input.soul_placeholder')
@@ -532,6 +607,8 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
       isLoading={canAbort}
       handleSendMessage={sendMessage}
       leftToolbar={leftToolbar}
+      rightToolbar={rightToolbar}
+      topRightContent={<AgentSettingsButton compact />}
       forceEnableQuickPanelTriggers
     />
   )
@@ -542,6 +619,16 @@ const ToolbarGroup = styled.div`
   flex-direction: row;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+`
+
+const NoModelHint = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-red-600);
+  font-size: 12px;
+  white-space: nowrap;
 `
 
 export default AgentSessionInputbar
