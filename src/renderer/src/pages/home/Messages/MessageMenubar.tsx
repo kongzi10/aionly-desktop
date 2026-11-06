@@ -543,7 +543,11 @@ const MessageMenubar: FC<Props> = (props) => {
   const onMentionModel = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation()
-      const selectedModel = await SelectChatModelPopup.show({ model, filter: mentionModelFilter })
+      const selectedModel = await SelectChatModelPopup.show({
+        model,
+        filter: mentionModelFilter,
+        showOpenModelButton: true
+      })
       if (!selectedModel) return
       void appendAssistantResponse(message, selectedModel, { ...assistant, model: selectedModel })
     },

@@ -2160,6 +2160,7 @@
     "modelGuide": {
       "action": "开通模型",
       "description": "先选择并开通一个模型，就可以开始对话。",
+      "openNewAction": "开通新模型",
       "title": "还没有可用模型"
     },
     "multiModel": "多模型对话",

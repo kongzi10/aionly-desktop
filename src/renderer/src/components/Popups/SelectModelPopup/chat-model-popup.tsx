@@ -9,13 +9,21 @@ interface PopupParams {
   model?: Model
   filter?: (model: Model) => boolean
   showTagFilter?: boolean
+  /** 搜索栏右侧展示「开通模型」入口（首页选择模型弹窗使用） */
+  showOpenModelButton?: boolean
 }
 
 interface Props extends PopupParams {
   resolve: (value: Model | undefined) => void
 }
 
-const PopupContainer: React.FC<Props> = ({ model, filter, showTagFilter = true, resolve }) => {
+const PopupContainer: React.FC<Props> = ({
+  model,
+  filter,
+  showTagFilter = true,
+  showOpenModelButton = false,
+  resolve
+}) => {
   const { providers } = useProviders()
   const allProviders = useAllProviders()
 
@@ -36,6 +44,7 @@ const PopupContainer: React.FC<Props> = ({ model, filter, showTagFilter = true, 
       model={model}
       modelFilter={filter}
       showTagFilter={showTagFilter}
+      showOpenModelButton={showOpenModelButton}
       showPinnedModels={true}
       resolve={resolve}
     />

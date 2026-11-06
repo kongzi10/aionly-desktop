@@ -2160,6 +2160,7 @@
     "modelGuide": {
       "action": "[to be translated]:Open models",
       "description": "[to be translated]:Choose and enable a model to start a conversation.",
+      "openNewAction": "開通新模型",
       "title": "[to be translated]:No model is available yet"
     },
     "multiModel": "[to be translated]:Multi-model chat",

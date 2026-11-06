@@ -8,9 +8,11 @@ import styled from 'styled-components'
 
 interface SelectModelSearchBarProps {
   onSearch: (text: string) => void
+  /** 搜索框右侧的附加内容（如「开通模型」入口按钮） */
+  extra?: React.ReactNode
 }
 
-const SelectModelSearchBar: React.FC<SelectModelSearchBarProps> = ({ onSearch }) => {
+const SelectModelSearchBar: React.FC<SelectModelSearchBarProps> = ({ onSearch, extra }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const inputRef = useRef<InputRef>(null)
@@ -34,7 +36,7 @@ const SelectModelSearchBar: React.FC<SelectModelSearchBarProps> = ({ onSearch })
   }, [])
 
   return (
-    <HStack style={{ padding: '0 12px', marginTop: 5 }}>
+    <HStack style={{ padding: '0 12px', marginTop: 5, gap: 8, alignItems: 'center' }}>
       <Input
         prefix={
           <SearchIcon>
@@ -59,6 +61,7 @@ const SelectModelSearchBar: React.FC<SelectModelSearchBarProps> = ({ onSearch })
           }
         }}
       />
+      {extra}
     </HStack>
   )
 }

@@ -25,6 +25,7 @@ import React, {
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import OpenNewModelButton from '../OpenNewModelButton'
 import SelectModelSearchBar from '../searchbar'
 import type { FlatListItem, FlatListModel } from '../types'
 
@@ -43,13 +44,21 @@ export interface SelectModelPopupParams {
   showTagFilter?: boolean
   showPinnedModels?: boolean
   prioritizedProviderIds?: string[]
+  /** 搜索栏右侧展示「开通模型」入口（首页选择模型弹窗使用） */
+  showOpenModelButton?: boolean
 }
 
 interface Props extends SelectModelPopupParams {
   resolve: (value: Model | undefined) => void
 }
 
-const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, resolve }) => {
+const SelectModelPopupView: React.FC<Props> = ({
+  model,
+  modelFilter,
+  fromType,
+  showOpenModelButton = false,
+  resolve
+}) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(true)
   const [isLoading, _setIsLoading] = useState(false)
@@ -93,7 +102,7 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
     })
   }, [])
 
-  const { models, loading, setLoading, fetchNextPage, getFilteredModels, hasMore } = useAiOnlyModels({
+  const { models, loading, setLoading, fetchNextPage, getFilteredModels, hasMore, reset } = useAiOnlyModels({
     pageSize: 1000, // TODO: 临时规避分组加载数据抖动问题，后续改动，按实际使用，一次加载1000条也够用了
     autoFetch: !userEnabledPlan // TODO: 当用户启用了tokenPlan时，不自动加载模型数据
   })
@@ -120,6 +129,16 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
       setLoading(false)
     }
   }
+
+  // 开通模型成功后刷新弹窗内的模型列表（与输入框「开通模型」按钮的刷新逻辑保持一致）
+  const handleOpenModelSuccess = useCallback(() => {
+    if (userEnabledPlan) {
+      void fetchSelectTokenPlanHourlyDayUsage()
+    } else {
+      reset()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userEnabledPlan, reset])
 
   useEffect(() => {
     const userSelectedPlan: any = getUserEnabledPlan()
@@ -436,13 +455,20 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
           paddingBottom: 16
         },
         body: {
-          maxHeight: 'inherit'
+          maxHeight: 'inherit',
+          // 全局 ant.css 给 .ant-modal-body 设了 overflow-y: auto，滚动容器会裁剪
+          // 搜索栏「开通新模型」按钮向上飞散的星光；本弹窗列表为虚拟滚动（自身容器
+          // 内滚动），body 无需滚动，故覆盖为 visible 保证星光完整显示
+          overflow: 'visible'
           //padding: 0
         }
       }}
       footer={null}>
       <ListContainer onMouseMove={() => !isMouseOver && setIsMouseOver(true)}>
-        <SelectModelSearchBar onSearch={setSearchText} />
+        <SelectModelSearchBar
+          onSearch={setSearchText}
+          extra={showOpenModelButton ? <OpenNewModelButton onSuccess={handleOpenModelSuccess} /> : undefined}
+        />
         <Spin spinning={loading}>
           {listItems.length > 0 ? (
             <DynamicVirtualList
@@ -471,7 +497,9 @@ const SelectModelPopupView: React.FC<Props> = ({ model, modelFilter, fromType, r
 
 const ListContainer = styled.div`
   position: relative;
-  overflow: hidden;
+  /* 保持可见：搜索栏右侧「开通新模型」按钮的星光飞散动画需要溢出到容器外（标题区域），
+     虚拟列表滚动由 DynamicVirtualList 自身的滚动容器裁剪，不依赖此处 */
+  overflow: visible;
 `
 
 const ModelName = styled.div`

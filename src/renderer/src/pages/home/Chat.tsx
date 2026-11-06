@@ -90,7 +90,8 @@ const Chat: FC<Props> = (props) => {
     const modelFilter = (m: Model) => !isEmbeddingModel(m) && !isRerankModel(m)
     const selectedModel = await SelectChatModelPopup.show({
       model: assistant?.model,
-      filter: modelFilter
+      filter: modelFilter,
+      showOpenModelButton: true
     })
     if (selectedModel) {
       const enabledWebSearch = isWebSearchModel(selectedModel)

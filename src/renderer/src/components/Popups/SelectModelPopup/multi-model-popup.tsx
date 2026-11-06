@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import { createModelPopup } from './aionly/base-popup'
+import OpenNewModelButton from './OpenNewModelButton'
 import SelectModelSearchBar from './searchbar'
 import type { FlatListItem } from './types'
 
@@ -34,6 +35,8 @@ export interface SelectMultiModelsPopupParams {
   mode?: 'chat' | 'roundtable'
   /** 数量上限覆盖；默认按会员身份取 getRoundtableMaxModels */
   maxCount?: number
+  /** 搜索栏右侧展示「开通新模型」入口（对话/群聊的模型选择菜单使用） */
+  showOpenModelButton?: boolean
 }
 
 interface Props extends SelectMultiModelsPopupParams {
@@ -50,6 +53,7 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
   modelFilter,
   mode = 'chat',
   maxCount,
+  showOpenModelButton = false,
   resolve
 }) => {
   const { t } = useTranslation()
@@ -124,7 +128,7 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
     [effectiveMaxCount, maxModelsMessage]
   )
 
-  const { models, loading, setLoading, fetchNextPage, getFilteredModels, hasMore } = useAiOnlyModels({
+  const { models, loading, setLoading, fetchNextPage, getFilteredModels, hasMore, reset } = useAiOnlyModels({
     pageSize: 1000, // TODO: 临时规避分组加载数据抖动问题，与 SelectModelPopup 保持一致
     autoFetch: !userEnabledPlan
   })
@@ -150,6 +154,16 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
       setLoading(false)
     }
   }
+
+  // 开通新模型成功后刷新弹窗内的模型列表（与单选弹窗 base-popup 的刷新逻辑保持一致）
+  const handleOpenModelSuccess = useCallback(() => {
+    if (userEnabledPlan) {
+      void fetchSelectTokenPlanHourlyDayUsage()
+    } else {
+      reset()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userEnabledPlan, reset])
 
   useEffect(() => {
     const userSelectedPlan: any = getUserEnabledPlan()
@@ -422,12 +436,18 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
           paddingBottom: 16
         },
         body: {
-          maxHeight: 'inherit'
+          maxHeight: 'inherit',
+          // 全局 ant.css 给 .ant-modal-body 设了 overflow-y: auto 会裁剪星光飞散动画，
+          // 本弹窗列表为虚拟滚动（自身容器内滚动），body 无需滚动，覆盖为 visible
+          overflow: 'visible'
         }
       }}
       footer={null}>
       <ListContainer onMouseMove={() => !isMouseOver && setIsMouseOver(true)}>
-        <SelectModelSearchBar onSearch={setSearchText} />
+        <SelectModelSearchBar
+          onSearch={setSearchText}
+          extra={showOpenModelButton ? <OpenNewModelButton onSuccess={handleOpenModelSuccess} /> : undefined}
+        />
         <Spin spinning={loading}>
           {listItems.length > 0 ? (
             <DynamicVirtualList
@@ -469,7 +489,9 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
 
 const ListContainer = styled.div`
   position: relative;
-  overflow: hidden;
+  /* 保持可见：搜索栏右侧「开通新模型」按钮的星光飞散动画需要溢出到容器外（标题区域），
+     虚拟列表滚动由 DynamicVirtualList 自身的滚动容器裁剪，不依赖此处 */
+  overflow: visible;
 `
 
 const ModelName = styled.div`

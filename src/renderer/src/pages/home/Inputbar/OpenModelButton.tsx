@@ -8,12 +8,17 @@ import styled from 'styled-components'
 
 const logger = loggerService.withContext('OpenModelButton')
 
+interface OpenModelButtonProps {
+  /** 开通成功并刷新全局模型列表后的回调（如选择模型弹窗刷新自身列表） */
+  onSuccess?: () => void
+}
+
 /**
  * 首页无可用模型时替换发送按钮的「开通模型」入口。
  * 交互与公告「立即开通」CTA 一致：打开添加模型弹窗，开通成功后刷新模型列表，
  * 列表更新后输入框自动解禁、本按钮自动隐藏。
  */
-const OpenModelButton: FC = () => {
+const OpenModelButton: FC<OpenModelButtonProps> = ({ onSuccess }) => {
   const { t } = useTranslation()
   const setupModels = useFetchAndSetupModels()
   const [opening, setOpening] = useState(false)
@@ -26,13 +31,14 @@ const OpenModelButton: FC = () => {
       const result = await AiOnlyAddModelPopup.show({})
       if (result?.success) {
         await setupModels(10)
+        onSuccess?.()
       }
     } catch (error) {
       logger.error('Failed to open model popup', { error })
     } finally {
       setOpening(false)
     }
-  }, [opening, setupModels])
+  }, [opening, setupModels, onSuccess])
 
   const label = t('homeLanding.modelGuide.action')
 

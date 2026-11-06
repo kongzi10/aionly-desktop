@@ -2160,6 +2160,7 @@
     "modelGuide": {
       "action": "Open models",
       "description": "Choose and enable a model to start a conversation.",
+      "openNewAction": "Open new model",
       "title": "No model is available yet"
     },
     "multiModel": "Multi-model chat",

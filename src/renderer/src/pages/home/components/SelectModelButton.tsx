@@ -27,7 +27,12 @@ const SelectModelButton: FC<Props> = ({ assistant }) => {
 
   const onSelectModel = async (event: React.MouseEvent<HTMLElement>) => {
     event.currentTarget.blur()
-    const selectedModel = await SelectChatModelPopup.show({ model, filter: modelFilter })
+    const selectedModel = await SelectChatModelPopup.show({
+      model,
+      filter: modelFilter,
+      // 首页与对话页的选择模型弹窗均展示「开通新模型」入口
+      showOpenModelButton: true
+    })
     if (selectedModel) {
       // 避免更新数据造成关闭弹框的卡顿
       clearTimeout(timerRef.current)

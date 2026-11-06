@@ -74,7 +74,9 @@ export const useMentionModelsPanel = (params: Params, role: 'button' | 'manager'
       void SelectMultiModelsPopup.show({
         selectedModels: mentionedModels,
         modelFilter,
-        mode
+        mode,
+        // 对话与群聊（圆桌）的模型选择菜单均展示「开通新模型」入口
+        showOpenModelButton: true
       }).then((models) => {
         if (models) {
           setMentionedModels(models)
