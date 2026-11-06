@@ -8,12 +8,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import LandingPage from '../LandingPage'
 
-const { getPushListMock, ensureModelsMock } = vi.hoisted(() => ({
+const { getPushListMock, ensureModelsMock, openSmartMinappMock } = vi.hoisted(() => ({
   getPushListMock: vi.fn(),
-  ensureModelsMock: vi.fn()
+  ensureModelsMock: vi.fn(),
+  openSmartMinappMock: vi.fn()
 }))
 vi.mock('../homeContentApi', () => ({ getHomePushList: getPushListMock }))
 vi.mock('@renderer/hooks/useAiOnlyModels', () => ({ ensureAiOnlyModelsLoaded: ensureModelsMock }))
+vi.mock('@renderer/hooks/useMinappPopup', () => ({
+  useMinappPopup: () => ({ openSmartMinapp: openSmartMinappMock })
+}))
 
 vi.mock('../Inputbar/Inputbar', () => ({
   default: ({ onMessageAccepted }: { onMessageAccepted?: () => void }) => (
@@ -33,6 +37,7 @@ beforeEach(() => {
   getPushListMock.mockResolvedValue([])
   ensureModelsMock.mockReset()
   ensureModelsMock.mockResolvedValue(undefined)
+  openSmartMinappMock.mockReset()
 })
 
 const ChatRoute = () => {
@@ -114,6 +119,38 @@ describe('LandingPage', () => {
     expect(await screen.findByText('Open model')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'View now' }))
     expect(screen.getByText('Model settings route')).toBeInTheDocument()
+  })
+
+  it('opens cartoon https actions in the internal minapp popup instead of the system browser', async () => {
+    getPushListMock.mockImplementation((pushType: string) =>
+      Promise.resolve(
+        pushType === 'cartoon'
+          ? [
+              {
+                id: 'gift',
+                pushType,
+                title: 'New user gift',
+                buttonText: 'Top up',
+                buttonUrl: 'https://example.com/recharge'
+              }
+            ]
+          : []
+      )
+    )
+
+    render(
+      withStore(
+        <MemoryRouter initialEntries={['/']}>
+          <LandingPage assistant={assistant} activeTopic={topic} setActiveTopic={vi.fn()} />
+        </MemoryRouter>
+      )
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Top up' }))
+    expect(openSmartMinappMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'home-push-gift', url: 'https://example.com/recharge' }),
+      true
+    )
   })
 
   it('directs a user without models to the model setup page', async () => {

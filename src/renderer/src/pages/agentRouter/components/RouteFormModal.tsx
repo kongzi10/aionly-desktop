@@ -5,9 +5,12 @@ import { css, styled } from 'styled-components'
  * Select / Tooltip 的浮层默认挂在 body 上，会绕开弹窗内的作用域样式，
  * 造成「弹窗是中性灰、下拉却还是品牌蓝」。统一挂进所在弹窗里，
  * 让浮层与弹窗共用同一套灰阶规则。
+ * 注意必须挂到 .ant-modal-content 而不是 .ant-modal：antd 给 .ant-modal
+ * 设置了 pointer-events: none（仅 content 恢复 auto），挂在外层会让
+ * 下拉浮层整体不可点击（能展开但点选项无反应）。
  */
 export const getModalPopupContainer = (trigger: HTMLElement): HTMLElement =>
-  (trigger.closest('.ant-modal') as HTMLElement | null) ?? document.body
+  (trigger.closest('.ant-modal-content') as HTMLElement | null) ?? document.body
 
 /**
  * 弹窗外壳：全部 Agent 路由弹窗共用。

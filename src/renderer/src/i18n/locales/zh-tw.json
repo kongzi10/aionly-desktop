@@ -2150,8 +2150,12 @@
     "title": "搜尋話題"
   },
   "homeLanding": {
+    "activationSelected": "已選 <b>{{count}}</b> 個模型",
     "announcements": "[to be translated]:Home announcements",
+    "announcementActivate": "立即開通",
+    "announcementSuffix": "[to be translated]:is now live! Head to Settings - Model Services to enable it.",
     "closeCartoonPush": "關閉卡通推送",
+    "closeAvatarPush": "關閉頭像推送",
     "disclaimer": "內容均由模型生成，其生成內容的準確性和完整性無法保證，不代表我們的態度或觀點",
     "modelGuide": {
       "action": "[to be translated]:Open models",
@@ -4153,7 +4157,7 @@
     "max_models_free": "圓桌對話最多支持選擇 2 個模型，開通會員可選擇 4 個",
     "max_models_member": "圓桌對話最多支持選擇 4 個模型",
     "minimum_models": "圓桌對話至少需要選擇兩個模型",
-    "title": "圓桌",
+    "title": "群聊",
     "welcome": "準備好開始了嗎？"
   },
   "selection": {

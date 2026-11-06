@@ -38,6 +38,7 @@ export interface InputbarToolsNewProps {
   model: Model
   session?: ToolContext['session']
   mode?: 'chat' | 'roundtable'
+  excludedTools?: InputBarToolType[]
 }
 
 interface ToolConfig {
@@ -51,7 +52,7 @@ const DraggablePortal = ({ children, isDragging }: { children: React.ReactNode; 
   return isDragging ? createPortal(children, document.body) : children
 }
 
-const InputbarTools = ({ scope, assistant, model, session, mode = 'chat' }: InputbarToolsNewProps) => {
+const InputbarTools = ({ scope, assistant, model, session, mode = 'chat', excludedTools }: InputbarToolsNewProps) => {
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const toolsContext = useInputbarTools()
@@ -82,8 +83,10 @@ const InputbarTools = ({ scope, assistant, model, session, mode = 'chat' }: Inpu
 
   // Get tools for current scope
   const availableTools = useMemo(() => {
-    return getToolsForScope(scope, { assistant, model, session })
-  }, [scope, assistant, model, session])
+    return getToolsForScope(scope, { assistant, model, session }).filter(
+      (tool) => !excludedTools?.includes(tool.key as InputBarToolType)
+    )
+  }, [scope, assistant, model, session, excludedTools])
 
   // Get tool order for current scope
   const toolOrder = useMemo(() => {

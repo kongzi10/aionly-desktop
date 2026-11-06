@@ -202,6 +202,7 @@ const Chat: FC<Props> = (props) => {
                     setActiveTopic={props.setActiveTopic}
                     topic={props.activeTopic}
                     mode={props.mode}
+                    showOpenModelButton
                   />
                 </BottomFixedArea>
                 {isMultiSelectMode && <MultiSelectActionPopup topic={props.activeTopic} />}

@@ -14,7 +14,8 @@ import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 interface ShowParams {
-  provider: Provider
+  // 弹窗内仅按 modelType + 搜索词拉取未开通模型列表，provider 暂未参与筛选，故设为可选
+  provider?: Provider
   modelType?: 'text_model' | 'image_generation'
 }
 
@@ -139,7 +140,7 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
         autoOpenNewModel: false
       })
       if (res.code === 200 || res.code === 0) {
-        message.success(res.msg || '开通成功')
+        message.success('开通成功')
         setOpen(false)
         resolve({ success: true, modelIds: selectedModelIds })
       }

@@ -42,6 +42,7 @@ import {
   type Topic,
   TopicType
 } from '@renderer/types'
+import type { InputBarToolType } from '@renderer/types/chat'
 import type { MessageInputBaseParams } from '@renderer/types/newMessage'
 import { delay } from '@renderer/utils'
 import { getSendMessageShortcutLabel } from '@renderer/utils/input'
@@ -60,6 +61,7 @@ import { InputbarCore } from './components/InputbarCore'
 import InputbarTools from './InputbarTools'
 import KnowledgeBaseInput from './KnowledgeBaseInput'
 import MentionModelsInput from './MentionModelsInput'
+import OpenModelButton from './OpenModelButton'
 import { getInputbarConfig } from './registry'
 import TokenCount from './TokenCount'
 
@@ -83,7 +85,11 @@ interface Props {
   topic: Topic
   mode?: 'chat' | 'roundtable'
   onMessageAccepted?: () => void
+  /** 首页 / 对话页：无可用模型时在发送位置展示「开通模型」按钮 */
+  showOpenModelButton?: boolean
   compact?: boolean
+  /** 需要隐藏的工具按钮 key 列表（仅影响传入方，如首页） */
+  excludedTools?: InputBarToolType[]
 }
 
 type ProviderActionHandlers = {
@@ -106,7 +112,9 @@ const Inputbar: FC<Props> = ({
   topic,
   mode = 'chat',
   onMessageAccepted,
-  compact
+  showOpenModelButton,
+  compact,
+  excludedTools
 }) => {
   const actionsRef = useRef<ProviderActionHandlers>({
     resizeTextArea: () => {},
@@ -151,7 +159,9 @@ const Inputbar: FC<Props> = ({
         topic={topic}
         mode={mode}
         onMessageAccepted={onMessageAccepted}
+        showOpenModelButton={showOpenModelButton}
         compact={compact}
+        excludedTools={excludedTools}
         actionsRef={actionsRef}
         mentionedModelsCacheKey={mentionedModelsCacheKey}
       />
@@ -165,7 +175,9 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   topic,
   mode = 'chat',
   onMessageAccepted,
+  showOpenModelButton,
   compact,
+  excludedTools,
   actionsRef,
   mentionedModelsCacheKey
 }) => {
@@ -547,7 +559,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
 
   // leftToolbar: 左侧工具栏
   const leftToolbar = config.showTools ? (
-    <InputbarTools scope={scope} assistant={assistant} model={model} mode={mode} />
+    <InputbarTools scope={scope} assistant={assistant} model={model} mode={mode} excludedTools={excludedTools} />
   ) : null
 
   // rightToolbar: 右侧工具栏
@@ -591,6 +603,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
         mode === 'chat' && !compact && availableModels.length > 0 ? <SettingsButton assistant={assistant} /> : undefined
       }
       topContent={topContent}
+      openModelButton={showOpenModelButton ? <OpenModelButton /> : undefined}
       fullWidth={false}
       compact={compact}
     />

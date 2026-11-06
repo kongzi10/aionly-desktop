@@ -7,10 +7,21 @@ import { modelGenerating, useRuntime } from '@renderer/hooks/useRuntime'
 import { getSidebarIconLabel } from '@renderer/i18n/label'
 import { type HomePushItem, resolveHomeContentAction } from '@renderer/pages/home/homeContent'
 import { getHomePushList } from '@renderer/pages/home/homeContentApi'
+import {
+  PushActionButton,
+  PushCardBase,
+  PushCardFoot,
+  PushCloseButton,
+  PushDots,
+  PushSlide,
+  PushViewport,
+  usePushCarousel
+} from '@renderer/pages/home/homePushCard'
 import { applyProfileSwitch } from '@renderer/services/ProfileLifecycleService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { clearToken, selectUserInfo } from '@renderer/store/user'
 import { Avatar, Popover } from 'antd'
+import { X } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -34,36 +45,17 @@ const Container = styled.div`
   }
 `
 
-const AvatarOverlay = styled.div`
+// 头像悬浮框：基础样式与思考框一致，固定锚定在头像左上方
+// 侧边栏整栏为窗口拖拽区，悬浮框覆盖在其上，必须显式声明 none 从拖拽区中挖出可点击区域（继承不生效）
+const AvatarOverlay = styled(PushCardBase)`
   position: absolute;
-  z-index: 100000;
+  // 需低于 antd 弹层遮罩（z-index 1000），弹窗打开时随页面一起被遮罩盖住，避免浮在遮罩上方
+  z-index: 999;
   bottom: 52px;
   left: 12px;
   width: 210px;
-  box-sizing: border-box;
   padding: 12px;
-  border: 1px solid rgb(255 255 255 / 80%);
-  border-radius: 12px;
-  background: rgb(255 255 255 / 94%);
-  box-shadow: 0 12px 32px rgb(55 98 160 / 18%);
-  color: #152b54;
-  font-size: 12px;
-
-  p {
-    margin: 6px 0 10px;
-    color: #667b9d;
-    line-height: 1.5;
-  }
-
-  button {
-    float: right;
-    border: 0;
-    border-radius: 6px;
-    padding: 5px 10px;
-    background: var(--color-primary);
-    color: white;
-    cursor: pointer;
-  }
+  -webkit-app-region: none;
 `
 
 const UserInfoContainer = styled.div<{ theme: string }>`
@@ -132,31 +124,33 @@ const UserAvatar: React.FC<Props> = () => {
   const { theme /*settedTheme, toggleTheme*/ } = useTheme()
   const { pathname } = useLocation()
   const { minappShow } = useRuntime()
-  const [overlay, setOverlay] = useState<HomePushItem | null>(null)
-  const [overlayVisible, setOverlayVisible] = useState(false)
+  const [items, setItems] = useState<HomePushItem[]>([])
+  const [open, setOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const count = items.length
+  const { index, setIndex, pausedRef } = usePushCarousel(count)
 
+  // 挂载时拉取推送并默认展示悬浮框；悬浮框固定锚定在头像左上方，
+  // 不随路由/左侧菜单切换关闭，仅手动关闭按钮可隐藏
   useEffect(() => {
-    if (pathname !== '/') {
-      setOverlay(null)
-      setOverlayVisible(false)
-      return
-    }
     let mounted = true
     void getHomePushList('avatar_overlay')
-      .then((items) => {
-        if (mounted) setOverlay(items[0] ?? null)
+      .then((list) => {
+        if (!mounted) return
+        setItems(list)
+        setIndex(0)
+        setOpen(list.length > 0)
       })
       .catch(() => {})
     return () => {
       mounted = false
     }
-  }, [pathname])
+  }, [setIndex])
 
-  const overlayAction = resolveHomeContentAction(overlay?.buttonUrl)
+  const current = count ? items[index % count] : null
+  const overlayAction = resolveHomeContentAction(current?.buttonUrl)
   const openOverlayAction = () => {
     if (!overlayAction) return
-    setOverlayVisible(false)
     if (overlayAction.type === 'route') navigate(overlayAction.target)
     else void window.api.shell.openExternal(overlayAction.target)
   }
@@ -249,11 +243,7 @@ const UserAvatar: React.FC<Props> = () => {
   )
 
   return (
-    <Container
-      className="user-avatar"
-      data-tour="user-avatar"
-      onMouseEnter={() => setOverlayVisible(Boolean(overlay) && !menuOpen)}
-      onMouseLeave={() => setOverlayVisible(false)}>
+    <Container className="user-avatar" data-tour="user-avatar">
       <Popover
         content={UserInfoPanel}
         placement={'top'}
@@ -262,21 +252,52 @@ const UserAvatar: React.FC<Props> = () => {
         getPopupContainer={() => document.body}
         trigger="click"
         open={menuOpen}
-        onOpenChange={(open) => {
-          setMenuOpen(open)
-          if (open) setOverlayVisible(false)
-        }}>
+        onOpenChange={setMenuOpen}>
         <Avatar src={userInfo?.avatarUrl ?? defaultAvatar} size={40}></Avatar>
       </Popover>
-      {overlayVisible && overlay && (
-        <AvatarOverlay role="region" aria-label={overlay.title}>
-          <strong>{overlay.title}</strong>
-          {overlay.description && <p>{overlay.description}</p>}
-          {overlay.buttonText && overlayAction && (
-            <button type="button" onClick={openOverlayAction}>
-              {overlay.buttonText}
-            </button>
-          )}
+      {open && !menuOpen && current && (
+        <AvatarOverlay
+          role="region"
+          aria-roledescription="carousel"
+          aria-label={current.title}
+          onMouseEnter={() => {
+            pausedRef.current = true
+          }}
+          onMouseLeave={() => {
+            pausedRef.current = false
+          }}>
+          <PushCloseButton type="button" aria-label={t('homeLanding.closeAvatarPush')} onClick={() => setOpen(false)}>
+            <X size={14} />
+          </PushCloseButton>
+          <PushViewport>
+            {items.map((item, i) => (
+              <PushSlide key={item.id} $active={i === index % count} aria-hidden={i !== index % count}>
+                <strong>{item.title}</strong>
+                {item.description && <p>{item.description}</p>}
+              </PushSlide>
+            ))}
+          </PushViewport>
+          <PushCardFoot>
+            <PushDots>
+              {count > 1 &&
+                items.map((item, i) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={i === index % count ? 'active' : ''}
+                    aria-label={item.title}
+                    onClick={() => setIndex(i)}
+                  />
+                ))}
+            </PushDots>
+            {current.buttonText && overlayAction && (
+              <PushActionButton type="button" onClick={openOverlayAction}>
+                <span className="text-container">
+                  <span className="text">{current.buttonText}</span>
+                </span>
+              </PushActionButton>
+            )}
+          </PushCardFoot>
         </AvatarOverlay>
       )}
     </Container>

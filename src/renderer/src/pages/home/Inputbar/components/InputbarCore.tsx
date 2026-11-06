@@ -64,6 +64,8 @@ export interface InputbarCoreProps {
   leftToolbar?: React.ReactNode
   rightToolbar?: React.ReactNode
   topRightContent?: React.ReactNode
+  /** 无可用模型时替换发送按钮的「开通模型」入口，首页与对话页传入 */
+  openModelButton?: React.ReactNode
 
   // Preview sections (attachments, mentions, etc.)
   topContent?: React.ReactNode
@@ -126,6 +128,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
   leftToolbar,
   rightToolbar,
   topRightContent,
+  openModelButton,
   topContent,
   beforeInputContent,
   pinnedContent,
@@ -617,6 +620,10 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
     }
   }, [])
 
+  const noModels = useMemo(() => {
+    return aiOnlyModels && aiOnlyModels.length === 0
+  }, [aiOnlyModels])
+
   const rightSectionExtras = useMemo(() => {
     const extras: React.ReactNode[] = []
     /*    extras.push(
@@ -628,26 +635,27 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
         isLoading={isTranslating}
       />
     )*/
-    extras.push(
-      <SendMessageButton
-        key="send-message"
-        sendMessage={handleSendMessage}
-        disabled={isSendDisabled}
-        isLoading={isLoading}
-        onStop={onPause}
-      />
-    )
+    // 无可用模型时，首页 / 对话页以「开通模型」按钮替换发送按钮
+    if (noModels && openModelButton) {
+      extras.push(<React.Fragment key="open-model">{openModelButton}</React.Fragment>)
+    } else {
+      extras.push(
+        <SendMessageButton
+          key="send-message"
+          sendMessage={handleSendMessage}
+          disabled={isSendDisabled}
+          isLoading={isLoading}
+          onStop={onPause}
+        />
+      )
+    }
 
     return <>{extras}</>
     // Note: text, onTranslated, isTranslating are excluded because TranslateButton is commented out
     // Original deps when TranslateButton is enabled: [text, onTranslated, isTranslating, handleSendMessage, isSendDisabled, isLoading, t, onPause]
-  }, [handleSendMessage, isSendDisabled, isLoading, t, onPause])
+  }, [handleSendMessage, isSendDisabled, isLoading, t, onPause, noModels, openModelButton])
 
   const quickPanelElement = config.enableQuickPanel ? <QuickPanelView setInputText={setText} /> : null
-
-  const noModels = useMemo(() => {
-    return aiOnlyModels && aiOnlyModels.length === 0
-  }, [aiOnlyModels])
 
   return (
     <NarrowLayout fullWidth={fullWidth} style={{ width: '100%' }}>

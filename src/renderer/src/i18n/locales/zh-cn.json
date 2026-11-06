@@ -2150,8 +2150,12 @@
     "title": "对话搜索"
   },
   "homeLanding": {
+    "activationSelected": "已选 <b>{{count}}</b> 个模型",
     "announcements": "首页公告",
+    "announcementActivate": "立即开通",
+    "announcementSuffix": "已上架，请至设置-模型服务开通体验哦!",
     "closeCartoonPush": "关闭卡通推送",
+    "closeAvatarPush": "关闭头像推送",
     "disclaimer": "内容均由模型生成，其生成内容的准确性和完整性无法保证，不代表我们的态度或观点",
     "modelGuide": {
       "action": "开通模型",
@@ -4153,7 +4157,7 @@
     "max_models_free": "圆桌对话最多支持选择 2 个模型，开通会员可选择 4 个",
     "max_models_member": "圆桌对话最多支持选择 4 个模型",
     "minimum_models": "圆桌对话至少需要选择两个模型",
-    "title": "圆桌",
+    "title": "群聊",
     "welcome": "准备好开始了吗？"
   },
   "selection": {
