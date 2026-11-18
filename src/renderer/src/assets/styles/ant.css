@@ -258,3 +258,12 @@
   width: 4px !important;
   background-color: var(--color-primary) !important;
 }
+
+/* API 密钥管理弹窗：高亮当前使用中的密钥行 */
+.apikey-list-table .ant-table-tbody > tr.apikey-row-in-use > td {
+  background-color: color-mix(in srgb, var(--color-primary) 6%, transparent) !important;
+}
+
+.apikey-list-table .ant-table-tbody > tr.apikey-row-in-use:hover > td {
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent) !important;
+}

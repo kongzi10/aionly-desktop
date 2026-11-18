@@ -1,4 +1,8 @@
 import { CrownFilled } from '@ant-design/icons'
+import DiscountTag from '@renderer/components/Tags/Model/DiscountTag'
+import ModelLabelTags from '@renderer/components/Tags/Model/ModelLabelTags'
+import { useModelLabels } from '@renderer/hooks/useModelLabels'
+import { usePublishPriceDiscount } from '@renderer/hooks/usePublishPriceDiscount'
 import type { Model } from '@renderer/types'
 import React, { memo } from 'react'
 import styled from 'styled-components'
@@ -21,6 +25,12 @@ const ModelIdWithTags = ({
 }: ModelIdWithTagsProps & { ref?: React.RefObject<HTMLDivElement> | null }) => {
   const shouldShowIdentifier = showIdentifier && model.id !== model.name
 
+  // 限时折扣活动：合并键为 ai_model.id（透传字段 modelId）；非 AiOnly 供应商模型无该字段则不展示标签
+  const { getDiscount } = usePublishPriceDiscount([model], (m) => (m as any)?.modelId)
+
+  // 推荐标签（人气模型/最新推荐等）：模型透传字段 recommendLabel/modelLabel
+  const { getLabelItems } = useModelLabels()
+
   return (
     <div
       ref={ref}
@@ -36,6 +46,8 @@ const ModelIdWithTags = ({
             <span>vip</span>
           </IconVip>
         )}
+        <ModelLabelTags items={getLabelItems(model)} />
+        <DiscountTag activity={getDiscount(model)} />
         {shouldShowIdentifier && (
           <span
             className="min-w-0 max-w-[50%] shrink truncate font-mono text-(--color-text-3) text-[12px]! leading-[1.2]"

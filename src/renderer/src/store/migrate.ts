@@ -2520,8 +2520,8 @@ const migrateConfig = {
   '154': (state: RootState) => {
     try {
       if (state.settings.userTheme) {
-        state.settings.userTheme.userFontFamily = settingsInitialState.userTheme.userFontFamily
-        state.settings.userTheme.userCodeFontFamily = settingsInitialState.userTheme.userCodeFontFamily
+        delete (state.settings.userTheme as Record<string, unknown>).userFontFamily
+        delete (state.settings.userTheme as Record<string, unknown>).userCodeFontFamily
       }
       return state
     } catch (error) {
@@ -3433,6 +3433,19 @@ const migrateConfig = {
       return state
     } catch (error) {
       logger.error('migrate 208 error', error as Error)
+      return state
+    }
+  },
+  '209': (state: RootState) => {
+    try {
+      if (state.settings.userTheme) {
+        delete (state.settings.userTheme as Record<string, unknown>).userFontFamily
+        delete (state.settings.userTheme as Record<string, unknown>).userCodeFontFamily
+      }
+      logger.info('migrate 209 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 209 error', error as Error)
       return state
     }
   }

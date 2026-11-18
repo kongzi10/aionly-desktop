@@ -44,7 +44,6 @@ export enum IpcChannel {
   App_GetDiskInfo = 'app:get-disk-info',
   App_SetFullScreen = 'app:set-full-screen',
   App_IsFullScreen = 'app:is-full-screen',
-  App_GetSystemFonts = 'app:get-system-fonts',
   App_GetIpCountry = 'app:get-ip-country',
   APP_CrashRenderProcess = 'app:crash-render-process',
 

@@ -1226,6 +1226,7 @@
         "title": "選擇新增類型"
       },
       "topic": {
+        "empty_tip": "當前對話為空，可直接開始聊天",
         "title": "新增話題"
       }
     },
@@ -1258,7 +1259,7 @@
       "description": "你好，我是預設助手。你可以立即開始與我聊天",
       "name": "預設助手",
       "topic": {
-        "name": "預設話題"
+        "name": "新話題"
       }
     },
     "history": {
@@ -2151,11 +2152,11 @@
   },
   "homeLanding": {
     "activationSelected": "已選 <b>{{count}}</b> 個模型",
-    "announcements": "[to be translated]:Home announcements",
     "announcementActivate": "立即開通",
     "announcementSuffix": "[to be translated]:is now live! Head to Settings - Model Services to enable it.",
-    "closeCartoonPush": "關閉卡通推送",
+    "announcements": "[to be translated]:Home announcements",
     "closeAvatarPush": "關閉頭像推送",
+    "closeCartoonPush": "關閉卡通推送",
     "disclaimer": "內容均由模型生成，其生成內容的準確性和完整性無法保證，不代表我們的態度或觀點",
     "modelGuide": {
       "action": "[to be translated]:Open models",
@@ -2164,6 +2165,12 @@
       "title": "[to be translated]:No model is available yet"
     },
     "multiModel": "[to be translated]:Multi-model chat",
+    "newModelActivateContent": "模型未開通，是否開通先用後付？",
+    "newModelActivateSuccess": "開通成功",
+    "newModelActivateTitle": "模型開通",
+    "newModelPushDesc": "{{service}} 新模型，開通後即可在對話中使用",
+    "newModelPushDescGeneric": "新模型已上架，開通後即可在對話中使用",
+    "newModelPushTitle": "{{name}} 已上架",
     "promotionAction": "[to be translated]:action",
     "title": "[to be translated]:Explore the unknown, find your answer",
     "viewPromotion": "[to be translated]:View now"
@@ -3086,6 +3093,10 @@
     "tooltip": {
       "pin": "視窗置頂"
     }
+  },
+  "modelTag": {
+    "limitedDiscount": "限時{{discount}}折",
+    "limitedFree": "限時免費"
   },
   "models": {
     "add_parameter": "新增參數",
@@ -4155,9 +4166,9 @@
   },
   "roundtable": {
     "add_model": "添加模型",
-    "max_models_free": "圓桌對話最多支持選擇 2 個模型，開通會員可選擇 4 個",
-    "max_models_member": "圓桌對話最多支持選擇 4 個模型",
-    "minimum_models": "圓桌對話至少需要選擇兩個模型",
+    "max_models_free": "群聊最多支持選擇 2 個模型，開通會員可選擇 4 個",
+    "max_models_member": "群聊最多支持選擇 4 個模型",
+    "minimum_models": "群聊至少需要選擇兩個模型",
     "title": "群聊",
     "welcome": "準備好開始了嗎？"
   },
@@ -5087,13 +5098,6 @@
           "placeholder": "/* 這裡寫自訂 CSS */"
         }
       },
-      "font": {
-        "code": "程式碼字型",
-        "default": "預設",
-        "global": "全域字型",
-        "select": "選擇字型",
-        "title": "字型設定"
-      },
       "navbar": {
         "position": {
           "label": "導覽列位置",
@@ -5795,9 +5799,14 @@
             "empty": "API 金鑰不能為空"
           },
           "list": {
+            "already_in_use": "當前正在使用該金鑰",
+            "in_use": "使用中",
             "more": "更多",
             "open": "開啟管理介面",
-            "title": "API 金鑰管理"
+            "switch_success": "已切換使用金鑰「{{name}}」",
+            "title": "API 金鑰管理",
+            "use": "使用",
+            "use_no_provider": "未關聯當前模型服務，請重新打開本彈窗或重啟應用後重試"
           },
           "new_key": {
             "cancel": "取消",

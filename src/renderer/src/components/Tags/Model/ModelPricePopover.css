@@ -1,0 +1,303 @@
+/* =============================================================================
+ * 模型收费浮窗 · V1 分层卡片版（组件落地样式）
+ * 来源：docs/model-pricing-popup/styles/style-v1-tiered-card.css（评审定版）
+ * 扩展：骨架屏 .mpp__skeleton、分组小标题 .mpp__group-title、免费 .mpp__free、
+ *       高峰调度 .mpp__peak-scheduing、空值 .mpp__empty
+ * ========================================================================== */
+
+.mpp-v1 {
+  --mpp-v1-bg: #ffffff;
+  --mpp-v1-border: #e6edf7;
+  --mpp-v1-section-bg: #f6f8fc;
+  --mpp-v1-fg: #0f172a;
+  --mpp-v1-fg-sub: #64748b;
+  --mpp-v1-fg-mute: #94a3b8;
+  --mpp-v1-primary: #1677ff;
+  --mpp-v1-primary-bg: #e8f3ff;
+  --mpp-v1-peak-fg: #d46b08;
+  --mpp-v1-peak-bg: #fff7e6;
+  --mpp-v1-peak-border: #ffd591;
+  --mpp-v1-divider: #e2e8f0;
+  --mpp-v1-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.06);
+
+  box-sizing: border-box;
+  width: 340px;
+  background: var(--mpp-v1-bg);
+  border: 1px solid var(--mpp-v1-border);
+  border-radius: 14px;
+  box-shadow: var(--mpp-v1-shadow);
+  color: var(--mpp-v1-fg);
+  font-family: inherit;
+  overflow: hidden;
+}
+
+.mpp-v1 *,
+.mpp-v1 *::before,
+.mpp-v1 *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- 头部 ---------- */
+.mpp-v1 .mpp__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, var(--mpp-v1-primary-bg) 0%, var(--mpp-v1-bg) 60%);
+  border-bottom: 1px solid var(--mpp-v1-border);
+}
+
+.mpp-v1 .mpp__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mpp-v1 .mpp__model {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mpp-v1 .mpp__provider {
+  font-size: 12px;
+  color: var(--mpp-v1-fg-sub);
+  flex-shrink: 0;
+}
+
+.mpp-v1 .mpp__charge-badge {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--mpp-v1-primary-bg);
+  color: var(--mpp-v1-primary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.mpp-v1 .mpp__charge-badge--free {
+  background: #f6ffed;
+  color: #389e0d;
+}
+
+/* ---------- 主体 ---------- */
+.mpp-v1 .mpp__body {
+  padding: 4px 12px 12px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.mpp-v1 .mpp__section {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--mpp-v1-section-bg);
+  border-radius: 10px;
+}
+
+.mpp-v1 .mpp__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.mpp-v1 .mpp__section-title {
+  position: relative;
+  padding-left: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mpp-v1-fg-sub);
+  line-height: 17px;
+}
+
+.mpp-v1 .mpp__section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--mpp-v1-primary);
+}
+
+.mpp-v1 .mpp__section-extra {
+  font-size: 11px;
+  color: var(--mpp-v1-primary);
+}
+
+.mpp-v1 .mpp__group-title {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mpp-v1-fg-mute);
+  line-height: 16px;
+}
+
+.mpp-v1 .mpp__group-title:first-child {
+  margin-top: 0;
+}
+
+.mpp-v1 .mpp__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mpp-v1 .mpp__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+}
+
+.mpp-v1 .mpp__item-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--mpp-v1-fg-sub);
+  line-height: 18px;
+}
+
+.mpp-v1 .mpp__item-value {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mpp-v1-fg);
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.mpp-v1 .mpp__item-warn {
+  color: #faad14;
+  font-size: 12px;
+}
+
+.mpp-v1 .mpp__free {
+  font-size: 13px;
+  font-weight: 600;
+  color: #389e0d;
+}
+
+.mpp-v1 .mpp__empty {
+  font-size: 12px;
+  color: var(--mpp-v1-fg-mute);
+}
+
+/* 高峰时段 chips */
+.mpp-v1 .mpp__peaks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mpp-v1 .mpp__peak-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--mpp-v1-peak-border);
+  border-radius: 6px;
+  background: var(--mpp-v1-peak-bg);
+  color: var(--mpp-v1-peak-fg);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+}
+
+.mpp-v1 .mpp__peak-scheduing {
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--mpp-v1-peak-fg);
+}
+
+/* 骨架屏 */
+.mpp-v1 .mpp__skeleton {
+  height: 12px;
+  margin: 7px 0;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.06) 25%,
+    rgba(15, 23, 42, 0.12) 37%,
+    rgba(15, 23, 42, 0.06) 63%
+  );
+  background-size: 400% 100%;
+  animation: mpp-v1-skeleton 1.2s ease infinite;
+}
+
+.mpp-v1 .mpp__skeleton--w60 {
+  width: 60%;
+}
+.mpp-v1 .mpp__skeleton--w80 {
+  width: 80%;
+}
+.mpp-v1 .mpp__skeleton--w40 {
+  width: 40%;
+}
+
+@keyframes mpp-v1-skeleton {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* ---------- 尾部 ---------- */
+.mpp-v1 .mpp__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px dashed var(--mpp-v1-divider);
+}
+
+.mpp-v1 .mpp__footer-note {
+  font-size: 11px;
+  color: var(--mpp-v1-fg-mute);
+}
+
+/* ---------- 暗色主题 ---------- */
+.mpp-v1.mpp--dark {
+  --mpp-v1-bg: #1f242b;
+  --mpp-v1-border: #2c333d;
+  --mpp-v1-section-bg: #262c35;
+  --mpp-v1-fg: #e5e7eb;
+  --mpp-v1-fg-sub: #9aa4b2;
+  --mpp-v1-fg-mute: #6b7280;
+  --mpp-v1-primary: #4096ff;
+  --mpp-v1-primary-bg: rgba(22, 119, 255, 0.16);
+  --mpp-v1-peak-fg: #ffa940;
+  --mpp-v1-peak-bg: rgba(255, 153, 0, 0.12);
+  --mpp-v1-peak-border: rgba(255, 153, 0, 0.35);
+  --mpp-v1-divider: #2c333d;
+  --mpp-v1-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.mpp-v1.mpp--dark .mpp__charge-badge--free {
+  background: rgba(56, 158, 13, 0.16);
+  color: #73d13d;
+}
+
+.mpp-v1.mpp--dark .mpp__free {
+  color: #73d13d;
+}
+
+.mpp-v1.mpp--dark .mpp__skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 25%,
+    rgba(255, 255, 255, 0.12) 37%,
+    rgba(255, 255, 255, 0.06) 63%
+  );
+  background-size: 400% 100%;
+}

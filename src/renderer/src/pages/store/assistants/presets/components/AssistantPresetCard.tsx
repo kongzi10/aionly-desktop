@@ -145,7 +145,7 @@ const AssistantPresetCard: FC<Props> = ({
   const prompt = (preset.description || preset.prompt).substring(0, 200).replace(/\\n/g, '')
 
   const content = (
-    <AgentCardContainer onClick={onClick} ref={cardRef}>
+    <AgentCardContainer onClick={onClick} ref={cardRef} className="agent-preset-card">
       {isVisible && (
         <AgentCardBody>
           {/*<AgentCardBackground>{emoji}</AgentCardBackground>*/}
@@ -181,7 +181,7 @@ const AssistantPresetCard: FC<Props> = ({
             )}
             <AddButton onClick={handleAddAssistant}>{t('assistants.presets.add.button')}</AddButton>
           </AgentCardHeader>
-          <AgentCardHeaderInfoTags>
+          <AgentCardHeaderInfoTags className="agent-preset-tags">
             {activegroup === '我的' && (
               <CustomTag color="#f00" size={11}>
                 {getLocalizedGroupName('我的')}
@@ -195,7 +195,7 @@ const AssistantPresetCard: FC<Props> = ({
               ))}
           </AgentCardHeaderInfoTags>
           <CardInfo>
-            <AgentPrompt>{prompt}</AgentPrompt>
+            <AgentPrompt className="agent-preset-prompt">{prompt}</AgentPrompt>
           </CardInfo>
         </AgentCardBody>
       )}

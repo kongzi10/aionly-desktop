@@ -2,6 +2,7 @@ import { loggerService } from '@logger'
 import db from '@renderer/databases'
 import i18n from '@renderer/i18n'
 import { fetchMessagesSummary } from '@renderer/services/ApiService'
+import { isDefaultTopicName } from '@renderer/services/AssistantService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { safeDeleteFiles } from '@renderer/services/MessagesService'
 import store from '@renderer/store'
@@ -166,7 +167,7 @@ export const autoRenameTopic = async (assistant: Assistant, topicId: string) => 
       return
     }
 
-    if (topic && topic.name === i18n.t('chat.default.topic.name') && topic.messages.length >= 2) {
+    if (topic && isDefaultTopicName(topic.name) && topic.messages.length >= 2) {
       startTopicRenaming(topicId)
       try {
         const { text: summaryText, error } = await fetchMessagesSummary({ messages: topic.messages })

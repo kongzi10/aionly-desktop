@@ -366,7 +366,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
       await new Promise((resolve) => setTimeout(resolve, 0))
     }
 
-    await AiOnlyApiKeyListPopup.show()
+    await AiOnlyApiKeyListPopup.show(provider.id)
 
     /*await ApiKeyListPopup.show({
       providerId: provider.id,

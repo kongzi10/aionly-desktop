@@ -7,6 +7,7 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import { /*useEnableDeveloperMode,*/ useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
 import i18n from '@renderer/i18n'
+import { isDefaultTopicName } from '@renderer/services/AssistantService'
 import type { RootState } from '@renderer/store'
 import { useAppDispatch } from '@renderer/store'
 import { updateAssistant, updateDefaultAssistant } from '@renderer/store/assistants'
@@ -116,9 +117,8 @@ const GeneralSettings: FC = () => {
 
     if (getDefaultNamesForKey('chat.default.name').has(defaultAssistant.name)) {
       const newName = i18n.t('chat.default.name')
-      const knownTopicNames = getDefaultNamesForKey('chat.default.topic.name')
       const updatedTopics = defaultAssistant.topics.map((topic) =>
-        knownTopicNames.has(topic.name) ? { ...topic, name: i18n.t('chat.default.topic.name') } : topic
+        isDefaultTopicName(topic.name) ? { ...topic, name: i18n.t('chat.default.topic.name') } : topic
       )
       dispatch(updateDefaultAssistant({ assistant: { ...defaultAssistant, name: newName, topics: updatedTopics } }))
       dispatch(updateAssistant({ id: defaultAssistant.id, name: newName, topics: updatedTopics }))

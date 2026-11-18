@@ -11,6 +11,8 @@ const logger = loggerService.withContext('OpenNewModelButton')
 interface OpenNewModelButtonProps {
   /** 开通成功并刷新全局模型列表后的回调（如选择模型弹窗刷新自身列表） */
   onSuccess?: () => void
+  /** 打开开通模型弹窗时默认选中的模型类型（如绘画页传 'image_generation'），默认文本模型 */
+  modelType?: 'text_model' | 'image_generation'
 }
 
 const STAR_PATH =
@@ -29,7 +31,7 @@ const Star: FC<{ className?: string }> = ({ className }) => (
  * 交互与输入框「开通模型」一致：打开添加模型弹窗，开通成功后刷新模型列表。
  * 注意：仅用于选择模型弹窗，输入框/对话框内仍使用 OpenModelButton。
  */
-const OpenNewModelButton: FC<OpenNewModelButtonProps> = ({ onSuccess }) => {
+const OpenNewModelButton: FC<OpenNewModelButtonProps> = ({ onSuccess, modelType }) => {
   const { t } = useTranslation()
   const setupModels = useFetchAndSetupModels()
   const [opening, setOpening] = useState(false)
@@ -39,7 +41,7 @@ const OpenNewModelButton: FC<OpenNewModelButtonProps> = ({ onSuccess }) => {
 
     setOpening(true)
     try {
-      const result = await AiOnlyAddModelPopup.show({})
+      const result = await AiOnlyAddModelPopup.show({ modelType })
       if (result?.success) {
         await setupModels(10)
         onSuccess?.()

@@ -274,7 +274,8 @@ const MessageGroup = ({ messages, topic, registerMessageElement, mode = 'chat' }
         multiModelMessageStyle,
         message,
         topic,
-        index: message.index
+        index: message.index,
+        mode
       } satisfies ComponentProps<typeof MessageItem>
 
       const messageContent = (
@@ -334,7 +335,8 @@ const MessageGroup = ({ messages, topic, registerMessageElement, mode = 'chat' }
       selectedMessageId,
       onUpdateUseful,
       groupContextMessageId,
-      gridPopoverTrigger
+      gridPopoverTrigger,
+      mode
     ]
   )
 

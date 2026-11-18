@@ -94,6 +94,7 @@ interface Props {
   messageContainerRef: React.RefObject<HTMLDivElement>
   setModel: (model: Model) => void
   onUpdateUseful?: (msgId: string) => void
+  mode?: 'chat' | 'roundtable'
 }
 
 const logger = loggerService.withContext('MessageMenubar')
@@ -147,7 +148,8 @@ const MessageMenubar: FC<Props> = (props) => {
     topic,
     model,
     messageContainerRef,
-    onUpdateUseful
+    onUpdateUseful,
+    mode = 'chat'
   } = props
   const { t } = useTranslation()
   const { notesPath } = useNotesSettings()
@@ -293,7 +295,9 @@ const MessageMenubar: FC<Props> = (props) => {
   }, [message])
 
   const menubarScope: MessageMenubarScope = topic?.type ?? DEFAULT_MESSAGE_MENUBAR_SCOPE
-  const { buttonIds, dropdownRootAllowKeys } = getMessageMenubarConfig(menubarScope)
+  const { buttonIds: scopeButtonIds, dropdownRootAllowKeys } = getMessageMenubarConfig(menubarScope)
+  const buttonIds =
+    mode === 'roundtable' ? scopeButtonIds.filter((buttonId) => buttonId !== 'assistant-mention-model') : scopeButtonIds
 
   const isEditable = useMemo(() => {
     return findMainTextBlocks(message).length > 0 // 使用 MCP Server 后会有大于一段 MatinTextBlock

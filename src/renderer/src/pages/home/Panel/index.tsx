@@ -18,7 +18,7 @@ import React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 // import { useNavigate } from 'react-router-dom'
-import styled, { css } from 'styled-components'
+import styled, { createGlobalStyle, css } from 'styled-components'
 
 import Assistants from '../Tabs/AssistantsTab'
 import AssistantAddButton from '../Tabs/components/AssistantAddButton'
@@ -102,17 +102,28 @@ const HomePanel: FC<Props> = ({
       maskClosable: true,
       closable: true,
       icon: null,
+      className: 'assistant-presets-modal',
       width: '80%',
-      style: {
-        top: 20
-      },
+      centered: true,
       zIndex: 888,
-      bodyStyle: {
-        padding: 0
-        // height: 'calc(100vh - 100px)',
-        // overflowY: 'auto'
+      styles: {
+        content: {
+          height: '86vh',
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column'
+        },
+        header: {
+          flexShrink: 0
+        },
+        body: {
+          padding: 0,
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden'
+        }
       },
-      content: <AssistantPresetsPage showNavbar={false} workspace={workspace} />
+      content: <AssistantPresetsPage showNavbar={false} workspace={workspace} embedded />
     })
   }
 
@@ -167,6 +178,7 @@ const HomePanel: FC<Props> = ({
       $merged={mergePanels}
       style={{ /*...border,*/ ...style }}
       className={classNames('home-tabs', { right: position === 'right' && topicPosition === 'right' })}>
+      <RoleLibraryModalStyle />
       {/*{position === 'left' && topicPosition === 'left' && (
         <CustomTabs>
           <TabItem active={tab === 'assistants'} onClick={() => setTab('assistants')}>
@@ -333,6 +345,52 @@ const HomePanel: FC<Props> = ({
     </Container>
   )
 }
+
+// antd modal.info(confirm) 会在 body 内额外包几层自动高度的 confirm-* 容器，
+// 导致内嵌页面拿不到确定高度而无法内部滚动，这里补全高度传递链
+const RoleLibraryModalStyle = createGlobalStyle`
+  .ant-modal.assistant-presets-modal {
+    .ant-modal-confirm-body-wrapper,
+    .ant-modal-confirm-body {
+      height: 100%;
+    }
+
+    .ant-modal-confirm-body {
+      align-items: stretch;
+    }
+
+    .ant-modal-confirm-title {
+      flex-shrink: 0;
+    }
+
+    .ant-modal-confirm-content {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+  }
+
+  /* 弹窗内嵌紧凑卡片：压缩内边距与描述行数，配合紧凑行高保证卡片整行完整可见 */
+  .ant-modal.assistant-presets-modal .agent-preset-card {
+    padding: 12px;
+  }
+
+  .ant-modal.assistant-presets-modal .agent-preset-tags {
+    padding-top: 6px;
+  }
+
+  .ant-modal.assistant-presets-modal .agent-preset-prompt {
+    -webkit-line-clamp: 2;
+  }
+
+  /* 全屏（高视口）场景：弹窗放大到 90vh（仍居中），保证 5 行卡片完整可见；
+     最小化窗口（视口 < 900px）不受影响，维持 86vh */
+  @media (min-height: 900px) {
+    .ant-modal.assistant-presets-modal .ant-modal-content {
+      height: 90vh !important;
+    }
+  }
+`
 
 const Container = styled.div<{ $merged: boolean }>`
   display: flex;

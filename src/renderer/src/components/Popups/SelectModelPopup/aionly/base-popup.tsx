@@ -1,8 +1,12 @@
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
+import DiscountTag from '@renderer/components/Tags/Model/DiscountTag'
+import ModelLabelTags from '@renderer/components/Tags/Model/ModelLabelTags'
 import { TopView } from '@renderer/components/TopView'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
-import { transformToModel, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
+import { type ModelAttribute, transformToModel, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
+import { useModelLabels } from '@renderer/hooks/useModelLabels'
+import { invalidatePublishPriceDiscountCache, usePublishPriceDiscount } from '@renderer/hooks/usePublishPriceDiscount'
 import useUserTokenPlan from '@renderer/hooks/useUserTokenPlan'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import { useAppSelector } from '@renderer/store'
@@ -46,6 +50,12 @@ export interface SelectModelPopupParams {
   prioritizedProviderIds?: string[]
   /** 搜索栏右侧展示「开通模型」入口（首页选择模型弹窗使用） */
   showOpenModelButton?: boolean
+  /** 模型属性筛选：传入后仅拉取/展示该属性的模型（如绘画页传 ImageModel），默认文本模型 */
+  modelAttribute?: ModelAttribute
+  /** 与 modelAttribute 配合的模型类型参数（图片模型为 '3'），默认 '1' */
+  modelType?: string
+  /** 「开通新模型」入口打开开通弹窗时默认选中的模型类型（如 'image_generation'） */
+  openModelType?: 'text_model' | 'image_generation'
 }
 
 interface Props extends SelectModelPopupParams {
@@ -57,6 +67,9 @@ const SelectModelPopupView: React.FC<Props> = ({
   modelFilter,
   fromType,
   showOpenModelButton = false,
+  modelAttribute,
+  modelType,
+  openModelType,
   resolve
 }) => {
   const { t } = useTranslation()
@@ -104,8 +117,17 @@ const SelectModelPopupView: React.FC<Props> = ({
 
   const { models, loading, setLoading, fetchNextPage, getFilteredModels, hasMore, reset } = useAiOnlyModels({
     pageSize: 1000, // TODO: 临时规避分组加载数据抖动问题，后续改动，按实际使用，一次加载1000条也够用了
-    autoFetch: !userEnabledPlan // TODO: 当用户启用了tokenPlan时，不自动加载模型数据
+    autoFetch: !userEnabledPlan, // TODO: 当用户启用了tokenPlan时，不自动加载模型数据
+    type: modelType,
+    modelAttribute
   })
+
+  // 限时折扣活动：UserModelPackageVo.modelId 即 ai_model.id，作为活动 map 的合并键
+  const discountModels = useMemo(() => [...models, ...tokenPlanModels], [models, tokenPlanModels])
+  const { getDiscount } = usePublishPriceDiscount(discountModels, (m: any) => m.modelId)
+
+  // 推荐标签（人气模型/最新推荐等）：字典 labelId → 名称，列表接口透传 recommendLabel/modelLabel
+  const { getLabelItems } = useModelLabels()
 
   // TODO: 当用户启用了tokenPlan时，查询套餐下的模型数据
   const fetchSelectTokenPlanHourlyDayUsage = async () => {
@@ -124,7 +146,8 @@ const SelectModelPopupView: React.FC<Props> = ({
       const modelList = resData.map((item: any) => {
         return transformToModel(item)
       })
-      setTokenPlanModels(modelList)
+      // 指定模型属性时（如绘画页仅展示图片模型），套餐模型按属性过滤
+      setTokenPlanModels(modelAttribute ? modelList.filter((m: any) => m.modelAttribute === modelAttribute) : modelList)
     } finally {
       setLoading(false)
     }
@@ -132,6 +155,7 @@ const SelectModelPopupView: React.FC<Props> = ({
 
   // 开通模型成功后刷新弹窗内的模型列表（与输入框「开通模型」按钮的刷新逻辑保持一致）
   const handleOpenModelSuccess = useCallback(() => {
+    invalidatePublishPriceDiscountCache()
     if (userEnabledPlan) {
       void fetchSelectTokenPlanHourlyDayUsage()
     } else {
@@ -178,6 +202,11 @@ const SelectModelPopupView: React.FC<Props> = ({
           <ModelName>
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <span className="min-w-0 truncate">{model.modelName}</span>
+              {/* 免费标签：与网站模型广场/添加模型弹窗口径一致（ai_model.free_flag，pagePcList 透传） */}
+              {model.freeFlag == '1' && <FreePill>{t('models.type.free')}</FreePill>}
+              {model.memberSpecial == '1' && <VipPill>VIP</VipPill>}
+              <ModelLabelTags items={getLabelItems(model)} />
+              <DiscountTag activity={getDiscount(model)} />
             </div>
           </ModelName>
         ),
@@ -191,7 +220,7 @@ const SelectModelPopupView: React.FC<Props> = ({
         isSelected: modelId === currentModelId
       }
     },
-    [currentModelId]
+    [currentModelId, getDiscount, getLabelItems, t]
   )
 
   // 构建列表数据
@@ -467,7 +496,11 @@ const SelectModelPopupView: React.FC<Props> = ({
       <ListContainer onMouseMove={() => !isMouseOver && setIsMouseOver(true)}>
         <SelectModelSearchBar
           onSearch={setSearchText}
-          extra={showOpenModelButton ? <OpenNewModelButton onSuccess={handleOpenModelSuccess} /> : undefined}
+          extra={
+            showOpenModelButton ? (
+              <OpenNewModelButton modelType={openModelType} onSuccess={handleOpenModelSuccess} />
+            ) : undefined
+          }
         />
         <Spin spinning={loading}>
           {listItems.length > 0 ? (
@@ -509,6 +542,34 @@ const ModelName = styled.div`
   margin: 0 8px;
   min-width: 0;
   gap: 5px;
+`
+
+// 与添加模型弹窗 .free-tag 同款的免费 pill（口径同网站模型广场 ai_model.free_flag）
+const FreePill = styled.span`
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid #b7eb8f;
+  border-radius: 10px;
+  background: #f6ffed;
+  color: #389e0d;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+`
+
+// 与添加模型弹窗 .vip-tag 同款的 VIP pill（该弹窗此前无 VIP 标签，见方案 §11-Q2）
+const VipPill = styled.span`
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid #e8a33d;
+  border-radius: 10px;
+  background: #fff6dc;
+  color: #b5761c;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
 `
 
 const GroupItem = styled.div`

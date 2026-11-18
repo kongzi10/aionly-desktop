@@ -6,6 +6,7 @@ import { AiProvider } from '@renderer/aiCore'
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 // import Scrollbar from '@renderer/components/Scrollbar'
+import { SelectPaintingModelPopup } from '@renderer/components/Popups/SelectModelPopup'
 import TranslateButton from '@renderer/components/TranslateButton'
 // import { isMac } from '@renderer/config/constant'
 import { LanguagesEnum } from '@renderer/config/translate'
@@ -42,11 +43,11 @@ import { isSendMessageKeyPressed } from '@renderer/utils/input'
 import { isNewApiProvider } from '@renderer/utils/provider'
 import { LOCAL_USER_SECRET_KEY } from '@shared/config/constant'
 import type { RadioChangeEvent } from 'antd'
-import { Button, Empty, Flex, InputNumber, Radio, Select, Spin, Tooltip, Upload } from 'antd'
+import { Button, Empty, InputNumber, Radio, Select, Spin, Tooltip, Upload } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
 import type { RcFile } from 'antd/es/upload'
 import type { UploadFile } from 'antd/es/upload/interface'
-import { Paperclip } from 'lucide-react'
+import { ChevronDown, Paperclip } from 'lucide-react'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -198,7 +199,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
   // const modelOptions = MODELS.map((m) => ({ label: m.name, value: m.name }))
 
   /** 从接口查询图片模型 **/
-  const { loading, getFilteredModels, handleScroll, fetchModels } = useAiOnlyModels({
+  const { loading, getFilteredModels, fetchModels } = useAiOnlyModels({
     type: '3',
     modelAttribute: ModelAttribute.ImageModel,
     pageSize: 10,
@@ -240,18 +241,6 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
     return [...customModels]
   }, [newApiProvider.models])*/
 
-  // 根据 group 将模型进行分组，便于在下拉列表中分组渲染
-  const groupedModelOptions = useMemo(() => {
-    return modelOptions.reduce<Record<string, typeof modelOptions>>((acc, option) => {
-      const groupName = option.group
-      if (!acc[groupName]) {
-        acc[groupName] = []
-      }
-      acc[groupName].push(option)
-      return acc
-    }, {})
-  }, [modelOptions])
-
   const getNewPainting = useCallback(() => {
     return {
       ...DEFAULT_PAINTING,
@@ -282,6 +271,41 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
     }
     updates.n = 1
     updatePaintingState(updates)
+  }
+
+  // 当前选中模型的展示信息（工具栏模型按钮：头像 + 名称）
+  const selectedModelInfo = useMemo(() => {
+    const found = modelOptions.find((m) => m.value === painting.model)
+    if (found) {
+      return { ...found, name: found.label }
+    }
+    if (painting.model) {
+      return { label: painting.model, value: painting.model, name: painting.model }
+    }
+    return undefined
+  }, [modelOptions, painting.model])
+
+  // 当前选中模型的原始数据对象，用于弹窗内高亮已选中项
+  const selectedRawModel = useMemo(
+    () => getFilteredModels().find((m) => m.model === painting.model),
+    [getFilteredModels, painting.model]
+  )
+
+  // 打开选择模型弹窗（与对话页选择模型组件同款样式与逻辑）
+  const handleSelectModel = async (event: React.MouseEvent<HTMLElement>) => {
+    event.currentTarget.blur()
+    const selectedModel = await SelectPaintingModelPopup.show({
+      model: selectedRawModel as any,
+      showOpenModelButton: true
+    })
+    // 弹窗关闭后刷新本页模型列表（如在弹窗内开通了新模型）
+    void fetchModels(1)
+    if (selectedModel) {
+      const value = (selectedModel as any).model ?? selectedModel.id
+      if (value && value !== painting.model) {
+        handleModelChange(value)
+      }
+    }
   }
 
   const handleSizeChange = (value: string) => {
@@ -955,31 +979,17 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options: _Options }) => {
               />
               <Toolbar>
                 <ToolLeftMenu>
-                  {/* Model Selector */}
+                  {/* Model Selector：与对话页选择模型组件同款按钮样式，点击打开选择模型弹窗 */}
                   {modelOptions && modelOptions.length > 0 && (
-                    <Select
-                      disabled={disabled}
-                      value={painting.model}
-                      onChange={handleModelChange}
-                      style={{ minWidth: '200px', marginBottom: 0 }}
-                      virtual={true}
-                      onPopupScroll={handleScroll}
-                      popupRender={(menu) => <Spin spinning={loading}>{menu}</Spin>}>
-                      {Object.entries(groupedModelOptions).map(([groupName, options]) => (
-                        <Select.OptGroup label={groupName} key={groupName}>
-                          {options.map((m) => (
-                            <Select.Option value={m.value} key={m.value}>
-                              <Flex align="center" gap={5}>
-                                <ModelAvatar model={m} size={18} />
-                                <span className="text-overflow" title={m.label}>
-                                  {m.label}
-                                </span>
-                              </Flex>
-                            </Select.Option>
-                          ))}
-                        </Select.OptGroup>
-                      ))}
-                    </Select>
+                    <DropdownButton size="small" type="text" disabled={disabled} onClick={handleSelectModel}>
+                      <ButtonContent>
+                        <ModelAvatar model={selectedModelInfo} size={20} />
+                        <ModelName title={selectedModelInfo?.label}>
+                          {selectedModelInfo?.label || t('button.select_model')}
+                        </ModelName>
+                      </ButtonContent>
+                      <ChevronDown size={14} color="var(--color-icon)" />
+                    </DropdownButton>
                   )}
                 </ToolLeftMenu>
                 <ToolbarMenu>
@@ -1128,6 +1138,35 @@ const ToolLeftMenu = styled.div`
   flex-direction: row;
   align-items: center;
   gap: 6px;
+`
+
+/* 模型选择按钮：样式与对话页 SelectModelButton 保持一致 */
+const DropdownButton = styled(Button)`
+  font-size: 11px;
+  border-radius: 15px;
+  padding: 13px 5px;
+  -webkit-app-region: none;
+  box-shadow: none;
+  background-color: transparent;
+  border: 1px solid transparent;
+  margin-top: 1px;
+  max-width: 260px;
+`
+
+const ButtonContent = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+`
+
+const ModelName = styled.span`
+  font-weight: 500;
+  margin-right: -2px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `
 
 const ToolbarMenu = styled.div`

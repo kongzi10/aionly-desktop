@@ -67,6 +67,7 @@ export default defineConfig([
       'src/main/integration/marketapi/index.js',
       'src/main/integration/nutstore/sso/lib/**',
       'src/renderer/src/ui/**',
+      'resources/aionly/vendor/**',
       'packages/**/dist'
     ]
   },

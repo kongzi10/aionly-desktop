@@ -172,6 +172,19 @@ export function getDefaultTopic(assistantId: string): Topic {
   }
 }
 
+// 历史版本中曾使用的默认话题名称，用于兼容旧数据的自动重命名与语言切换
+const LEGACY_DEFAULT_TOPIC_NAMES = ['默认对话', '預設話題', 'Default Topic']
+
+/**
+ * 判断话题名称是否为默认名称（含当前各语言译文与历史版本旧名称）
+ */
+export function isDefaultTopicName(name: string): boolean {
+  if (LEGACY_DEFAULT_TOPIC_NAMES.includes(name)) {
+    return true
+  }
+  return Object.keys(i18n.store.data).some((locale) => i18n.getFixedT(locale)('chat.default.topic.name') === name)
+}
+
 export function getDefaultProvider() {
   return getProviderByModel(getDefaultModel())
 }

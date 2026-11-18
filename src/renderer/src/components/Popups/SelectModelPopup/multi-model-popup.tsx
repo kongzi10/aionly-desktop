@@ -1,9 +1,13 @@
 import { CrownFilled } from '@ant-design/icons'
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
+import DiscountTag from '@renderer/components/Tags/Model/DiscountTag'
+import ModelLabelTags from '@renderer/components/Tags/Model/ModelLabelTags'
 import { warning as showWarning } from '@renderer/components/TopView/toast'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
 import { transformToModel, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
+import { useModelLabels } from '@renderer/hooks/useModelLabels'
+import { invalidatePublishPriceDiscountCache, usePublishPriceDiscount } from '@renderer/hooks/usePublishPriceDiscount'
 import useUserTokenPlan from '@renderer/hooks/useUserTokenPlan'
 import { getRoundtableMaxModels, isRoundtableMember } from '@renderer/pages/roundtable/roundtablePolicy'
 import { getModelUniqId } from '@renderer/services/ModelService'
@@ -133,6 +137,13 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
     autoFetch: !userEnabledPlan
   })
 
+  // 限时折扣活动：UserModelPackageVo.modelId 即 ai_model.id，作为活动 map 的合并键
+  const discountModels = useMemo(() => [...models, ...tokenPlanModels], [models, tokenPlanModels])
+  const { getDiscount } = usePublishPriceDiscount(discountModels, (m: any) => m.modelId)
+
+  // 推荐标签（人气模型/最新推荐等）：字典 labelId → 名称，列表接口透传 recommendLabel/modelLabel
+  const { getLabelItems } = useModelLabels()
+
   const fetchSelectTokenPlanHourlyDayUsage = async () => {
     try {
       setLoading(true)
@@ -157,6 +168,7 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
 
   // 开通新模型成功后刷新弹窗内的模型列表（与单选弹窗 base-popup 的刷新逻辑保持一致）
   const handleOpenModelSuccess = useCallback(() => {
+    invalidatePublishPriceDiscountCache()
     if (userEnabledPlan) {
       void fetchSelectTokenPlanHourlyDayUsage()
     } else {
@@ -260,6 +272,8 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
                     <span>vip</span>
                   </IconVip>
                 )}
+                <ModelLabelTags items={getLabelItems(rawModel)} />
+                <DiscountTag activity={getDiscount(rawModel)} />
               </ModelName>
             ),
             tags: null,
@@ -285,7 +299,9 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
     modelFilter,
     getFilteredModels,
     userEnabledPlan,
-    selectedMap
+    selectedMap,
+    getDiscount,
+    getLabelItems
   ])
 
   const listHeight = useMemo(() => {

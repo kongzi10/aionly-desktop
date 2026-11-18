@@ -61,6 +61,7 @@
   position: relative;
   padding: 5px 10px;
   border-radius: var(--base-border-radius);
+  cursor: pointer;
 }
 
 .model-wrapper .list .item .left {
@@ -102,6 +103,32 @@
   position: absolute;
   left: 0;
   top: 0;
+}
+
+.vip-tag {
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid #e8a33d;
+  border-radius: 10px;
+  background: #fff6dc;
+  color: #b5761c;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.free-tag {
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid #b7eb8f;
+  border-radius: 10px;
+  background: #f6ffed;
+  color: #389e0d;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
 }
 
 .model-img {

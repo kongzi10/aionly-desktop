@@ -47,6 +47,7 @@ interface Props {
   isGroupContextMessage?: boolean
   isHorizontalMultiModelLayout?: boolean
   multiModelMessageStyle?: MultiModelMessageStyle
+  mode?: 'chat' | 'roundtable'
 }
 
 const logger = loggerService.withContext('MessageItem')
@@ -71,7 +72,8 @@ const MessageItem: FC<Props> = ({
   onUpdateUseful,
   isGroupContextMessage,
   isHorizontalMultiModelLayout = false,
-  multiModelMessageStyle = 'fold'
+  multiModelMessageStyle = 'fold',
+  mode = 'chat'
 }) => {
   const { t } = useTranslation()
   const { assistant, setModel } = useAssistant(message.assistantId)
@@ -213,6 +215,7 @@ const MessageItem: FC<Props> = ({
           messageContainerRef={messageContainerRef as React.RefObject<HTMLDivElement>}
           setModel={setModel}
           onUpdateUseful={onUpdateUseful}
+          mode={mode}
         />
       </HorizontalScrollContainer>
     </MessageFooter>

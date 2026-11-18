@@ -52,8 +52,6 @@ export type AssistantIconType = 'model' | 'emoji' | 'none'
 
 export type UserTheme = {
   colorPrimary: string
-  userFontFamily: string
-  userCodeFontFamily: string
 }
 
 export interface SettingsState {
@@ -90,6 +88,8 @@ export interface SettingsState {
   autoCheckUpdate: boolean
   testPlan: boolean
   testChannel: UpgradeChannel
+  /** 新版模型收费浮窗（V1 分层卡片版）开关，默认开启；置 false 回退旧浮窗以便回滚 */
+  enableNewPricePopover: boolean
   renderInputMessageAsMarkdown: boolean
   // 代码执行
   codeExecution: {
@@ -273,9 +273,7 @@ export const initialState: SettingsState = {
   tray: true,
   theme: ThemeMode.light,
   userTheme: {
-    colorPrimary: '#1677ff',
-    userFontFamily: '',
-    userCodeFontFamily: ''
+    colorPrimary: '#1677ff'
   },
   windowStyle: isMac ? 'transparent' : 'opaque',
   fontSize: 14,
@@ -289,6 +287,7 @@ export const initialState: SettingsState = {
   autoCheckUpdate: true,
   testPlan: false,
   testChannel: UpgradeChannel.LATEST,
+  enableNewPricePopover: true,
   renderInputMessageAsMarkdown: false,
   codeExecution: {
     enabled: false,

@@ -2,14 +2,12 @@ import LanguageSelect from '@renderer/components/LanguageSelect'
 import db from '@renderer/databases'
 import useTranslate from '@renderer/hooks/useTranslate'
 import type { AutoDetectionMethod, Model, TranslateLanguage } from '@renderer/types'
-import { Button, Flex, Modal, Switch, Tooltip } from 'antd'
+import { Flex, Modal, Switch, Tooltip } from 'antd'
 import { HelpCircle } from 'lucide-react'
 import type { FC, ReactNode } from 'react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled, { css } from 'styled-components'
-
-import TranslateSettingsPopup from '../settings/TranslateSettingsPopup/TranslateSettingsPopup'
 
 // TODO: Just don't send so many props. Migrate them to redux.
 const TranslateSettings: FC<{
@@ -62,11 +60,6 @@ const TranslateSettings: FC<{
   useEffect(() => {
     setLocalPair(bidirectionalPair)
   }, [bidirectionalPair, visible])
-
-  const onMoreSetting = () => {
-    onClose()
-    void TranslateSettingsPopup.show()
-  }
 
   return (
     <Modal
@@ -190,10 +183,6 @@ const TranslateSettings: FC<{
             </PairRow>
           )}
         </SettingCard>
-
-        <Button block onClick={onMoreSetting} style={{ borderRadius: 10, height: 36 }}>
-          {t('settings.moresetting.label')}
-        </Button>
       </Flex>
     </Modal>
   )

@@ -16,7 +16,7 @@ import type { FC } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
-import styled from 'styled-components'
+import styled, { css } from 'styled-components'
 
 import { groupByCategories, useSystemAssistantPresets } from '.'
 import { groupTranslations } from './assistantPresetGroupTranslations'
@@ -29,9 +29,11 @@ import ManageAssistantPresetsPopup from './components/ManageAssistantPresetsPopu
 interface Props {
   showNavbar?: boolean
   workspace?: AssistantWorkspace
+  /** 嵌入弹窗内时使用自适应高度布局，列表在弹窗内部滚动 */
+  embedded?: boolean
 }
 
-const AssistantPresetsPage: FC<Props> = ({ showNavbar = true, workspace = 'chat' }) => {
+const AssistantPresetsPage: FC<Props> = ({ showNavbar = true, workspace = 'chat', embedded = false }) => {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   // const [activeGroup, setActiveGroup] = useState('我的') // 原逻辑：默认选中「我的」
@@ -259,7 +261,7 @@ const AssistantPresetsPage: FC<Props> = ({ showNavbar = true, workspace = 'chat'
         </Navbar>
       )}
 
-      <Main id="content-container">
+      <Main id="content-container" $embedded={embedded}>
         {/*<AgentsGroupList>
           {Object.entries(agentGroups).map(([group]) => (
             <ListItem
@@ -285,7 +287,7 @@ const AssistantPresetsPage: FC<Props> = ({ showNavbar = true, workspace = 'chat'
           ))}
         </AgentsGroupList>*/}
 
-        <AgentCategoryWrap className={cn({ collapsed: !isCategoryExpanded })}>
+        <AgentCategoryWrap $embedded={embedded} className={cn({ collapsed: !isCategoryExpanded })}>
           <div className="category-list">
             {agentGroupOptions.map((category) => (
               <div
@@ -311,7 +313,7 @@ const AssistantPresetsPage: FC<Props> = ({ showNavbar = true, workspace = 'chat'
           </div>
         </AgentCategoryWrap>
 
-        <AgentsListContainer>
+        <AgentsListContainer $embedded={embedded}>
           <AgentsListHeader>
             {/*<AgentsListTitle>
               {search.trim() ? (
@@ -393,7 +395,7 @@ const AssistantPresetsPage: FC<Props> = ({ showNavbar = true, workspace = 'chat'
           <Divider style={{ margin: '0' }} />
 
           {filteredPresets.length > 0 ? (
-            <AgentsList>
+            <AgentsList $embedded={embedded}>
               {filteredPresets.map((agent, index) => (
                 <AssistantPresetCard
                   key={agent.id || index}
@@ -441,14 +443,22 @@ const Container = styled.div`
   }
 `*/
 
-const Main = styled.div`
-  //flex: 1;
-  //display: flex;
+const Main = styled.div<{ $embedded?: boolean }>`
   background-color: var(--color-background);
+
+  ${({ $embedded }) =>
+    $embedded &&
+    css`
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    `}
 `
 
-const AgentsListContainer = styled.div`
-  height: calc(100vh - var(--navbar-height) - 10px);
+const AgentsListContainer = styled.div<{ $embedded?: boolean }>`
+  height: ${({ $embedded }) => ($embedded ? 'auto' : 'calc(100vh - var(--navbar-height) - 10px)')};
+  min-height: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -471,13 +481,23 @@ const AgentsListHeader = styled.div`
   gap: 8px;
 `*/
 
-const AgentsList = styled(Scrollbar)`
+const AgentsList = styled(Scrollbar)<{ $embedded?: boolean }>`
   flex: 1;
   padding: 8px 16px 16px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   grid-auto-rows: 160px;
   gap: 16px;
+
+  ${({ $embedded }) =>
+    $embedded &&
+    css`
+      /* 弹窗内使用紧凑行高（卡片内边距/描述行数已压缩），保证整行完整可见；
+         注意不能用 auto：卡片 body 的 height:100% 会使自动行高塌缩 */
+      grid-auto-rows: 136px;
+      gap: 12px;
+      padding: 8px 16px;
+    `}
 `
 
 const AgentDescription = styled.div`
@@ -503,10 +523,18 @@ const EmptyView = styled.div`
   color: var(--color-text-secondary);
 `
 
-const AgentCategoryWrap = styled.div`
+const AgentCategoryWrap = styled.div<{ $embedded?: boolean }>`
   display: flex;
   padding: 10px;
   position: relative;
+  flex-shrink: 0;
+
+  ${({ $embedded }) =>
+    $embedded &&
+    css`
+      padding: 6px 10px;
+    `}
+
   &::after{
     display: block;
     content: "";

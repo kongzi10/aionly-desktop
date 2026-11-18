@@ -22,7 +22,7 @@ import {
   useInputbarToolsInternalDispatch,
   useInputbarToolsState
 } from '@renderer/pages/home/Inputbar/context/InputbarToolsProvider'
-import { getDefaultTopic } from '@renderer/services/AssistantService'
+import { getDefaultTopic, isDefaultTopicName } from '@renderer/services/AssistantService'
 import { CacheService } from '@renderer/services/CacheService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import FileManager from '@renderer/services/FileManager'
@@ -403,6 +403,20 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   }, [loading, onPause])
 
   const addNewTopic = useCallback(async () => {
+    // 当前对话为空（无消息、默认名称、未设置话题提示词、未置顶）时直接复用，避免堆积空对话
+    const currentTopicRecord = await db.topics.get(topic.id)
+    const isEmptyTopic =
+      (currentTopicRecord?.messages?.length ?? 0) === 0 &&
+      isDefaultTopicName(topic.name) &&
+      !topic.prompt &&
+      !topic.pinned
+
+    if (isEmptyTopic) {
+      message.info(t('chat.add.topic.empty_tip'))
+      focusTextarea()
+      return
+    }
+
     const newTopic = getDefaultTopic(assistant.id)
 
     await db.topics.add({ id: newTopic.id, messages: [] })
@@ -415,7 +429,17 @@ const InputbarInner: FC<InputbarInnerProps> = ({
     setActiveTopic(newTopic)
 
     setTimeoutTimer('addNewTopic', () => EventEmitter.emit(EVENT_NAMES.SHOW_TOPIC_SIDEBAR), 0)
-  }, [addTopic, assistant.defaultModel, assistant.id, setActiveTopic, setModel, setTimeoutTimer])
+  }, [
+    addTopic,
+    assistant.defaultModel,
+    assistant.id,
+    focusTextarea,
+    setActiveTopic,
+    setModel,
+    setTimeoutTimer,
+    t,
+    topic
+  ])
 
   const handleRemoveModel = useCallback(
     (modelToRemove: Model) => {

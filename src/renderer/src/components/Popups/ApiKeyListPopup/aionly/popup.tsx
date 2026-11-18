@@ -1,21 +1,25 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { addApikey, deleteApikeyById, getApikeyList, updateApikey } from '@renderer/api/apikey'
 import { TopView } from '@renderer/components/TopView'
+import { useAppDispatch, useAppSelector } from '@renderer/store'
+import { updateProvider } from '@renderer/store/llm'
 import { maskApiKey } from '@renderer/utils'
+import { formatApiKeys, splitApiKeyString } from '@renderer/utils/api'
 import type { TableProps } from 'antd'
-import { Button, Divider, Flex, Input, Modal, Table, Tooltip, Typography } from 'antd'
+import { Button, Divider, Flex, Input, Modal, Table, Tag, Tooltip, Typography } from 'antd'
 import { Check, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
   resolve: (value: any) => void
+  providerId?: string
 }
 
 /**
  * API Key 列表弹窗容器组件
  */
-const PopupContainer: React.FC<Props> = ({ resolve }) => {
+const PopupContainer: React.FC<Props> = ({ resolve, providerId }) => {
   const [open, setOpen] = useState(true)
   const [apiKeyList, setApiKeyList] = useState<any[]>([])
   const [addLoading, setAddLoading] = useState(false)
@@ -51,6 +55,13 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
   })
 
   const { t } = useTranslation()
+  const dispatch = useAppDispatch()
+  const currentApiKey = useAppSelector((state) => state.llm.providers.find((p) => p.id === providerId)?.apiKey)
+
+  const currentKeys = useMemo(() => {
+    if (!currentApiKey) return []
+    return Array.from(new Set(splitApiKeyString(formatApiKeys(currentApiKey))))
+  }, [currentApiKey])
 
   let timer: any = null
 
@@ -81,10 +92,18 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
         if (record.isEditing && record.isNew) {
           return '-'
         }
+        const isCurrent = currentKeys.includes(text)
         return (
-          <Typography.Text style={{ color: 'blue' }} copyable={{ text }}>
-            {maskApiKey(text)}
-          </Typography.Text>
+          <Flex align="center" gap={6}>
+            <Typography.Text style={{ color: 'blue' }} copyable={{ text }}>
+              {maskApiKey(text)}
+            </Typography.Text>
+            {isCurrent && (
+              <Tag color="success" bordered={false}>
+                {t('settings.provider.api.key.list.in_use')}
+              </Tag>
+            )}
+          </Flex>
         )
       }
     },
@@ -105,6 +124,14 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
             </Flex>
           ) : (
             <>
+              {providerId && !currentKeys.includes(record.apikey) && (
+                <>
+                  <Button type="link" size="small" icon={<CheckCircleOutlined />} onClick={() => handleUseKey(record)}>
+                    {t('settings.provider.api.key.list.use')}
+                  </Button>
+                  <Divider type="vertical" />
+                </>
+              )}
               <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
               <Divider type="vertical" />
               <DeleteOutlined style={{ fontSize: '16px', color: 'red' }} onClick={() => handleDelete(record)} />
@@ -221,6 +248,23 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
     await fetchData()
   }
 
+  // 点击密钥直接切换为当前供应商使用的密钥
+  const handleUseKey = (record: any) => {
+    if (!record?.apikey) {
+      return
+    }
+    if (!providerId) {
+      window.toast.warning(t('settings.provider.api.key.list.use_no_provider'))
+      return
+    }
+    if (currentKeys.length === 1 && currentKeys[0] === record.apikey) {
+      window.toast.info(t('settings.provider.api.key.list.already_in_use'))
+      return
+    }
+    dispatch(updateProvider({ id: providerId, apiKey: record.apikey }))
+    window.toast.success(t('settings.provider.api.key.list.switch_success', { name: record.appname }))
+  }
+
   const fetchData = async () => {
     setLoading(true)
     try {
@@ -291,7 +335,15 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
       centered
       width={600}
       footer={Footer}>
-      <Table dataSource={apiKeyList} columns={columns} pagination={false} loading={loading} rowKey="id" />
+      <Table
+        className="apikey-list-table"
+        rowClassName={(record) => (currentKeys.includes(record.apikey) ? 'apikey-row-in-use' : '')}
+        dataSource={apiKeyList}
+        columns={columns}
+        pagination={false}
+        loading={loading}
+        rowKey="id"
+      />
     </Modal>
   )
 }
@@ -305,10 +357,11 @@ export default class ApiKeyListPopup {
     TopView.hide(TopViewKey)
   }
 
-  static show() {
+  static show(providerId?: string) {
     return new Promise<any>((resolve) => {
       TopView.show(
         <PopupContainer
+          providerId={providerId}
           resolve={(v) => {
             resolve(v)
             TopView.hide(TopViewKey)

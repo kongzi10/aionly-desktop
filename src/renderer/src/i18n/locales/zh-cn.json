@@ -1226,6 +1226,7 @@
         "title": "选择添加类型"
       },
       "topic": {
+        "empty_tip": "当前对话为空，可直接开始聊天",
         "title": "新建对话"
       }
     },
@@ -1258,7 +1259,7 @@
       "description": "你好，我是默认角色。你可以立刻开始跟我聊天",
       "name": "默认角色",
       "topic": {
-        "name": "默认对话"
+        "name": "新对话"
       }
     },
     "history": {
@@ -2151,11 +2152,11 @@
   },
   "homeLanding": {
     "activationSelected": "已选 <b>{{count}}</b> 个模型",
-    "announcements": "首页公告",
     "announcementActivate": "立即开通",
     "announcementSuffix": "已上架，请至设置-模型服务开通体验哦!",
-    "closeCartoonPush": "关闭卡通推送",
+    "announcements": "首页公告",
     "closeAvatarPush": "关闭头像推送",
+    "closeCartoonPush": "关闭卡通推送",
     "disclaimer": "内容均由模型生成，其生成内容的准确性和完整性无法保证，不代表我们的态度或观点",
     "modelGuide": {
       "action": "开通模型",
@@ -2164,6 +2165,12 @@
       "title": "还没有可用模型"
     },
     "multiModel": "多模型对话",
+    "newModelActivateContent": "模型未开通，是否开通先用后付？",
+    "newModelActivateSuccess": "开通成功",
+    "newModelActivateTitle": "模型开通",
+    "newModelPushDesc": "{{service}} 新模型，开通后即可在对话中使用",
+    "newModelPushDescGeneric": "新模型已上架，开通后即可在对话中使用",
+    "newModelPushTitle": "{{name}} 已上架",
     "promotionAction": "操作",
     "title": "行至未知，答至所需",
     "viewPromotion": "立即查看"
@@ -3087,6 +3094,10 @@
       "pin": "窗口置顶"
     }
   },
+  "modelTag": {
+    "limitedDiscount": "限时{{discount}}折",
+    "limitedFree": "限时免费"
+  },
   "models": {
     "add_parameter": "添加参数",
     "all": "全部",
@@ -3148,20 +3159,38 @@
         "charge_type_label": "收费方式",
         "duration": "按时长收费",
         "gold_coin": "金币",
+        "group_image_to_video": "图生视频",
+        "group_input_merged": "输入合并",
+        "group_text_to_video": "文生视频",
+        "group_with_audio": "有声",
+        "group_with_input": "带输入",
+        "group_without_audio": "无声",
+        "group_without_input": "不带输入",
+        "idle_period": "空闲时段",
+        "input_price": "输入价格",
         "interactive_num": "金币/张",
         "million_tokens": "金币/百万tokens",
         "output_price": "输出价格",
+        "peak_off": "未开启高峰计费",
+        "peak_on": "高峰计费开启",
+        "peak_period": "高峰时段",
         "per_character": "按字符收费",
         "per_count": "按次收费",
         "per_image": "按张收费",
         "per_time": "次",
         "per_tokens": "按tokens收费",
         "second": "秒",
+        "snapshot_note": "离线快照价格",
         "standard": "收费标准",
+        "sync_note": "更多详细价格请至控制台-模型详情查看",
         "ten_thousand_chars": "万字符",
         "text_tokens": "金币/次",
         "title": "收费",
         "token_price": "金币/M tokens",
+        "unit_count": "次",
+        "unit_image": "张",
+        "unit_m_tokens": "M tokens",
+        "unit_million_tokens": "百万tokens",
         "video_input_price": "视频输入价格"
       },
       "reasoning": "推理",
@@ -4155,9 +4184,9 @@
   },
   "roundtable": {
     "add_model": "添加模型",
-    "max_models_free": "圆桌对话最多支持选择 2 个模型，开通会员可选择 4 个",
-    "max_models_member": "圆桌对话最多支持选择 4 个模型",
-    "minimum_models": "圆桌对话至少需要选择两个模型",
+    "max_models_free": "群聊最多支持选择 2 个模型，开通会员可选择 4 个",
+    "max_models_member": "群聊最多支持选择 4 个模型",
+    "minimum_models": "群聊至少需要选择两个模型",
     "title": "群聊",
     "welcome": "准备好开始了吗？"
   },
@@ -5087,13 +5116,6 @@
           "placeholder": "/* 这里写自定义 CSS */"
         }
       },
-      "font": {
-        "code": "代码字体",
-        "default": "默认",
-        "global": "全局字体",
-        "select": "选择字体",
-        "title": "字体设置"
-      },
       "navbar": {
         "position": {
           "label": "导航栏位置",
@@ -5795,9 +5817,14 @@
             "empty": "API 密钥不能为空"
           },
           "list": {
+            "already_in_use": "当前正在使用该密钥",
+            "in_use": "使用中",
             "more": "更多",
             "open": "打开管理界面",
-            "title": "API 密钥管理"
+            "switch_success": "已切换使用密钥「{{name}}」",
+            "title": "API 密钥管理",
+            "use": "使用",
+            "use_no_provider": "未关联当前模型服务，请重新打开本弹窗或重启应用后重试"
           },
           "new_key": {
             "cancel": "取消",

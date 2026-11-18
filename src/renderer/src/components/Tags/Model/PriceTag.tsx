@@ -1,10 +1,12 @@
 import { WarningFilled } from '@ant-design/icons'
+import { useAppSelector } from '@renderer/store'
 import { Popover, Tooltip } from 'antd'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import type { CustomTagProps } from '../CustomTag'
+import ModelPricePopover from './ModelPricePopover'
 
 type Props = {
   size?: number
@@ -43,6 +45,9 @@ const getDurationRangeString = (duration?: string[]): string => {
 
 export const PriceTag = ({ size, showTooltip, showLabel, model, moneyType = '1', ...restProps }: Props) => {
   const { t } = useTranslation()
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  // 功能开关：新版收费浮窗（V1 分层卡片版），关闭时回退旧实现以便回滚
+  const enableNewPricePopover = useAppSelector((state) => state.settings.enableNewPricePopover !== false)
 
   // 判断是否为刊例价或美元价
   const isRateCardPrice = moneyType === '1'
@@ -482,6 +487,22 @@ export const PriceTag = ({ size, showTooltip, showLabel, model, moneyType = '1',
       )}
     </ContentContainer>
   )
+
+  if (enableNewPricePopover) {
+    return (
+      <Popover
+        content={<ModelPricePopover model={model} moneyType={moneyType} active={popoverOpen} />}
+        trigger="hover"
+        placement="topRight"
+        mouseEnterDelay={0.15}
+        mouseLeaveDelay={0.1}
+        arrow={false}
+        onOpenChange={setPopoverOpen}
+        overlayInnerStyle={{ padding: 0, background: 'transparent', boxShadow: 'none' }}>
+        <Tag {...restProps}>{t('models.type.price.title')}</Tag>
+      </Popover>
+    )
+  }
 
   return (
     <Popover content={content} trigger="hover" placement="top" align={{ offset: [-100, -10] }}>

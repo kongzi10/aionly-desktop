@@ -59,3 +59,17 @@ export const queryUserComponentPackageByLoginUser = (params) => {
 export const listUnopenedPayLaterModelsApi = () => {
   return http.get(`/ai/model/listUnopenedPayLaterModels`, {}, { cancel: false })
 }
+
+// 查询当前登录用户生效的刊例价折扣活动（按模型ID分组，模型列表展示「限时X折」标签用）
+export const queryPublishPriceDiscountApi = (modelIds?: (number | string)[]) => {
+  return http.get(
+    `/ai/modelUserDiscount/publishPriceDiscount`,
+    modelIds && modelIds.length > 0 ? { modelIds: modelIds.join(',') } : {},
+    { cancel: false, loading: false }
+  )
+}
+
+// 获取模型推荐标签字典（ai_model_label 有效标签，recommendLabel 的 labelId→labelName 映射用；服务端带缓存）
+export const listModelLabelsApi = () => {
+  return http.get(`/ai/modelLabel/getList`, {}, { cancel: false, loading: false })
+}
