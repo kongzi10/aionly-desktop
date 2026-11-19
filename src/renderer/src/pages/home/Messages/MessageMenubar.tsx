@@ -41,12 +41,7 @@ import {
 } from '@renderer/utils/export'
 // import { withMessageThought } from '@renderer/utils/formats'
 import { removeTrailingDoubleSpaces } from '@renderer/utils/markdown'
-import {
-  findMainTextBlocks,
-  findTranslationBlocks,
-  findTranslationBlocksById,
-  getMainTextContent
-} from '@renderer/utils/messageUtils/find'
+import { findTranslationBlocks, findTranslationBlocksById, getMainTextContent } from '@renderer/utils/messageUtils/find'
 import type { MenuProps } from 'antd'
 import { Dropdown, Popconfirm, Tooltip } from 'antd'
 import dayjs from 'dayjs'
@@ -56,7 +51,6 @@ import {
   Bug,
   Check,
   CirclePause,
-  FilePenLine,
   /*Languages,*/
   ListChecks,
   Menu,
@@ -299,22 +293,8 @@ const MessageMenubar: FC<Props> = (props) => {
   const buttonIds =
     mode === 'roundtable' ? scopeButtonIds.filter((buttonId) => buttonId !== 'assistant-mention-model') : scopeButtonIds
 
-  const isEditable = useMemo(() => {
-    return findMainTextBlocks(message).length > 0 // 使用 MCP Server 后会有大于一段 MatinTextBlock
-  }, [message])
-
   const dropdownItems = useMemo(() => {
     const items: MenuProps['items'] = [
-      ...(isEditable
-        ? [
-            {
-              label: t('common.edit'),
-              key: 'edit',
-              icon: <FilePenLine size={15} />,
-              onClick: onEdit
-            }
-          ]
-        : []),
       {
         label: t('chat.message.new.branch.label'),
         key: 'new-branch',
@@ -488,12 +468,10 @@ const MessageMenubar: FC<Props> = (props) => {
     exportMenuOptions.plain_text,
     exportMenuOptions.siyuan,
     exportMenuOptions.yuque,
-    isEditable,
     isGrouped,
     mainTextContent,
     message,
     messageContainerRef,
-    onEdit,
     onNewBranch,
     t,
     toggleMultiSelectMode,

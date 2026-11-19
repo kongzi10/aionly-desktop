@@ -9,6 +9,7 @@ import type { AgentRouterCredential, RouteModel } from '../hooks/useAgentRouterS
 import { useTokenPlanModels } from '../hooks/useTokenPlanModels'
 import { RouteModelTypes } from './RouteCapabilities'
 import { ConfirmDialog, getModalPopupContainer, RouteFormModal } from './RouteFormModal'
+import { RouteRemoveConfirmDialog } from './RouteRemoveConfirmDialog'
 
 interface EditFormValues {
   accessMode: 'api' | 'tokenPlan'
@@ -193,12 +194,9 @@ export const RouteList = ({
           setRouteToEnable(null)
         }}
       />
-      <ConfirmDialog
+      <RouteRemoveConfirmDialog
         open={Boolean(routeToRemove)}
-        title={t('agentRouter.confirmRemoveSelected')}
-        okText={t('agentRouter.remove')}
-        okButtonProps={{ danger: true }}
-        cancelText={t('common.cancel')}
+        route={routeToRemove}
         onCancel={() => setRouteToRemove(null)}
         onOk={() => {
           if (routeToRemove) onRemove(routeToRemove)
