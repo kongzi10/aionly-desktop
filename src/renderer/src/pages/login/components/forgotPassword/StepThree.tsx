@@ -76,7 +76,7 @@ const Container = styled.div`
 
   .tips{
     text-align: center;
-    font-family: Source Han Sans CN;
+    font-family: 'Alibaba PuHuiTi 3';
     color: var(--color-text-3);
     font-size: 12px;
     margin-top: 15px;

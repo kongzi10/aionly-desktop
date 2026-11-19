@@ -49,8 +49,32 @@ const { cannedModels, remoteModel, getUserEnabledPlanMock } = vi.hoisted(() => {
 // Mock useAiOnlyModels hook：getFilteredModels 返回"已加载"的数据
 vi.mock('@renderer/hooks/useAiOnlyModels', () => ({
   ModelAttribute: { TextModel: 'text_model', ImageModel: 'image_generation' },
+  AI_ONLY_MODELS_FULL_PAGE_SIZE: 1000,
   transformToModel: (item: any) => ({ ...item, id: item.baseId || item.model, name: item.modelName }),
   isModelPackageActive: (model: any) => model?.status !== '1',
+  createDedupFilter: () => {
+    const seen = new Set<string>()
+    return (model: any) => {
+      const key = String(
+        model?.baseId ?? model?.model ?? model?.modelId ?? model?.id ?? model?.modelName ?? model?.name
+      )
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }
+  },
+  createActivePayLaterFilter: () => {
+    const seen = new Set<string>()
+    return (model: any) => {
+      if (model?.status === '1' || model?.packageNum !== '先用后付') return false
+      const key = String(
+        model?.baseId ?? model?.model ?? model?.modelId ?? model?.id ?? model?.modelName ?? model?.name
+      )
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }
+  },
   fetchAiOnlyModelsApi: vi.fn().mockResolvedValue({ models: [], total: 0 }),
   useAiOnlyModels: vi.fn(() => ({
     models: [],
@@ -389,6 +413,18 @@ describe('ModelSelector', () => {
       // 远程结果里 status='1' 的停用模型不展示
       expect(await screen.findByText('deepseek-v3.1')).toBeInTheDocument()
       expect(screen.queryByText('Stopped Model')).not.toBeInTheDocument()
+    })
+
+    it('should deduplicate remote search results by model', async () => {
+      // 同一模型的多个量包行（baseId 相同）只展示一条
+      const duplicateRow = { ...remoteModel, id: 'dup-package-row', serviceName: 'DeepSeek-2' }
+      vi.mocked(fetchAiOnlyModelsApi).mockResolvedValue({ models: [remoteModel, duplicateRow], total: 2 })
+      const user = userEvent.setup()
+      render(<ModelSelector apiModels={[]} autoFetch={false} open />)
+
+      await user.type(screen.getByRole('combobox'), 'deep')
+
+      expect(await screen.findAllByText('deepseek-v3.1')).toHaveLength(1)
     })
 
     afterEach(() => {

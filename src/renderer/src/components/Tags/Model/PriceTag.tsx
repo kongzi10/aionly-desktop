@@ -1,4 +1,3 @@
-import { WarningFilled } from '@ant-design/icons'
 import { useAppSelector } from '@renderer/store'
 import { Popover, Tooltip } from 'antd'
 import { useMemo, useState } from 'react'
@@ -435,20 +434,8 @@ export const PriceTag = ({ size, showTooltip, showLabel, model, moneyType = '1',
     const displayContent = (
       <>
         {config.configurationList &&
-          config.configurationList.map((item: string, idx: number) => (
-            <div key={idx}>
-              {item}
-              {idx === config.configurationList.length - 1 && !hasThinkConfig && (
-                <WarningFilled style={{ marginLeft: 4 }} />
-              )}
-            </div>
-          ))}
-        {hasThinkConfig && (
-          <div>
-            {config.thinkConfiguration}
-            <WarningFilled style={{ marginLeft: 4 }} />
-          </div>
-        )}
+          config.configurationList.map((item: string, idx: number) => <div key={idx}>{item}</div>)}
+        {hasThinkConfig && <div>{config.thinkConfiguration}</div>}
       </>
     )
 
@@ -560,6 +547,7 @@ const Tag = styled.div`
   background-color: rgba(255, 153, 0, 0.1);
   color: #ff9900;
   font-size: 12px;
+  font-weight: 400;
   border-radius: 10px;
   cursor: pointer;
   display: inline-block;

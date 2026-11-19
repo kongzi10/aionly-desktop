@@ -3,7 +3,6 @@ import { TopView } from '@renderer/components/TopView'
 import { isRerankModel } from '@renderer/config/models'
 import { useTimer } from '@renderer/hooks/useTimer'
 import i18n from '@renderer/i18n'
-import { getModelUniqId } from '@renderer/services/ModelService'
 import type { Model, Provider } from '@renderer/types'
 import { Modal } from 'antd'
 import { first } from 'lodash'
@@ -29,8 +28,17 @@ const PopupContainer: React.FC<Props> = ({ provider, resolve, reject }) => {
 
   const modelPredicate = useCallback((m: Model) => !isRerankModel(m), [])
 
-  const defaultModelValue = useMemo(() => {
-    return model ? getModelUniqId(model) : undefined
+  // 与 ModelSelector 选项 value 保持同一 JSON 结构与键序：命中平台列表时直接回显真实选项；
+  // 尚未加载到时由 ModelSelector 的 fallbackOption 反解 name 回显，避免展示原始 JSON
+  const modelValue = useMemo(() => {
+    if (!model) return undefined
+    return JSON.stringify({
+      id: model.id,
+      provider: 'aionly',
+      group: (model as any).group ?? (model as any).serviceName ?? '',
+      name: model.name,
+      modelFileUrl: (model as any).modelFileUrl
+    })
   }, [model])
 
   const onOk = () => {
@@ -67,7 +75,7 @@ const PopupContainer: React.FC<Props> = ({ provider, resolve, reject }) => {
         providers={[provider]}
         predicate={modelPredicate}
         grouped={false}
-        defaultValue={defaultModelValue}
+        value={modelValue}
         placeholder={i18n.t('settings.models.empty')}
         style={{ width: '100%' }}
         onChange={(value) => {

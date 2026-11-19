@@ -683,7 +683,7 @@ const PanelItem = styled.div<{ theme: string }>`
       display: inline-block;
       width: fit-content;
       flex-shrink: 0;
-      font-family: Source Han Sans CN;
+      font-family: 'Alibaba PuHuiTi 3';
       font-size: 14px;
       font-weight: 500;
 

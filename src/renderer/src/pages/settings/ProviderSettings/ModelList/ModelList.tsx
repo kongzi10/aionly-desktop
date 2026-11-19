@@ -3,7 +3,12 @@ import CollapsibleSearchBar from '@renderer/components/CollapsibleSearchBar'
 import { HStack } from '@renderer/components/Layout'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
 import { PROVIDER_URLS } from '@renderer/config/providers'
-import { transformToModel, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
+import {
+  AI_ONLY_MODELS_FULL_PAGE_SIZE,
+  createActivePayLaterFilter,
+  transformToModel,
+  useAiOnlyModels
+} from '@renderer/hooks/useAiOnlyModels'
 import { useProvider } from '@renderer/hooks/useProvider'
 import useUserTokenPlan from '@renderer/hooks/useUserTokenPlan'
 import { getProviderLabel } from '@renderer/i18n/label'
@@ -144,7 +149,9 @@ const ModelList: React.FC<ModelListProps> = ({
     reset,
     hasMore
   } = useAiOnlyModels({
-    autoFetch: !hasUserTokenPlanData // 是否自动获取模型列表--启用了tokenPlan就不自动获取了
+    autoFetch: !hasUserTokenPlanData, // 是否自动获取模型列表--启用了tokenPlan就不自动获取了
+    // API 密钥模式一次性拉取全量量包行，避免"首页10条+前端先用后付过滤"导致列表截断
+    pageSize: AI_ONLY_MODELS_FULL_PAGE_SIZE
   })
 
   /** 查询用户启用的tokenPlan套餐模型明细数据 **/
@@ -175,7 +182,7 @@ const ModelList: React.FC<ModelListProps> = ({
   }, [hasUserTokenPlanData])
 
   const models = useMemo(() => {
-    const modelList = hasUserTokenPlanData ? tokenPlanModels : getFilteredModels()
+    const modelList = hasUserTokenPlanData ? tokenPlanModels : getFilteredModels(createActivePayLaterFilter())
     return modelList.map((x: any) => {
       const m = transformToModel(x)
       const local = localUpdates.get(m.id)

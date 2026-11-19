@@ -5,7 +5,7 @@ import ModelLabelTags from '@renderer/components/Tags/Model/ModelLabelTags'
 import { warning as showWarning } from '@renderer/components/TopView/toast'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
-import { transformToModel, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
+import { createActivePayLaterFilter, transformToModel, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
 import { useModelLabels } from '@renderer/hooks/useModelLabels'
 import { invalidatePublishPriceDiscountCache, usePublishPriceDiscount } from '@renderer/hooks/usePublishPriceDiscount'
 import useUserTokenPlan from '@renderer/hooks/useUserTokenPlan'
@@ -203,7 +203,7 @@ const SelectMultiModelsPopupView: React.FC<Props> = ({
   // 构建列表数据：过滤 → 去重 → 搜索 → 按 serviceName 分组（组标题可折叠）
   const { listItems, modelItems } = useMemo(() => {
     const items: FlatListItem[] = []
-    let filterModels = !userEnabledPlan ? getFilteredModels() : tokenPlanModels
+    let filterModels = !userEnabledPlan ? getFilteredModels(createActivePayLaterFilter()) : tokenPlanModels
 
     if (modelFilter) {
       filterModels = filterModels

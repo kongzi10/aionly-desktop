@@ -39,7 +39,7 @@ const Selector = styled.button`
   border-radius: 16px;
   color: rgba(0, 94, 255, 1);
   background-color: rgba(235, 242, 255, 1);
-  font-family: 'Source Han Sans CN', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: 'Alibaba PuHuiTi 3', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 14px;
   cursor: pointer;
 `

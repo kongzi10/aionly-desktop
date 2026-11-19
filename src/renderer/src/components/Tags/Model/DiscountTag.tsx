@@ -13,7 +13,7 @@ interface DiscountTagProps {
 
 /**
  * 「限时折扣」pill 标签：模型名称后、VIP 标签之后展示。
- * 尺寸语言与 VIP pill 一致（20px 高 / 10px 圆角 / 12px 字重 600），
+ * 尺寸语言与 VIP pill 一致（20px 高 / 10px 圆角 / 12px 字重 400，不加粗），
  * 配色按产品原型为绿色系（限时免费/限时X折）。
  */
 const DiscountTag = ({ activity, style }: DiscountTagProps) => {
@@ -31,7 +31,7 @@ const Pill = styled.span`
   background: #f6ffed;
   color: #389e0d;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 18px;
   white-space: nowrap;
 `

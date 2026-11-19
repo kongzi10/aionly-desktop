@@ -84,6 +84,7 @@ const Tag = styled.div<{ $color: string; $size: number; $closable: boolean; $cli
   color: ${({ $color }) => $color};
   background-color: ${({ $color }) => $color + '20'};
   font-size: ${({ $size }) => $size}px;
+  font-weight: 400;
   line-height: 1;
   white-space: nowrap;
   position: relative;

@@ -73,6 +73,70 @@ describe('priceViewModel', () => {
     ])
   })
 
+  it('图片按张分时计费：输出价按高峰/空闲分组（peakImgConfigurationList/idleImgConfigurationList）', () => {
+    const unit = 'models.type.price.gold_coin/models.type.price.unit_image'
+    const vm = buildPriceViewModel(
+      {
+        modelAttribute: 'image_generation',
+        chargeType: 2,
+        periodBillFlag: '1',
+        peakScheduing: '周一、周二、周三、周四、周五',
+        peakList: [
+          { startTime: '10:00', endTime: '12:00' },
+          { startTime: '14:00', endTime: '18:00' }
+        ],
+        imgInputFlag: '1',
+        imgInputBill: 0,
+        resolutionFlag: '1',
+        imgConfigurationList: [
+          { scoreRatio: ['1K', '2K'], periodBillFlag: '1', imgInputPrice: '0.02', rateCardRate: '0.18' },
+          { scoreRatio: ['1K', '2K'], periodBillFlag: '0', imgInputPrice: '0.01', rateCardRate: '0.09' }
+        ],
+        peakImgConfigurationList: [{ scoreRatio: ['1K', '2K'], rateCardRate: '0.18' }],
+        idleImgConfigurationList: [{ scoreRatio: ['1K', '2K'], rateCardRate: '0.09' }]
+      },
+      { moneyType: '1', t }
+    )
+    expect(vm.peak.enabled).toBe(true)
+    expect(vm.standardGroups.map((g) => g.titleKey)).toEqual([
+      'common.input',
+      'models.type.price.peak_period',
+      'models.type.price.idle_period'
+    ])
+    expect(vm.standardGroups[0].lines).toEqual([
+      { label: '1K、2K', value: `0.02 ${unit}` },
+      { label: '1K、2K', value: `0.01 ${unit}` }
+    ])
+    expect(vm.standardGroups[1].lines).toEqual([{ label: '1K、2K', value: `0.18 ${unit}` }])
+    expect(vm.standardGroups[2].lines).toEqual([{ label: '1K、2K', value: `0.09 ${unit}` }])
+  })
+
+  it('图片按张分时计费：快照缺高峰/空闲拆分列表时按 item.periodBillFlag 本地拆分', () => {
+    const unit = 'models.type.price.gold_coin/models.type.price.unit_image'
+    const vm = buildPriceViewModel(
+      {
+        modelAttribute: 'image_generation',
+        chargeType: 2,
+        periodBillFlag: '1',
+        imgInputFlag: '1',
+        imgInputBill: 0,
+        resolutionFlag: '1',
+        imgConfigurationList: [
+          { scoreRatio: ['1K', '2K'], periodBillFlag: '1', imgInputPrice: '0.02', rateCardRate: '0.18' },
+          { scoreRatio: ['1K', '2K'], periodBillFlag: '0', imgInputPrice: '0.01', rateCardRate: '0.09' }
+        ]
+      },
+      { moneyType: '1', t }
+    )
+    expect(vm.standardGroups.map((g) => g.titleKey)).toEqual([
+      'common.input',
+      'models.type.price.peak_period',
+      'models.type.price.idle_period'
+    ])
+    expect(vm.standardGroups[1].lines).toEqual([{ label: '1K、2K', value: `0.18 ${unit}` }])
+    expect(vm.standardGroups[2].lines).toEqual([{ label: '1K、2K', value: `0.09 ${unit}` }])
+  })
+
   it('免费模型标识', () => {
     const vm = buildPriceViewModel(
       { modelAttribute: 'text_model', chargeType: 0, freeFlag: '1' },
@@ -135,7 +199,7 @@ describe('priceViewModel', () => {
       'models.type.price.peak_period',
       'models.type.price.idle_period'
     ])
-    expect(vm.cacheGroups[0].lines[0]).toEqual({ label: '缓存读取', value: '14金币/M tokens', warn: true })
+    expect(vm.cacheGroups[0].lines[0]).toEqual({ label: '缓存读取', value: '14金币/M tokens' })
     expect(vm.cacheGroups[1].lines[0]).toEqual({ label: '缓存读取', value: '7金币/M tokens' })
   })
 
@@ -183,7 +247,7 @@ describe('priceViewModel', () => {
     expect(vm.peak.periods).toEqual([])
   })
 
-  it('缓存/思考价格：configurationList + thinkConfiguration(warn)', () => {
+  it('缓存/思考价格：configurationList + thinkConfiguration', () => {
     const vm = buildPriceViewModel(
       {
         modelAttribute: 'text_model',
@@ -199,7 +263,7 @@ describe('priceViewModel', () => {
     expect(vm.showCache).toBe(true)
     expect(vm.cacheGroups).toHaveLength(1)
     expect(vm.cacheGroups[0].lines).toHaveLength(2)
-    expect(vm.cacheGroups[0].lines[1].warn).toBe(true)
+    expect(vm.cacheGroups[0].lines[1]).toEqual({ label: '思考输出', value: '6金币/M tokens' })
   })
 
   it('原始数值字段：前端补输入/输出标识与单位', () => {
@@ -219,7 +283,7 @@ describe('priceViewModel', () => {
       { moneyType: '1', t }
     )
     expect(vm.cacheGroups).toHaveLength(1)
-    expect(vm.cacheGroups[0].lines[0]).toEqual({ label: '缓存读取', value: '2.4金币/M tokens', warn: true })
+    expect(vm.cacheGroups[0].lines[0]).toEqual({ label: '缓存读取', value: '2.4金币/M tokens' })
   })
 
   it('视觉/语音模型不展示缓存区块', () => {

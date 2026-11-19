@@ -8,12 +8,11 @@ import { applyPublishDiscount, discountPrice, isActiveDiscount } from '@renderer
 export interface PriceLine {
   label: string
   value: string
-  warn?: boolean
 }
 
 export interface PriceGroup {
-  /** 分组小标题 i18n key（高峰/空闲时段），null 表示无分组标题 */
-  titleKey: 'models.type.price.peak_period' | 'models.type.price.idle_period' | null
+  /** 分组小标题 i18n key（高峰/空闲时段、输入等），null 表示无分组标题 */
+  titleKey: string | null
   lines: PriceLine[]
 }
 
@@ -319,21 +318,10 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
       const lines: PriceLine[] = []
       if (modelAttribute === 'image_generation') {
         const imgUnit = `${unit}/${t('models.type.price.unit_image')}`
-        if (String(cfg.imgInputFlag) === '1') {
-          if (Number(cfg.imgInputBill) === 1) {
-            const suffix = Number(cfg.imgInputBillNum) > 0 ? `(n-${cfg.imgInputBillNum})` : ''
-            lines.push({
-              label: t('models.type.price.group_input_merged'),
-              value: `${dp(cfg.imgInputPrice)} ${imgUnit}${suffix}`
-            })
-          } else {
-            for (const item of cfg.imgConfigurationList ?? []) {
-              lines.push({ label: joinScoreRatio(item.scoreRatio), value: `${dp(item.imgInputPrice)} ${imgUnit}` })
-            }
-          }
-        }
-        if (String(cfg.resolutionFlag) === '1') {
-          for (const item of cfg.imgConfigurationList ?? []) {
+        /** 输出（分辨率/质量档位）行，取值口径与控制台收费标准列一致 */
+        const imgOutputLines = (list: any[]): PriceLine[] => {
+          const out: PriceLine[] = []
+          for (const item of list ?? []) {
             const baseLabel = joinScoreRatio(item.scoreRatio)
             // qualityFlag=0 时按质量档位逐行展开（与控制台收费标准列一致），否则单行 rateCardRate
             if (String(item.qualityFlag) === '0') {
@@ -341,14 +329,61 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
                 const rate = getQualityRate(item, q.value, isUsd)
                 if (rate === null || rate === undefined || rate === '') continue
                 if (isUsd && String(rate) === '0') continue
-                lines.push({ label: `${baseLabel}-${q.label}`, value: `${dp(rate)} ${imgUnit}` })
+                out.push({ label: `${baseLabel}-${q.label}`, value: `${dp(rate)} ${imgUnit}` })
               }
             } else {
-              lines.push({ label: baseLabel, value: `${dp(item.rateCardRate)} ${imgUnit}` })
+              out.push({ label: baseLabel, value: `${dp(item.rateCardRate)} ${imgUnit}` })
             }
           }
+          return out
+        }
+        const imgInputLines: PriceLine[] = []
+        if (String(cfg.imgInputFlag) === '1') {
+          if (Number(cfg.imgInputBill) === 1) {
+            const suffix = Number(cfg.imgInputBillNum) > 0 ? `(n-${cfg.imgInputBillNum})` : ''
+            imgInputLines.push({
+              label: t('models.type.price.group_input_merged'),
+              value: `${dp(cfg.imgInputPrice)} ${imgUnit}${suffix}`
+            })
+          } else {
+            for (const item of cfg.imgConfigurationList ?? []) {
+              imgInputLines.push({
+                label: joinScoreRatio(item.scoreRatio),
+                value: `${dp(item.imgInputPrice)} ${imgUnit}`
+              })
+            }
+          }
+        }
+        // 分时计费：后端按 periodBillFlag 将 imgConfigurationList 拆为高峰/空闲两个列表，
+        // 输出价按高峰/空闲分组展示（与官网一致）；快照缺拆分列表时按 item.periodBillFlag 本地拆分兜底
+        let peakImgList: any[] = Array.isArray(cfg.peakImgConfigurationList) ? cfg.peakImgConfigurationList : []
+        let idleImgList: any[] = Array.isArray(cfg.idleImgConfigurationList) ? cfg.idleImgConfigurationList : []
+        if (peakEnabled && String(cfg.resolutionFlag) === '1' && !peakImgList.length && !idleImgList.length) {
+          const all: any[] = cfg.imgConfigurationList ?? []
+          if (all.some((it: any) => String(it?.periodBillFlag) === '1')) {
+            peakImgList = all.filter((it: any) => String(it?.periodBillFlag) === '1')
+            idleImgList = all.filter((it: any) => String(it?.periodBillFlag) !== '1')
+            if (!peakImgList.length) peakImgList = all
+          }
+        }
+        if (peakImgList.length > 0 || idleImgList.length > 0) {
+          pushGroup('common.input', imgInputLines)
+          pushGroup('models.type.price.peak_period', imgOutputLines(peakImgList))
+          pushGroup('models.type.price.idle_period', imgOutputLines(idleImgList))
+        } else if (
+          peakEnabled &&
+          String(cfg.resolutionFlag) !== '1' &&
+          cfg.idleInteractiveNum !== null &&
+          cfg.idleInteractiveNum !== undefined &&
+          cfg.idleInteractiveNum !== ''
+        ) {
+          pushGroup('common.input', imgInputLines)
+          pushGroup('models.type.price.peak_period', [{ label: '', value: `${dp(cfg.interactiveNum)} ${imgUnit}` }])
+          pushGroup('models.type.price.idle_period', [{ label: '', value: `${dp(cfg.idleInteractiveNum)} ${imgUnit}` }])
+        } else if (String(cfg.resolutionFlag) === '1') {
+          lines.push(...imgInputLines, ...imgOutputLines(cfg.imgConfigurationList))
         } else {
-          lines.push({ label: '', value: `${dp(cfg.interactiveNum)} ${imgUnit}` })
+          lines.push(...imgInputLines, { label: '', value: `${dp(cfg.interactiveNum)} ${imgUnit}` })
         }
       } else if (modelAttribute === 'visual_model') {
         const perUnit = cfg.secondUnit
@@ -418,25 +453,19 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
         Number(cfg.peakOutputStrategyThink) === 1 ||
         Number(cfg.outputStrategyThink) === 1)
     ) {
-      const peakLines: PriceLine[] = peakSrc.map((s: string, i: number, arr: string[]) => ({
-        ...splitLine(d(s)),
-        warn: i === arr.length - 1 && Number(cfg.peakOutputStrategyThink) !== 1
-      }))
+      const peakLines: PriceLine[] = peakSrc.map((s: string) => splitLine(d(s)))
       if (Number(cfg.peakOutputStrategyThink) === 1 && pick('peakThinkConfiguration'))
-        peakLines.push({ ...splitLine(d(pick('peakThinkConfiguration'))), warn: true })
+        peakLines.push(splitLine(d(pick('peakThinkConfiguration'))))
       cacheGroups.push({ titleKey: 'models.type.price.peak_period', lines: peakLines })
 
       const idleLines: PriceLine[] = idleSrc.map((s: string) => splitLine(d(s)))
       if (Number(cfg.idleOutputStrategyThink) === 1 && pick('idleThinkConfiguration'))
-        idleLines.push({ ...splitLine(d(pick('idleThinkConfiguration'))), warn: true })
+        idleLines.push(splitLine(d(pick('idleThinkConfiguration'))))
       cacheGroups.push({ titleKey: 'models.type.price.idle_period', lines: idleLines })
     } else if (cacheSrc.length > 0 || pick('cachePriceConfigList') != null || Number(cfg.outputStrategyThink) === 1) {
-      const lines: PriceLine[] = cacheSrc.map((s: string, i: number, arr: string[]) => ({
-        ...splitLine(d(s)),
-        warn: i === arr.length - 1 && Number(cfg.outputStrategyThink) !== 1
-      }))
+      const lines: PriceLine[] = cacheSrc.map((s: string) => splitLine(d(s)))
       if (Number(cfg.outputStrategyThink) === 1 && pick('thinkConfiguration'))
-        lines.push({ ...splitLine(d(pick('thinkConfiguration'))), warn: true })
+        lines.push(splitLine(d(pick('thinkConfiguration'))))
       cacheGroups.push({ titleKey: null, lines })
     }
   }

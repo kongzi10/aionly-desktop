@@ -4,7 +4,12 @@ import ModelLabelTags from '@renderer/components/Tags/Model/ModelLabelTags'
 import { TopView } from '@renderer/components/TopView'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
-import { type ModelAttribute, transformToModel, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
+import {
+  createActivePayLaterFilter,
+  type ModelAttribute,
+  transformToModel,
+  useAiOnlyModels
+} from '@renderer/hooks/useAiOnlyModels'
 import { useModelLabels } from '@renderer/hooks/useModelLabels'
 import { invalidatePublishPriceDiscountCache, usePublishPriceDiscount } from '@renderer/hooks/usePublishPriceDiscount'
 import useUserTokenPlan from '@renderer/hooks/useUserTokenPlan'
@@ -226,7 +231,7 @@ const SelectModelPopupView: React.FC<Props> = ({
   // 构建列表数据
   const { listItems, modelItems } = useMemo(() => {
     const items: FlatListItem[] = []
-    let filterModels = !userEnabledPlan ? getFilteredModels() : tokenPlanModels
+    let filterModels = !userEnabledPlan ? getFilteredModels(createActivePayLaterFilter()) : tokenPlanModels
 
     // 应用 modelFilter（如果提供）
     if (modelFilter) {
@@ -554,7 +559,7 @@ const FreePill = styled.span`
   background: #f6ffed;
   color: #389e0d;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 18px;
 `
 
@@ -568,7 +573,7 @@ const VipPill = styled.span`
   background: #fff6dc;
   color: #b5761c;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 18px;
 `
 

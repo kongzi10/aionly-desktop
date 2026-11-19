@@ -1,9 +1,11 @@
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 import {
+  AI_ONLY_MODELS_FULL_PAGE_SIZE,
   type AiOnlyModel,
+  createActivePayLaterFilter,
+  createDedupFilter,
   fetchAiOnlyModelsApi,
-  isModelPackageActive,
   ModelAttribute,
   transformToModel,
   useAiOnlyModels
@@ -149,7 +151,8 @@ const ModelSelector = ({
   /** 从接口查询文本模型 **/
   // 只有 userEnabledPlan 有值时才调用 useAiOnlyModels
   const { loading, setLoading, getFilteredModels, handleScroll } = useAiOnlyModels({
-    pageSize: 20,
+    // 一次性拉取全量量包行，避免"首页20条+前端先用后付过滤"导致下拉选项被截断
+    pageSize: AI_ONLY_MODELS_FULL_PAGE_SIZE,
     autoFetch: autoFetch && !userEnabledPlan, // 用户启用了tokenPlan后，不需要走这个接口
     type: '1',
     modelAttribute: ModelAttribute.TextModel
@@ -169,9 +172,9 @@ const ModelSelector = ({
         planId: userSelectedPlan.planId
       })
       const resData = res.rows || []
-      const modelList = resData.map((item: any) => {
-        return transformToModel(item)
-      })
+      // 套餐明细同一模型可能有多行，按模型去重，避免下拉出现重复选项
+      const dedup = createDedupFilter()
+      const modelList = resData.map((item: any) => transformToModel(item)).filter(dedup)
       setTokenPlanModels(modelList)
     } finally {
       setLoading(false)
@@ -252,9 +255,10 @@ const ModelSelector = ({
         setRemoteSearching(true)
         try {
           const { models } = await fetchAiOnlyModelsApi({ modelName: text, pageSize: SEARCH_PAGE_SIZE })
-          // 丢弃过期请求的结果；停用的量包模型（status='1'）不展示
+          // 丢弃过期请求的结果；与默认列表同口径：先用后付 + 非停用 + 按模型去重，
+          // 否则同一模型的多个量包行会让搜索结果出现重复选项
           if (requestId === searchRequestIdRef.current) {
-            setRemoteModels(models.filter(isModelPackageActive))
+            setRemoteModels(models.filter(createActivePayLaterFilter()))
             setRemoteKeyword(text)
           }
         } finally {
@@ -285,7 +289,7 @@ const ModelSelector = ({
       ? tokenPlanModels
       : isRemoteSearch
         ? remoteModels
-        : (apiModels ?? getFilteredModels())
+        : (apiModels ?? getFilteredModels(createActivePayLaterFilter()))
 
     // 应用 predicate 过滤
     if (predicate) {

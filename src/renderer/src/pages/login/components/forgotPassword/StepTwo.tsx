@@ -148,7 +148,7 @@ const SubTitle = styled.div`
   color: #36445b;
   font-size: 12px;
   padding: 5px 0 20px;
-  font-family: Source Han Sans CN;
+  font-family: 'Alibaba PuHuiTi 3';
   opacity: 55%;
 `
 

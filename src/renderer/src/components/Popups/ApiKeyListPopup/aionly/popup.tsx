@@ -134,7 +134,13 @@ const PopupContainer: React.FC<Props> = ({ resolve, providerId }) => {
               )}
               <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
               <Divider type="vertical" />
-              <DeleteOutlined style={{ fontSize: '16px', color: 'red' }} onClick={() => handleDelete(record)} />
+              {currentKeys.includes(record.apikey) ? (
+                <Tooltip title={t('settings.provider.api.key.list.in_use_delete_tip')}>
+                  <DeleteOutlined style={{ fontSize: '16px', color: 'var(--color-text-3)', cursor: 'not-allowed' }} />
+                </Tooltip>
+              ) : (
+                <DeleteOutlined style={{ fontSize: '16px', color: 'red' }} onClick={() => handleDelete(record)} />
+              )}
             </>
           )}
         </>
@@ -188,9 +194,12 @@ const PopupContainer: React.FC<Props> = ({ resolve, providerId }) => {
 
   // 编辑
   const fetchApiKeyEdit = async (record: any) => {
-    apikeyForm.current.appname = editingData.appname
-    apikeyForm.current.id = record.id
-    const res = await updateApikey(apikeyForm.current)
+    // 需保留原记录中的 apikey 等字段，否则更新接口会将 key 清空
+    const params = { ...record }
+    delete params.isEditing
+    delete params.isNew
+    params.appname = editingData.appname
+    const res = await updateApikey(params)
     if (res.code === 200) {
       window.toast.success(t('common.save_success'))
       await fetchData()
@@ -232,6 +241,10 @@ const PopupContainer: React.FC<Props> = ({ resolve, providerId }) => {
   }
 
   const handleDelete = (record) => {
+    if (currentKeys.includes(record?.apikey)) {
+      window.toast.warning(t('settings.provider.api.key.list.in_use_delete_tip'))
+      return
+    }
     Modal.confirm({
       title: t('common.delete_confirm'),
       onOk: () => {

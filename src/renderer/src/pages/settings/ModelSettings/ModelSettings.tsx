@@ -5,7 +5,12 @@ import { InfoTooltip } from '@renderer/components/TooltipIcons'
 import { isEmbeddingModel, isRerankModel, isTextToImageModel } from '@renderer/config/models'
 import { TRANSLATE_PROMPT } from '@renderer/config/prompts'
 import { useTheme } from '@renderer/context/ThemeProvider'
-import { ModelAttribute, useAiOnlyModels } from '@renderer/hooks/useAiOnlyModels'
+import {
+  AI_ONLY_MODELS_FULL_PAGE_SIZE,
+  createActivePayLaterFilter,
+  ModelAttribute,
+  useAiOnlyModels
+} from '@renderer/hooks/useAiOnlyModels'
 import { useDefaultModel } from '@renderer/hooks/useAssistant'
 import { useProviders } from '@renderer/hooks/useProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
@@ -76,14 +81,15 @@ const ModelSettings: FC<ModelSettingsProps> = ({
   const groupStyle = compact ? { padding: 0, border: 'none', background: 'transparent' } : undefined
 
   const { getFilteredModels, loading, handleScroll } = useAiOnlyModels({
-    pageSize: 10, // TODO: 暂时传1000，规避闪动，后续根据实际需求调整
+    // 一次性拉取全量量包行，避免"首页10条+前端先用后付过滤"导致模型选项被截断
+    pageSize: AI_ONLY_MODELS_FULL_PAGE_SIZE,
     autoFetch: true,
     type: '1',
     modelAttribute: ModelAttribute.TextModel
   })
 
   const aiOnlyApiModels = useMemo(() => {
-    return getFilteredModels()
+    return getFilteredModels(createActivePayLaterFilter())
   }, [getFilteredModels])
 
   const handleSetModel = useCallback((value: string, method: any) => {

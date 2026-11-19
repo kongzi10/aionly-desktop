@@ -1,6 +1,5 @@
 import './ModelPricePopover.css'
 
-import { WarningFilled } from '@ant-design/icons'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useModelPrice } from '@renderer/hooks/useModelPrice'
 import {
@@ -24,10 +23,7 @@ const renderLines = (lines: PriceLine[]) => (
   <ul className="mpp__list">
     {lines.map((line, i) => (
       <li className="mpp__item" key={`${line.label}-${i}`}>
-        <span className="mpp__item-label">
-          {line.label}
-          {line.warn && <WarningFilled className="mpp__item-warn" />}
-        </span>
+        <span className="mpp__item-label">{line.label}</span>
         <span className="mpp__item-value">{line.value || '--'}</span>
       </li>
     ))}

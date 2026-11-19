@@ -72,6 +72,7 @@ const IconVip = styled.div`
   background: linear-gradient(90deg,#ffaa00 0%,#f77a1d 100%);
   border-radius: 4px;
   font-size: 12px;
+  font-weight: 400;
 `
 
 export default memo(ModelIdWithTags)

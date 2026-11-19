@@ -29,7 +29,8 @@ export function getLabelPalette(name: string): LabelPalette {
 
 /**
  * 「推荐标签」pill 标签组：模型名称后、VIP 标签之后展示（旗舰模型/最新上架/已弃用/人气模型等）。
- * 尺寸语言与 VIP / 限时折扣 pill 一致（20px 高 / 10px 圆角 / 12px 字重 600），配色按标签语义区分。
+ * 尺寸语言与 VIP / 限时折扣 pill 一致（20px 高 / 10px 圆角 / 12px 字号）；字重 400 不加粗
+ * （需显式声明以覆盖父级 font-semibold 的继承），配色按标签语义区分。
  */
 const ModelLabelTags = ({ items, style }: ModelLabelTagsProps) => {
   if (!FEATURE_MODEL_LABEL_TAGS || !items || items.length === 0) return null
@@ -61,7 +62,7 @@ const Pill = styled.span<{ $border: string; $background: string; $color: string 
   background: ${(p) => p.$background};
   color: ${(p) => p.$color};
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 18px;
   white-space: nowrap;
 `

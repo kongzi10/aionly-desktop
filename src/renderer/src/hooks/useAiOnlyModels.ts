@@ -21,11 +21,44 @@ export { isModelPackageActive }
 // 默认模型过滤器：只保留"先用后付"套餐的有效模型（过滤掉用户已停用的）
 const DEFAULT_MODEL_FILTER = (model: AiOnlyModel) => model.packageNum === '先用后付' && isModelPackageActive(model)
 
+/**
+ * API 密钥模式全量拉取页大小：与 SelectModelPopup/base-popup 的一次性加载口径保持一致。
+ * 客户端"先用后付"过滤发生在前端，若沿用分页首页(10/20 条)会导致列表被截断，
+ * 故 API 密钥模式下统一按此页大小一次性拉取全量量包行后再过滤。
+ */
+export const AI_ONLY_MODELS_FULL_PAGE_SIZE = 1000
+
 export const filterModels = (models: AiOnlyModel[], filter: (model: AiOnlyModel) => boolean = DEFAULT_MODEL_FILTER) => {
   if (models && Array.isArray(models)) {
     return models.filter(filter)
   }
   return []
+}
+
+/**
+ * 按模型去重的过滤器工厂：同一模型（baseId/model/modelId/id/modelName）仅保留首条，
+ * 用于 tokenPlan 明细、远程搜索等数据源去重，避免下拉出现重复选项。
+ * 后端 pagePcList 的 ORDER BY 已保证有效(status='0')行排在停用/欠费行之前，
+ * 因此保留首条 = 保留有效行。
+ * 每次调用返回带独立去重集合的新过滤器，供单次 filter 遍历使用。
+ */
+export const createDedupFilter = <T extends Record<string, any> = AiOnlyModel>() => {
+  const seen = new Set<string>()
+  return (model: T): boolean => {
+    const key = String(model?.baseId ?? model?.model ?? model?.modelId ?? model?.id ?? model?.modelName ?? model?.name)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }
+}
+
+/**
+ * "先用后付 + 非停用" 且按模型去重的过滤器工厂（API 密钥模式专用），
+ * 避免历史失效/欠费包产生重复模型项。
+ */
+export const createActivePayLaterFilter = () => {
+  const dedup = createDedupFilter()
+  return (model: AiOnlyModel): boolean => DEFAULT_MODEL_FILTER(model) && dedup(model)
 }
 
 /**
@@ -446,15 +479,10 @@ export interface FetchAndSetupModelsOptions {
  * 内部函数，由 useFetchAndSetupModels hook 调用
  */
 async function fetchAndSetupModels(options: FetchAndSetupModelsOptions): Promise<Model[]> {
-  const {
-    pageSize = 10,
-    dispatch,
-    getUserEnabledPlan,
-    setDefaultModel,
-    setQuickModel,
-    setTranslateModel,
-    setAiOnlyModelsAction
-  } = options
+  // options.pageSize 已不再参与取数：API 密钥模式固定全量页大小(AI_ONLY_MODELS_FULL_PAGE_SIZE)，
+  // TokenPlan 明细接口不分页；字段保留仅为兼容既有调用方签名
+  const { dispatch, getUserEnabledPlan, setDefaultModel, setQuickModel, setTranslateModel, setAiOnlyModelsAction } =
+    options
 
   try {
     const userTokenPlan = getUserEnabledPlan()
@@ -464,7 +492,8 @@ async function fetchAndSetupModels(options: FetchAndSetupModelsOptions): Promise
      * 启用tokenPlan，则获取tokenPlan对应的模型数据
      * */
     if (!userTokenPlan) {
-      const res = await fetchAiOnlyModelsApi({ pageSize })
+      // API 密钥模式：一次性拉取全量（≤1000），避免"首页 10 条 + 前端过滤"造成列表截断
+      const res = await fetchAiOnlyModelsApi({ pageSize: AI_ONLY_MODELS_FULL_PAGE_SIZE })
       models = res.models ?? []
     } else {
       const res: any = await selectTokenPlanHourlyDayUsageApi({
@@ -474,8 +503,8 @@ async function fetchAndSetupModels(options: FetchAndSetupModelsOptions): Promise
       models = res.rows || []
     }
 
-    // 2. 过滤"先用后付"套餐的模型--tokenPlan启用的模型不过滤
-    const filteredModels = !userTokenPlan ? filterModels(models) : models
+    // 2. 过滤"先用后付"套餐的模型（并按模型去重）--tokenPlan启用的模型不过滤
+    const filteredModels = !userTokenPlan ? filterModels(models, createActivePayLaterFilter()) : models
 
     // 3. 转换为标准 Model 格式
     const transformedModels = filteredModels.map((model) => transformToModel(model))

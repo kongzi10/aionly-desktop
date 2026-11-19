@@ -291,7 +291,9 @@ const MessageMenubar: FC<Props> = (props) => {
   const menubarScope: MessageMenubarScope = topic?.type ?? DEFAULT_MESSAGE_MENUBAR_SCOPE
   const { buttonIds: scopeButtonIds, dropdownRootAllowKeys } = getMessageMenubarConfig(menubarScope)
   const buttonIds =
-    mode === 'roundtable' ? scopeButtonIds.filter((buttonId) => buttonId !== 'assistant-mention-model') : scopeButtonIds
+    mode === 'roundtable'
+      ? scopeButtonIds.filter((buttonId) => buttonId !== 'assistant-mention-model' && buttonId !== 'user-regenerate')
+      : scopeButtonIds
 
   const dropdownItems = useMemo(() => {
     const items: MenuProps['items'] = [

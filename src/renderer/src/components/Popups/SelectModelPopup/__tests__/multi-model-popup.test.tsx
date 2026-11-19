@@ -57,6 +57,7 @@ const { cannedModels, getModelUniqIdMock } = vi.hoisted(() => {
 
 vi.mock('@renderer/hooks/useAiOnlyModels', () => ({
   transformToModel: (item: any) => ({ ...item, id: item.baseId || item.model, name: item.modelName }),
+  createActivePayLaterFilter: () => () => true,
   useAiOnlyModels: vi.fn(() => ({
     models: [],
     loading: false,
