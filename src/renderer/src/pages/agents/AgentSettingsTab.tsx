@@ -27,7 +27,6 @@ import {
   setFontSize,
   setMathEnableSingleDollar,
   setMathEngine,
-  setMessageFont,
   setMessageNavigation,
   setMessageStyle,
   setPasteLongTextAsFile,
@@ -57,7 +56,6 @@ const AgentSettingsTab = () => {
   const dispatch = useAppDispatch()
 
   const {
-    messageFont,
     sendMessageShortcut,
     setSendMessageShortcut,
     targetLanguage,
@@ -114,15 +112,6 @@ const AgentSettingsTab = () => {
     <Container className="settings-tab">
       <CollapsibleSettingGroup title={t('settings.messages.title')} defaultExpanded={true}>
         <SettingGroup>
-          <SettingRow>
-            <SettingRowTitleSmall>{t('settings.messages.use_serif_font')}</SettingRowTitleSmall>
-            <Switch
-              size="small"
-              checked={messageFont === 'serif'}
-              onChange={(checked) => dispatch(setMessageFont(checked ? 'serif' : 'system'))}
-            />
-          </SettingRow>
-          <SettingDivider />
           <SettingRow>
             <SettingRowTitleSmall>
               {t('chat.settings.thought_auto_collapse.label')}

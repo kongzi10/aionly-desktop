@@ -65,12 +65,6 @@ export const menuItems: MenuItem[] = [
         isActive: (settings) => settings.fontFamily === 'default'
       },
       {
-        key: 'serif-font',
-        labelKey: 'notes.settings.display.serif_font',
-        action: (_, updateSettings) => updateSettings({ fontFamily: 'serif' }),
-        isActive: (settings) => settings.fontFamily === 'serif'
-      },
-      {
         key: 'divider2',
         type: 'divider',
         labelKey: ''

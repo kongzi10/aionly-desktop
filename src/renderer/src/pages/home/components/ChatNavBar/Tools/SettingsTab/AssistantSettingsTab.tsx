@@ -31,7 +31,6 @@ import {
   setFontSize,
   setMathEnableSingleDollar,
   setMathEngine,
-  setMessageFont,
   setMessageNavigation,
   setMessageStyle,
   setMultiModelMessageStyle,
@@ -81,7 +80,6 @@ const AssistantSettingsTab = (props: Props) => {
 
   const {
     showPrompt,
-    messageFont,
     showInputEstimatedTokens,
     sendMessageShortcut,
     setSendMessageShortcut,
@@ -163,15 +161,6 @@ const AssistantSettingsTab = (props: Props) => {
           <SettingRow>
             <SettingRowTitleSmall>{t('settings.messages.prompt')}</SettingRowTitleSmall>
             <Switch size="small" checked={showPrompt} onChange={(checked) => dispatch(setShowPrompt(checked))} />
-          </SettingRow>
-          <SettingDivider />
-          <SettingRow>
-            <SettingRowTitleSmall>{t('settings.messages.use_serif_font')}</SettingRowTitleSmall>
-            <Switch
-              size="small"
-              checked={messageFont === 'serif'}
-              onChange={(checked) => dispatch(setMessageFont(checked ? 'serif' : 'system'))}
-            />
           </SettingRow>
           <SettingDivider />
           <SettingRow>

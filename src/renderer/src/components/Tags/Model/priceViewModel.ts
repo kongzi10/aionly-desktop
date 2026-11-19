@@ -263,7 +263,7 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
       const lines: PriceLine[] = []
       if (String(cfg.resolutionFlag) === '1') {
         for (const item of cfg.videoConfigurationList ?? []) {
-          const groupLabel = joinScoreRatio(item.scoreRatio)
+          const groupLabel = joinScoreRatio(item.scoreRatio) || t('common.output')
           const mUnit = `${unit}/${t('models.type.price.unit_m_tokens')}`
           if (String(cfg.videoInputFlag) === '1' && String(item.videoInput) === '0') {
             lines.push({
@@ -312,7 +312,12 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
     }
   } else if (chargeType === 1) {
     if (!isFree)
-      pushGroup(null, [{ label: '', value: `${dp(cfg.tokens)} ${unit}/${t('models.type.price.unit_million_tokens')}` }])
+      pushGroup(null, [
+        {
+          label: t('models.type.price.group_merged'),
+          value: `${dp(cfg.tokens)} ${unit}/${t('models.type.price.unit_million_tokens')}`
+        }
+      ])
   } else if (chargeType === 2) {
     if (!isFree) {
       const lines: PriceLine[] = []
@@ -322,7 +327,7 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
         const imgOutputLines = (list: any[]): PriceLine[] => {
           const out: PriceLine[] = []
           for (const item of list ?? []) {
-            const baseLabel = joinScoreRatio(item.scoreRatio)
+            const baseLabel = joinScoreRatio(item.scoreRatio) || t('common.output')
             // qualityFlag=0 时按质量档位逐行展开（与控制台收费标准列一致），否则单行 rateCardRate
             if (String(item.qualityFlag) === '0') {
               for (const q of AI_IMG_QUALITY_OPTIONS) {
@@ -348,7 +353,7 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
           } else {
             for (const item of cfg.imgConfigurationList ?? []) {
               imgInputLines.push({
-                label: joinScoreRatio(item.scoreRatio),
+                label: joinScoreRatio(item.scoreRatio) || t('common.input'),
                 value: `${dp(item.imgInputPrice)} ${imgUnit}`
               })
             }
@@ -378,32 +383,39 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
           cfg.idleInteractiveNum !== ''
         ) {
           pushGroup('common.input', imgInputLines)
-          pushGroup('models.type.price.peak_period', [{ label: '', value: `${dp(cfg.interactiveNum)} ${imgUnit}` }])
-          pushGroup('models.type.price.idle_period', [{ label: '', value: `${dp(cfg.idleInteractiveNum)} ${imgUnit}` }])
+          pushGroup('models.type.price.peak_period', [
+            { label: t('common.output'), value: `${dp(cfg.interactiveNum)} ${imgUnit}` }
+          ])
+          pushGroup('models.type.price.idle_period', [
+            { label: t('common.output'), value: `${dp(cfg.idleInteractiveNum)} ${imgUnit}` }
+          ])
         } else if (String(cfg.resolutionFlag) === '1') {
           lines.push(...imgInputLines, ...imgOutputLines(cfg.imgConfigurationList))
         } else {
-          lines.push(...imgInputLines, { label: '', value: `${dp(cfg.interactiveNum)} ${imgUnit}` })
+          lines.push(...imgInputLines, { label: t('common.output'), value: `${dp(cfg.interactiveNum)} ${imgUnit}` })
         }
       } else if (modelAttribute === 'visual_model') {
         const perUnit = cfg.secondUnit
           ? `${unit}/${cfg.secondUnit}${t('models.type.price.second')}`
           : `${unit}/${t('models.type.price.unit_count')}`
-        lines.push({ label: '', value: `${dp(cfg.interactiveNum)} ${perUnit}` })
+        lines.push({ label: t('common.output'), value: `${dp(cfg.interactiveNum)} ${perUnit}` })
       } else if (modelAttribute === 'speech_model') {
         lines.push({
-          label: '',
+          label: t('common.output'),
           value: `${dp(cfg.interactiveNum)} ${unit}/${t('models.type.price.ten_thousand_chars')}`
         })
       } else {
-        lines.push({ label: '', value: `${dp(cfg.interactiveNum)} ${unit}/${t('models.type.price.unit_count')}` })
+        lines.push({
+          label: t('common.output'),
+          value: `${dp(cfg.interactiveNum)} ${unit}/${t('models.type.price.unit_count')}`
+        })
       }
       pushGroup(null, lines)
     }
   } else if (chargeType === 3) {
     const lines: PriceLine[] = []
     for (const item of cfg.videoConfigurationList ?? []) {
-      const baseLabel = definitionLabel(item.definition)
+      const baseLabel = definitionLabel(item.definition) || t('common.output')
       const duration = getDurationRangeString(item.minDuration, item.maxDuration)
       const durUnit = duration ? `/${duration}${t('models.type.price.second')}` : `/${t('models.type.price.second')}`
       if (String(cfg.videoMuteFlag) === '1' && String(item.voicedFlag) === '0') {
@@ -475,7 +487,9 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
     providerName: cfg.serviceName ?? row?.serviceName ?? row?.providerName ?? '',
     chargeTypeKey,
     isFree,
-    standardTitleKey: chargeType === 1 ? 'models.type.price.output_price' : 'models.type.price.standard',
+    // 与控制台/旧版浮窗口径一致：仅视频模型标题为“输出价格”，其余为“收费标准”
+    standardTitleKey:
+      modelAttribute === 'visual_model' ? 'models.type.price.output_price' : 'models.type.price.standard',
     standardGroups,
     peak,
     showCache,
