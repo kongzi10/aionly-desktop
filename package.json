@@ -75,7 +75,7 @@
     "bench:renderer": "vitest bench --run --project renderer",
     "bench:aicore": "vitest bench --run --project aiCore",
     "bench:shared": "vitest bench --run --project shared",
-    "prepare": "git config blame.ignoreRevsFile .git-blame-ignore-revs && prek install",
+    "prepare": "git config blame.ignoreRevsFile .git-blame-ignore-revs && node -e \"if (!process.env.CI) require('child_process').execSync('prek install', { stdio: 'inherit' })\"",
     "claude": "dotenv -e .env -- claude",
     "changeset": "changeset",
     "changeset:status": "changeset status",
