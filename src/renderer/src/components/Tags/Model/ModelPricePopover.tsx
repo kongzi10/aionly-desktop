@@ -69,7 +69,8 @@ const ModelPricePopover = ({ model, moneyType = '1', active }: ModelPricePopover
     <div className={rootClass}>
       <div className="mpp__header">
         <div className="mpp__heading">
-          <span className="mpp__model">{vm?.modelName || model?.modelName || model?.name || '--'}</span>
+          {/* 与模型列表名称口径一致：优先取展示名 model.name，缺失时再回退价格配置字段 */}
+          <span className="mpp__model">{model?.name || model?.modelName || vm?.modelName || '--'}</span>
           {(vm?.providerName || model?.serviceName) && (
             <span className="mpp__provider">{vm?.providerName || model?.serviceName}</span>
           )}

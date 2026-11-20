@@ -390,9 +390,19 @@ export function buildPriceViewModel(row: any, options: BuildPriceOptions): Price
             { label: t('common.output'), value: `${dp(cfg.idleInteractiveNum)} ${imgUnit}` }
           ])
         } else if (String(cfg.resolutionFlag) === '1') {
-          lines.push(...imgInputLines, ...imgOutputLines(cfg.imgConfigurationList))
+          const outLines = imgOutputLines(cfg.imgConfigurationList)
+          if (imgInputLines.length) {
+            // 与控制台口径一致：开启输入计费时按「输入/输出」分组，避免同档位标签（如 1K/2K）输入输出混排无法区分
+            pushGroup('common.input', imgInputLines)
+            pushGroup('common.output', outLines)
+          } else {
+            lines.push(...outLines)
+          }
+        } else if (imgInputLines.length) {
+          pushGroup('common.input', imgInputLines)
+          pushGroup('common.output', [{ label: '', value: `${dp(cfg.interactiveNum)} ${imgUnit}` }])
         } else {
-          lines.push(...imgInputLines, { label: t('common.output'), value: `${dp(cfg.interactiveNum)} ${imgUnit}` })
+          lines.push({ label: t('common.output'), value: `${dp(cfg.interactiveNum)} ${imgUnit}` })
         }
       } else if (modelAttribute === 'visual_model') {
         const perUnit = cfg.secondUnit

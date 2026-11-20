@@ -122,7 +122,7 @@ const buildNewModelItem = (modelId: string, name: string): NewModelPushItem => (
   id: `new-model-${modelId}`,
   modelId,
   title: `${name} 已上架`,
-  description: `服务商${modelId} 新模型，开通后即可在对话和绘画中使用`,
+  description: `服务商${modelId} 新模型，开通后即可在对话或绘画中使用`,
   buttonText: '立即开通'
 })
 

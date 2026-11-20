@@ -137,6 +137,53 @@ describe('priceViewModel', () => {
     expect(vm.standardGroups[2].lines).toEqual([{ label: '1K、2K', value: `0.09 ${unit}` }])
   })
 
+  it('图片按张计费含输入档位：按输入/输出分组（对齐控制台口径）', () => {
+    const unit = 'models.type.price.gold_coin/models.type.price.unit_image'
+    const vm = buildPriceViewModel(
+      {
+        modelAttribute: 'image_generation',
+        chargeType: 2,
+        imgInputFlag: '1',
+        imgInputBill: 0,
+        resolutionFlag: '1',
+        imgConfigurationList: [
+          { scoreRatio: ['1K'], imgInputPrice: '0.02', rateCardRate: '0.25' },
+          { scoreRatio: ['2K'], imgInputPrice: '0.02', rateCardRate: '0.5' }
+        ]
+      },
+      { moneyType: '1', t }
+    )
+    expect(vm.standardGroups.map((g) => g.titleKey)).toEqual(['common.input', 'common.output'])
+    expect(vm.standardGroups[0].lines).toEqual([
+      { label: '1K', value: `0.02 ${unit}` },
+      { label: '2K', value: `0.02 ${unit}` }
+    ])
+    expect(vm.standardGroups[1].lines).toEqual([
+      { label: '1K', value: `0.25 ${unit}` },
+      { label: '2K', value: `0.5 ${unit}` }
+    ])
+  })
+
+  it('图片按张计费含输入档位但无分辨率档：输出单值归入输出分组', () => {
+    const unit = 'models.type.price.gold_coin/models.type.price.unit_image'
+    const vm = buildPriceViewModel(
+      {
+        modelAttribute: 'image_generation',
+        chargeType: 2,
+        imgInputFlag: '1',
+        imgInputBill: 1,
+        imgInputPrice: '0.02',
+        interactiveNum: '0.25'
+      },
+      { moneyType: '1', t }
+    )
+    expect(vm.standardGroups.map((g) => g.titleKey)).toEqual(['common.input', 'common.output'])
+    expect(vm.standardGroups[0].lines).toEqual([
+      { label: 'models.type.price.group_input_merged', value: `0.02 ${unit}` }
+    ])
+    expect(vm.standardGroups[1].lines).toEqual([{ label: '', value: `0.25 ${unit}` }])
+  })
+
   it('免费模型标识', () => {
     const vm = buildPriceViewModel(
       { modelAttribute: 'text_model', chargeType: 0, freeFlag: '1' },
