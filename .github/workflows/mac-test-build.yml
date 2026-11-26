@@ -54,7 +54,7 @@ jobs:
       - name: Package Apple Silicon and Intel test builds
         run: >-
           pnpm exec electron-builder --config electron-builder.test-mac.yml
-          --mac --arm64 --x64 --publish never
+          --mac dmg --arm64 --x64 --publish never
 
       - name: Upload Apple Silicon DMG
         uses: actions/upload-artifact@v4
