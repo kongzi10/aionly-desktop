@@ -2,5 +2,7 @@ extends: ./electron-builder.yml
 mac:
   identity: null
   notarize: false
+  target:
+    - dmg
 afterSign: null
 publish: null
