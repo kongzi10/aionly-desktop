@@ -8,11 +8,14 @@ import styled from 'styled-components'
 
 interface AccountLoginProps {
   ref?: React.Ref<AccountLoginRef>
-  onSuccess?: () => void
+  /** 登录成功回调；loginAccount 为本次登录用户名（切换身份回写历史账号用） */
+  onSuccess?: (loginAccount?: string) => void
   onFormChange?: (valid: boolean) => void
   verifyRef?: any
   setLoading?: (loading: boolean) => void
   isAccept: boolean
+  /** 预填用户名（切换身份会话过期 → 登录页一次性预填） */
+  initialAccount?: string
 }
 
 export interface AccountLoginRef {
@@ -68,6 +71,14 @@ export const AccountLogin = ({ ref, ...props }: AccountLoginProps) => {
     loginUrl: window.location.href
   })
 
+  // 预填用户名（内存一次性传递，勿持久化）
+  useEffect(() => {
+    if (!props.initialAccount) return
+    form.setFieldsValue({ username: props.initialAccount })
+    setAccountForm((prev) => ({ ...prev, username: props.initialAccount as string }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // 登录接口（改为触发滑块验证）
   const login = async () => {
     // 先做表单验证
@@ -78,15 +89,11 @@ export const AccountLogin = ({ ref, ...props }: AccountLoginProps) => {
       return
     }
 
-    // 调试日志：查看请求参数
-    logger.debug('账号登录请求参数', { accountForm, clientId: import.meta.env.VITE_APP_CLIENT_ID })
-
     // 触发滑块验证，验证成功后会调用 sendCode 方法
     triggerVerify()
   }
 
-  const onFinish: FormProps<FieldType>['onFinish'] = (values) => {
-    logger.debug('登录表单提交成功', values)
+  const onFinish: FormProps<FieldType>['onFinish'] = () => {
     login()
   }
 
@@ -133,7 +140,7 @@ export const AccountLogin = ({ ref, ...props }: AccountLoginProps) => {
       const { data } = await loginApi(updatedForm)
       if (data && data.access_token) {
         localStorage.setItem('token', data.access_token)
-        await props.onSuccess?.()
+        await props.onSuccess?.(updatedForm.username)
       }
     } catch (error: any) {
       logger.error('账号登录失败', error)

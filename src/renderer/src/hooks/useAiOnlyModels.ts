@@ -540,9 +540,10 @@ async function fetchAndSetupModels(options: FetchAndSetupModelsOptions): Promise
 
 /**
  * 为当前登录用户执行完整的"获取→过滤→转换→存储→设置默认"流程
- * 供 useFetchAndSetupModels hook 与启动时补拉（ensureAiOnlyModelsLoaded）共用
+ * 供 useFetchAndSetupModels hook、启动时补拉（ensureAiOnlyModelsLoaded）
+ * 与切换身份会话初始化（services/sessionBootstrap.ts）共用
  */
-async function setupModelsForCurrentUser(pageSize = 10, explicitUserId?: string): Promise<void> {
+export async function setupModelsForCurrentUser(pageSize = 10, explicitUserId?: string): Promise<void> {
   const userInfo: any = selectUserInfo(store.getState())
   const userId = explicitUserId ?? userInfo?.userId
   const { setDefaultModel, setQuickModel, setTranslateModel } = createCurrentStoreModelSetters(store.dispatch)

@@ -29,7 +29,9 @@ vi.mock('@renderer/hooks/useNewShelfModelPush', () => ({
 vi.mock('@renderer/api/balance', () => ({ batchAddModelPayLaterApi: vi.fn() }))
 // 测试环境未初始化 i18n：t 返回 key，保证 aria-label 等断言稳定
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key })
+  useTranslation: () => ({ t: (key: string) => key }),
+  // 组件导入链经 utils/image → i18n/index 会执行 i18n.use(initReactI18next)，需补齐导出
+  initReactI18next: { type: '3rdParty', init: () => undefined }
 }))
 vi.mock('@renderer/store', () => ({
   useAppSelector: vi.fn(() => ({})),
@@ -48,7 +50,14 @@ vi.mock('@renderer/hooks/useRuntime', () => ({
   modelGenerating: vi.fn()
 }))
 vi.mock('@renderer/services/ProfileLifecycleService', () => ({ applyProfileSwitch: vi.fn() }))
-vi.mock('@renderer/config/sidebar', () => ({ SHOW_IN_USER_MENUS: [] }))
+// 断开 AssistantService ↔ store/assistants 循环引用：后者模块顶层调用 getDefaultAssistant()
+// 会在 vitest 模块求值顺序下触发 uuid 的 TDZ ReferenceError
+vi.mock('@renderer/store/assistants', () => ({ addAssistant: vi.fn() }))
+// 部分 mock：store/settings 模块顶层还依赖 DEFAULT_SIDEBAR_ICONS 等真实导出
+vi.mock('@renderer/config/sidebar', async (importOriginal) => ({
+  ...(await importOriginal()),
+  SHOW_IN_USER_MENUS: []
+}))
 vi.mock('@renderer/i18n/label', () => ({ getSidebarIconLabel: (name: string) => name }))
 
 const first: HomePushItem = {

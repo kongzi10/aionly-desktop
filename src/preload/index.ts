@@ -37,6 +37,7 @@ import type {
 import type { MCPServerLogEntry } from '@shared/config/types'
 import type { ExternalAppInfo } from '@shared/externalApp/types'
 import { IpcChannel } from '@shared/IpcChannel'
+import type { ListAccountsResult, PreparedSwitch, UpsertAccountRequest, UpsertAccountResult } from '@shared/profile'
 import type { Notification } from '@types'
 import type {
   AddMemoryOptions,
@@ -166,6 +167,26 @@ const api = {
     deactivate: () =>
       isTrustedAppRenderer
         ? ipcRenderer.invoke(IpcChannel.Profile_Deactivate)
+        : Promise.reject(new Error('Profile lifecycle API is unavailable in embedded content')),
+    /** 历史登录账号列表（掩码元数据，不含 account 原文/userId/凭据） */
+    listAccounts: (): Promise<ListAccountsResult> =>
+      isTrustedAppRenderer
+        ? (ipcRenderer.invoke(IpcChannel.Profile_ListAccounts) as Promise<ListAccountsResult>)
+        : Promise.reject(new Error('Profile lifecycle API is unavailable in embedded content')),
+    /** 移除历史登录记录（拒绝删除当前登录） */
+    removeAccount: (profileId: string): Promise<{ success: boolean }> =>
+      isTrustedAppRenderer
+        ? (ipcRenderer.invoke(IpcChannel.Profile_RemoveAccount, profileId) as Promise<{ success: boolean }>)
+        : Promise.reject(new Error('Profile lifecycle API is unavailable in embedded content')),
+    /** 切换前准备：一次性返回解密凭据（内存传递，勿持久化/打印） */
+    prepareSwitch: (profileId: string): Promise<PreparedSwitch> =>
+      isTrustedAppRenderer
+        ? (ipcRenderer.invoke(IpcChannel.Profile_PrepareSwitch, profileId) as Promise<PreparedSwitch>)
+        : Promise.reject(new Error('Profile lifecycle API is unavailable in embedded content')),
+    /** 登录成功回写：credentials + accounts（LRU）+ activate 编排 */
+    upsertAccount: (req: UpsertAccountRequest): Promise<UpsertAccountResult> =>
+      isTrustedAppRenderer
+        ? (ipcRenderer.invoke(IpcChannel.Profile_UpsertAccount, req) as Promise<UpsertAccountResult>)
         : Promise.reject(new Error('Profile lifecycle API is unavailable in embedded content'))
   },
   legacyData: {

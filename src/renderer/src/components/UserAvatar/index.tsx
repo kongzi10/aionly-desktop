@@ -1,7 +1,8 @@
 import { loggerService } from '@logger'
 import { batchAddModelPayLaterApi } from '@renderer/api/balance'
 import defaultAvatar from '@renderer/assets/images/avatar-default.png'
-import { FEATURE_AVATAR_NEW_MODEL_PUSH } from '@renderer/config/featureFlags'
+import IdentitySwitchDrawer from '@renderer/components/IdentitySwitch'
+import { FEATURE_AVATAR_NEW_MODEL_PUSH, FEATURE_IDENTITY_SWITCH } from '@renderer/config/featureFlags'
 import { SHOW_IN_USER_MENUS } from '@renderer/config/sidebar'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
@@ -146,6 +147,8 @@ const UserAvatar: React.FC<Props> = () => {
   // 手动关闭：本次会话内不再显示（与原 setOpen(false) 行为一致）
   const [dismissed, setDismissed] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  // 切换身份抽屉（FEATURE_IDENTITY_SWITCH 开启时替换原「切换身份=退出登录」确认弹窗）
+  const [identityOpen, setIdentityOpen] = useState(false)
 
   // 挂载时拉取运营推送并默认展示悬浮框；悬浮框固定锚定在头像左上方，
   // 不随路由/左侧菜单切换关闭，仅手动关闭按钮可隐藏
@@ -261,7 +264,20 @@ const UserAvatar: React.FC<Props> = () => {
     const notRealRoutePath = ['/identity', '/logout']
     if (notRealRoutePath.includes(item.path)) {
       const menuHandler = {
-        '/identity': () => handleLogout('identity'),
+        '/identity': () => {
+          if (!FEATURE_IDENTITY_SWITCH) {
+            handleLogout('identity')
+            return
+          }
+          hideMinappPopup()
+          // 模型生成中：modelGenerating 内部已 toast 拦截并 reject，抽屉不打开（开发文档 §4.2）
+          void modelGenerating()
+            .then(() => {
+              setMenuOpen(false)
+              setIdentityOpen(true)
+            })
+            .catch(() => undefined)
+        },
         '/logout': () => handleLogout('logout')
       }
       menuHandler[item.path]?.()
@@ -379,6 +395,7 @@ const UserAvatar: React.FC<Props> = () => {
           </PushCardFoot>
         </AvatarOverlay>
       )}
+      {FEATURE_IDENTITY_SWITCH && <IdentitySwitchDrawer open={identityOpen} onClose={() => setIdentityOpen(false)} />}
     </Container>
   )
 }

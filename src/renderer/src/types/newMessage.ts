@@ -9,6 +9,7 @@ import type {
   MCPServer,
   MCPToolResponse,
   MemoryItem,
+  MentionItem,
   Metrics,
   Model,
   NormalToolResponse,
@@ -196,7 +197,8 @@ export type Message = {
   type?: 'clear'
   useful?: boolean
   askId?: string // 关联的问题消息ID
-  mentions?: Model[]
+  /** 群聊成员提及：兼容旧格式裸 Model[] 与新格式 RoundtableMention[]（模型 × 角色独立绑定） */
+  mentions?: MentionItem[]
   /**
    * @deprecated
    */
@@ -243,7 +245,7 @@ export interface MessageInputBaseParams {
   content?: string
   files?: FileMetadata[]
   knowledgeBaseIds?: string[]
-  mentions?: Model[]
+  mentions?: MentionItem[]
   /**
    * @deprecated
    */

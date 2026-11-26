@@ -16,6 +16,8 @@ interface Props {
   onSuccess?: () => void | Promise<void>
   onFormChange?: (valid: boolean) => void
   verifyRef?: React.RefObject<any | null>
+  /** 登录成功回调（首登强制改密守卫）：提供时不在此直接落 token，改为上抛 accessToken 由守卫编排 */
+  onLoginOk?: (accessToken: string) => Promise<unknown> | void
 }
 
 export interface PhoneBindRef {
@@ -34,7 +36,7 @@ const StyleInput = styled(Input)`
 const phoneRegx =
   /^(((13[0-9]{1})|(15[0-9]{1})|(16[0-9]{1})|(17[3-8]{1})|(18[0-9]{1})|(19[0-9]{1})|(14[5-7]{1}))+\d{8})$/
 
-const PhoneBind: React.FC<Props> = ({ ref, verifyRef, onSuccess, onFormChange }) => {
+const PhoneBind: React.FC<Props> = ({ ref, verifyRef, onSuccess, onFormChange, onLoginOk }) => {
   type FieldType = {
     phonenumber?: string
     smsCode?: string
@@ -94,8 +96,13 @@ const PhoneBind: React.FC<Props> = ({ ref, verifyRef, onSuccess, onFormChange })
     const loginParams = getLoginFormData()
     const { data } = await loginApi(loginParams)
     if (data && data.access_token) {
-      localStorage.setItem('token', data.access_token)
-      await onSuccess?.()
+      if (onLoginOk) {
+        // 首登强制改密：token 交由登录后守卫统一编排（暂存内存，检查通过/改密成功后才落盘）
+        await onLoginOk(data.access_token)
+      } else {
+        localStorage.setItem('token', data.access_token)
+        await onSuccess?.()
+      }
     }
   }
 

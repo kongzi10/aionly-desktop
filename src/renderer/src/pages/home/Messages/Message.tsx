@@ -4,7 +4,7 @@ import Scrollbar from '@renderer/components/Scrollbar'
 import { useMessageEditing } from '@renderer/context/MessageEditingContext'
 import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useChatContext } from '@renderer/hooks/useChatContext'
-import { useMessageOperations } from '@renderer/hooks/useMessageOperations'
+import { useMessageOperations, useTopicMessages } from '@renderer/hooks/useMessageOperations'
 import { useModel } from '@renderer/hooks/useModel'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
@@ -12,6 +12,7 @@ import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { getMessageModelId } from '@renderer/services/MessagesService'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import { estimateMessageUsage } from '@renderer/services/TokenService'
+import { useAppSelector } from '@renderer/store'
 import type { MultiModelMessageStyle } from '@renderer/store/settings'
 import type { Assistant, Topic } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
@@ -20,7 +21,7 @@ import { scrollIntoView } from '@renderer/utils/dom'
 import { isMessageProcessing } from '@renderer/utils/messageUtils/is'
 import { Divider } from 'antd'
 import type { Dispatch, FC, SetStateAction } from 'react'
-import React, { memo, useCallback, useEffect, useRef } from 'react'
+import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -81,6 +82,27 @@ const MessageItem: FC<Props> = ({
   const model = useModel(getMessageModelId(message), message.model?.provider) || message.model || assistant?.model
   const { messageFont, fontSize, /*messageStyle,*/ showMessageOutline } = useSettings()
   const { editMessageBlocks, resendUserMessageWithEdit, editMessage } = useMessageOperations(topic)
+  const topicMessages = useTopicMessages(topic.id)
+  // 群聊：从当前响应卡片回溯最近一条用户消息，从其 mentions 中取本模型绑定的角色（assistantId）
+  const roleAssistantId = useMemo(() => {
+    if (mode !== 'roundtable' || message.role !== 'assistant' || !message.model) return undefined
+    const uniqId = getModelUniqId(message.model)
+    const idx = topicMessages.findIndex((item) => item.id === message.id)
+    if (idx <= 0) return undefined
+    for (let i = idx - 1; i >= 0; i--) {
+      const item = topicMessages[i]
+      if (item.role !== 'user') continue
+      const mention = (item.mentions ?? []).find((candidate) => {
+        const mentionModel = 'model' in candidate ? candidate.model : candidate
+        return !!mentionModel && getModelUniqId(mentionModel) === uniqId
+      })
+      return mention && 'assistantId' in mention ? mention.assistantId : undefined
+    }
+    return undefined
+  }, [message, mode, topicMessages])
+  const roleAssistant = useAppSelector((state) =>
+    roleAssistantId ? state.assistants.assistants.find((item) => item.id === roleAssistantId) : undefined
+  )
   const messageContainerRef = useRef<HTMLDivElement>(null)
   const { editingMessageId, startEditing, stopEditing } = useMessageEditing()
   const { setTimeoutTimer } = useTimer()
@@ -268,7 +290,15 @@ const MessageItem: FC<Props> = ({
                 <MessageOutline message={message} />
               )}
               {isAssistantMessage && (model?.name || assistant?.name) && (
-                <div className="model-name">{model?.name || assistant?.name}</div>
+                <div className="model-name">
+                  <span className="model-name-text">{model?.name || assistant?.name}</span>
+                  {roleAssistant && (
+                    <span className="role-badge">
+                      <span className="role-badge-emoji">{roleAssistant.emoji || '🤖'}</span>
+                      <span className="role-badge-name">{roleAssistant.name}</span>
+                    </span>
+                  )}
+                </div>
               )}
               <MessageInnerWrapper className="message-inner-wrapper">
                 <MessageContentContainer
@@ -354,6 +384,7 @@ const MessageContainer = styled.div`
 
     .model-name {
       display: flex;
+      gap: 8px;
       min-height: 58px;
       align-items: center;
       padding: 9px 44px 8px 60px;
@@ -362,6 +393,39 @@ const MessageContainer = styled.div`
       font-size: 13px;
       font-weight: 650;
       line-height: 18px;
+    }
+
+    .model-name-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .role-badge {
+      display: inline-flex;
+      flex: 0 1 auto;
+      gap: 4px;
+      align-items: center;
+      max-width: 45%;
+      padding: 2px 8px;
+      border: 1px solid rgb(90 143 215 / 22%);
+      border-radius: 999px;
+      background: rgb(94 154 232 / 10%);
+      color: var(--color-primary);
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 16px;
+    }
+
+    .role-badge-emoji {
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .role-badge-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .message-inner-wrapper {

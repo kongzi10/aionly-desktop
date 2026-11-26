@@ -1,8 +1,14 @@
 import aiOnlyPng from '@renderer/assets/images/logo.png'
 import AgentRouterIcon from '@renderer/components/Icons/AgentRouterIcon'
 import { QuickPanelProvider } from '@renderer/components/QuickPanel'
+import db from '@renderer/databases'
 import { ensureAiOnlyModelsLoaded } from '@renderer/hooks/useAiOnlyModels'
+import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
+import { isReusableEmptyTopic } from '@renderer/hooks/useTopic'
+import { getDefaultTopic } from '@renderer/services/AssistantService'
+import { useAppDispatch } from '@renderer/store'
+import { newMessagesActions } from '@renderer/store/newMessage'
 import type { Assistant, Topic } from '@renderer/types'
 import type { InputBarToolType } from '@renderer/types/chat'
 import type { FC } from 'react'
@@ -32,6 +38,8 @@ const LandingPage: FC<Props> = ({ assistant, activeTopic, setActiveTopic }) => {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { openSmartMinapp } = useMinappPopup()
+  const { addTopic, setModel } = useAssistant(assistant.id)
+  const dispatch = useAppDispatch()
   const [topLoop, setTopLoop] = useState<HomePushItem[]>([])
   const [cartoon, setCartoon] = useState<HomePushItem[]>([])
 
@@ -52,9 +60,40 @@ const LandingPage: FC<Props> = ({ assistant, activeTopic, setActiveTopic }) => {
     void ensureAiOnlyModelsLoaded()
   }, [])
 
-  const openConversation = useCallback(() => {
-    navigate('/chat', { state: { assistant, topic: activeTopic } })
-  }, [activeTopic, assistant, navigate])
+  /**
+   * 首页发送前解析目标话题：
+   * 当前话题可复用为空话题时直接使用；否则懒创建一条新会话，
+   * 避免首页提问被追加进最新的历史对话记录。
+   */
+  const resolveSendTopic = useCallback(async (): Promise<Topic> => {
+    if (await isReusableEmptyTopic(activeTopic)) {
+      return activeTopic
+    }
+
+    const newTopic = getDefaultTopic(assistant.id)
+    // 先建库记录，消息持久化依赖 db.topics 行存在
+    await db.topics.add({ id: newTopic.id, messages: [] })
+
+    // 预登记空消息列表：loadTopicMessagesThunk 对已有缓存的话题跳过读库，
+    // 避免跳转对话页时的读库快照覆盖正在并发写入的用户/助手消息（表现为助手回复丢失）
+    dispatch(newMessagesActions.messagesReceived({ topicId: newTopic.id, messages: [] }))
+
+    if (assistant.defaultModel) {
+      setModel(assistant.defaultModel)
+    }
+
+    // 先入 Redux 再设为激活：useActiveTopic 会将不在 assistant.topics 中的话题回退到 topics[0]
+    addTopic(newTopic)
+    setActiveTopic(newTopic)
+    return newTopic
+  }, [activeTopic, addTopic, assistant.defaultModel, assistant.id, dispatch, setActiveTopic, setModel])
+
+  const openConversation = useCallback(
+    (sentTopic: Topic) => {
+      navigate('/chat', { state: { assistant, topic: sentTopic } })
+    },
+    [assistant, navigate]
+  )
 
   const openContentAction = useCallback(
     (action: HomeContentAction, item: HomePushItem) => {
@@ -108,6 +147,7 @@ const LandingPage: FC<Props> = ({ assistant, activeTopic, setActiveTopic }) => {
                 topic={activeTopic}
                 setActiveTopic={setActiveTopic}
                 onMessageAccepted={openConversation}
+                resolveTopicBeforeSend={resolveSendTopic}
                 showOpenModelButton
                 compact
                 excludedTools={LANDING_EXCLUDED_TOOLS}

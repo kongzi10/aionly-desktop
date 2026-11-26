@@ -19,18 +19,23 @@ import type { PhoneBindRef } from './PhoneBind'
 import PhoneBind from './PhoneBind'
 import type { SubAccountLoginFieldType } from './SubAccountLogin'
 
+/** 登录成功回调（首登强制改密守卫）：提供时绑定组件不再直接落 token，改为上抛 accessToken 由守卫编排 */
+type OnLoginOk = (accessToken: string) => Promise<unknown> | void
+
 interface Props {
   resolve?: (data: any) => void
   parentForm?: FormInstance<SubAccountLoginFieldType>
   navigate?: NavigateFunction
+  onLoginOk?: OnLoginOk
 }
 
 interface showParamsType {
   parentForm?: FormInstance<SubAccountLoginFieldType>
   navigate?: NavigateFunction
+  onLoginOk?: OnLoginOk
 }
 
-const BindPhoneEmail: React.FC<Props> = ({ resolve, parentForm, navigate }) => {
+const BindPhoneEmail: React.FC<Props> = ({ resolve, parentForm, navigate, onLoginOk }) => {
   void navigate
   const { t } = useTranslation()
 
@@ -67,12 +72,16 @@ const BindPhoneEmail: React.FC<Props> = ({ resolve, parentForm, navigate }) => {
     {
       key: 'phone',
       label: t('login.sub_account.bind_phone_email.phone.title'),
-      children: <PhoneBind ref={phoneBindRef} verifyRef={verifyRef} onSuccess={handleLoginSuccess} />
+      children: (
+        <PhoneBind ref={phoneBindRef} verifyRef={verifyRef} onSuccess={handleLoginSuccess} onLoginOk={onLoginOk} />
+      )
     },
     {
       key: 'email',
       label: t('login.sub_account.bind_phone_email.email.title'),
-      children: <EmailBind ref={emailBindRef} verifyRef={verifyRef} onSuccess={handleLoginSuccess} />
+      children: (
+        <EmailBind ref={emailBindRef} verifyRef={verifyRef} onSuccess={handleLoginSuccess} onLoginOk={onLoginOk} />
+      )
     }
   ]
 
@@ -167,12 +176,13 @@ export default class BindPhoneEmailModal {
   static hide() {
     TopView.hide(TopViewKey)
   }
-  static show({ parentForm, navigate }: showParamsType) {
+  static show({ parentForm, navigate, onLoginOk }: showParamsType) {
     return new Promise<any>((resolve) => {
       TopView.show(
         <BindPhoneEmail
           parentForm={parentForm}
           navigate={navigate}
+          onLoginOk={onLoginOk}
           resolve={(v) => {
             resolve(v)
             TopView.hide(TopViewKey)

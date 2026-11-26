@@ -67,6 +67,15 @@ export function useActiveTopic(assistantId: string, topic?: Topic) {
   return { activeTopic, setActiveTopic }
 }
 
+/**
+ * 判断话题是否为"可复用的空话题"（无消息、默认名称、未设置话题提示词、未置顶）。
+ * 供「新建对话」的复用判定与首页发送前的懒创建新话题逻辑共用，避免堆积空对话。
+ */
+export async function isReusableEmptyTopic(topic: Topic): Promise<boolean> {
+  const record = await db.topics.get(topic.id)
+  return (record?.messages?.length ?? 0) === 0 && isDefaultTopicName(topic.name) && !topic.prompt && !topic.pinned
+}
+
 export function useTopic(assistant: Assistant, topicId?: string) {
   return assistant?.topics.find((topic) => topic.id === topicId)
 }

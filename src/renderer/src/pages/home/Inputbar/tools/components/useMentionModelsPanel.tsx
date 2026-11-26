@@ -1,8 +1,13 @@
-import { SelectMultiModelsPopup } from '@renderer/components/Popups/SelectModelPopup'
+import { SelectMultiModelsPopup, SelectRoundtableModelsPopup } from '@renderer/components/Popups/SelectModelPopup'
 import { QuickPanelReservedSymbol } from '@renderer/components/QuickPanel'
 import { isVisionModel } from '@renderer/config/models'
 import { transformToModel } from '@renderer/hooks/useAiOnlyModels'
 import type { ToolQuickPanelApi } from '@renderer/pages/home/Inputbar/types'
+import { isRoundtableRoleBindingEnabled } from '@renderer/pages/roundtable/roundtableFeatureFlag'
+import {
+  findPendingRoundtableMention,
+  setPendingRoundtableMentions
+} from '@renderer/pages/roundtable/roundtableMentions'
 import type { Model } from '@renderer/types'
 import { AtSign } from 'lucide-react'
 import React, { useCallback, useEffect } from 'react'
@@ -69,6 +74,22 @@ export const useMentionModelsPanel = (params: Params, role: 'button' | 'manager'
           const caret = textArea ? (textArea.selectionStart ?? currentText.length) : currentText.length
           return removeAtSymbolAndText(currentText, caret, triggerInfo.position)
         })
+      }
+
+      // 群聊（圆桌）且角色绑定开关开启：使用双栏弹窗（模型 + 角色分配）
+      if (mode === 'roundtable' && isRoundtableRoleBindingEnabled()) {
+        void SelectRoundtableModelsPopup.show({
+          // 携带已有角色绑定（pending 暂存，含历史回退），避免重开弹窗确认后绑定被清空
+          selectedMembers: mentionedModels.map((model) => findPendingRoundtableMention(model) ?? { model }),
+          modelFilter,
+          showOpenModelButton: true
+        }).then((members) => {
+          if (members) {
+            setPendingRoundtableMentions(members)
+            setMentionedModels(members.map((member) => member.model))
+          }
+        })
+        return
       }
 
       void SelectMultiModelsPopup.show({

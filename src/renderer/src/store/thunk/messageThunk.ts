@@ -17,12 +17,14 @@ import { AiSdkToChunkAdapter } from '@renderer/aiCore/chunk/AiSdkToChunkAdapter'
 import { AgentApiClient } from '@renderer/api/agent'
 import db from '@renderer/databases'
 import { getModel } from '@renderer/hooks/useModel'
+import { applyRoleToAssistant, resolveRoundtableRoleAssistant } from '@renderer/pages/roundtable/roundtableRole'
 import { fetchMessagesSummary, transformMessagesAndFetch } from '@renderer/services/ApiService'
 import { dbService } from '@renderer/services/db'
 import { DbService } from '@renderer/services/db/DbService'
 import FileManager from '@renderer/services/FileManager'
 import { BlockManager } from '@renderer/services/messageStreaming/BlockManager'
 import { createCallbacks } from '@renderer/services/messageStreaming/callbacks'
+import { getModelUniqId } from '@renderer/services/ModelService'
 import { endSpan } from '@renderer/services/SpanManagerService'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
 import store from '@renderer/store'
@@ -42,6 +44,7 @@ import {
   MessageBlockType,
   UserMessageStatus
 } from '@renderer/types/newMessage'
+import { getMentionAssistantId, getMentionModel } from '@renderer/types/roundtable'
 import { uuid } from '@renderer/utils'
 import { addAbortController } from '@renderer/utils/abortController'
 import {
@@ -784,6 +787,23 @@ const fetchAndProcessAgentResponseImpl = async (
 // and updated during streaming via updateMessageAndBlocks
 
 // --- Helper Function for Multi-Model Dispatch ---
+/**
+ * 群聊：解析成员模型的实际助手配置（话题助理 × 角色绑定）。
+ * 从用户消息 mentions 中按模型查角色绑定（assistantId）；默认角色 / 旧格式裸 Model / 角色缺失
+ * 统一回退话题助理自身，保证发送 / 重发 / 重新生成链路角色生效口径一致。
+ */
+const resolveMentionedAssistantConfig = (
+  state: RootState,
+  assistant: Assistant,
+  model: Model,
+  mentions: Message['mentions']
+): Assistant => {
+  const uniqId = getModelUniqId(model)
+  const mention = (mentions ?? []).find((item) => getModelUniqId(getMentionModel(item)) === uniqId)
+  const role = resolveRoundtableRoleAssistant(state, mention ? getMentionAssistantId(mention) : undefined, assistant)
+  return applyRoleToAssistant(assistant, role, model)
+}
+
 // 多模型创建和发送请求的逻辑，用于用户消息多模型发送和重发
 const dispatchMultiModelResponses = async (
   dispatch: AppDispatch,
@@ -797,7 +817,13 @@ const dispatchMultiModelResponses = async (
   const tasksToQueue: { assistantConfig: Assistant; messageStub: Message }[] = []
 
   for (const mentionedModel of mentionedModels) {
-    const assistantForThisMention = { ...assistant, model: mentionedModel }
+    // 群聊角色绑定：按 mentions 中的 assistantId 将角色人设合并到话题助理上
+    const assistantForThisMention = resolveMentionedAssistantConfig(
+      getState(),
+      assistant,
+      mentionedModel,
+      triggeringMessage.mentions
+    )
     const assistantMessage = createAssistantMessage(assistant.id, topicId, {
       askId: triggeringMessage.id,
       model: mentionedModel,
@@ -1029,9 +1055,12 @@ export const sendMessage =
           })
         })
       } else {
-        const mentionedModels = userMessage.mentions
+        // 兼容旧格式裸 Model 与新格式 RoundtableMention（{ model, assistantId }），统一提取 Model
+        const mentionedModels = (userMessage.mentions ?? [])
+          .map((mention) => ('model' in mention ? mention.model : mention))
+          .filter((model): model is Model => !!model)
 
-        if (mentionedModels && mentionedModels.length > 0) {
+        if (mentionedModels.length > 0) {
           await dispatchMultiModelResponses(dispatch, getState, topicId, userMessage, assistant, mentionedModels)
         } else {
           const assistantMessage = createAssistantMessage(assistant.id, topicId, {
@@ -1279,7 +1308,11 @@ export const resendMessageThunk =
 
       // 再处理新的重传（用户消息提及，但是现有助手消息中不存在提及的模型）
       const originModelSet = new Set(assistantMessagesToReset.map((m) => m.model).filter((m) => m !== undefined))
-      const mentionedModelSet = new Set(userMessageToResend.mentions ?? [])
+      // 兼容旧格式裸 Model 与新格式 RoundtableMention（{ model, assistantId }），统一提取 Model
+      const mentionedModels = (userMessageToResend.mentions ?? [])
+        .map((mention) => ('model' in mention ? mention.model : mention))
+        .filter((model): model is Model => !!model)
+      const mentionedModelSet = new Set(mentionedModels)
       const newModelSet = new Set([...mentionedModelSet].filter((m) => !originModelSet.has(m)))
       for (const model of newModelSet) {
         const assistantMessage = createAssistantMessage(assistant.id, topicId, {
@@ -1306,10 +1339,10 @@ export const resendMessageThunk =
 
       const queue = getTopicQueue(topicId)
       for (const resetMsg of resetDataList) {
-        const assistantConfigForThisRegen = {
-          ...assistant,
-          ...(resetMsg.model ? { model: resetMsg.model } : {})
-        }
+        // 群聊角色绑定：重发时按原用户消息 mentions 恢复成员的角色人设
+        const assistantConfigForThisRegen = resetMsg.model
+          ? resolveMentionedAssistantConfig(getState(), assistant, resetMsg.model, userMessageToResend.mentions)
+          : assistant
         void queue.add(async () => {
           await fetchAndProcessAssistantResponseImpl(dispatch, getState, topicId, assistantConfigForThisRegen, resetMsg)
         })
@@ -1428,10 +1461,10 @@ export const regenerateAssistantResponseThunk =
 
       // 8. Add fetch/process call to the queue
       const queue = getTopicQueue(topicId)
-      const assistantConfigForRegen = {
-        ...assistant,
-        ...(resetAssistantMsg.model ? { model: resetAssistantMsg.model } : {})
-      }
+      // 群聊角色绑定：重新生成时按原用户消息 mentions 恢复该成员的角色人设
+      const assistantConfigForRegen = resetAssistantMsg.model
+        ? resolveMentionedAssistantConfig(getState(), assistant, resetAssistantMsg.model, originalUserQuery.mentions)
+        : assistant
       void queue.add(async () => {
         await fetchAndProcessAssistantResponseImpl(
           dispatch,
@@ -1611,10 +1644,13 @@ export const appendAssistantResponseThunk =
       void dispatch(updateMessageAndBlocksThunk(topicId, { id: newAssistantMessageStub.id, foldSelected: true }, []))
 
       // 5. Prepare and queue the processing task
-      const assistantConfigForThisCall = {
-        ...assistant,
-        model: newModel
-      }
+      // 群聊角色绑定：追加成员回复时同样按 mentions 解析角色（新模型无绑定时回退默认角色）
+      const assistantConfigForThisCall = resolveMentionedAssistantConfig(
+        getState(),
+        assistant,
+        newModel,
+        state.messages.entities[askId]?.mentions
+      )
       const queue = getTopicQueue(topicId)
       void queue.add(async () => {
         await fetchAndProcessAssistantResponseImpl(

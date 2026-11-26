@@ -107,6 +107,41 @@ export const resetPwdSubApi = (params) => {
   })
 }
 
+/**
+ * 子账号首次登录强制改密检查。
+ * 登录成功后调用，判定是否需要强制修改初始密码（企业开关开启 && 子账号存在 && 从未改密）。
+ * 子账号 userName 在不同主账号下可能重复，必须同时传主账号 phoneNumber。
+ * showError=false：网络/业务异常交由登录后守卫做 fail-closed 处理，不弹全局 toast。
+ * @returns R<{ needUpdatePwd: boolean; forceUpdatePwd: number; subAccount: boolean }>
+ */
+export const checkForceUpdatePwdApi = (params: { userName: string; phoneNumber: string }) => {
+  return http.get(`/bus/userProfile/checkForceUpdatePwd`, params, {
+    cancel: false,
+    loading: false,
+    showError: false,
+    headers: { isToken: false }
+  })
+}
+
+/**
+ * 子账号首次登录强制修改初始密码。
+ * 后端 @ApiEncrypt 加密通道 + 网关白名单（无需登录态），按 body 中 username + phoneNumber 定位子账号。
+ * showError=false：失败信息在强制改密弹窗内行内展示，不弹全局 toast。
+ * @param data { username, phoneNumber, oldPassword, newPassword }
+ */
+export const updateSubPwdFirstLoginApi = (data: {
+  username: string
+  phoneNumber: string
+  oldPassword: string
+  newPassword: string
+}) => {
+  return http.post(`/bus/userProfile/updateSubPwdFirstLogin`, data, {
+    loading: false,
+    showError: false,
+    headers: { isToken: false, isEncrypt: true }
+  })
+}
+
 // 用户退出登录
 export const logoutApi = () => {
   return http.post(`/auth/logout`, {}, { loading: false })

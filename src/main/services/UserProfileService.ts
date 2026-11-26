@@ -3,7 +3,21 @@ import fs from 'node:fs'
 import fsAsync from 'node:fs/promises'
 import path from 'node:path'
 
+import { loggerService } from '@logger'
+import {
+  type AccountMeta,
+  type AccountView,
+  type ListAccountsResult,
+  MAX_HISTORY_ACCOUNTS,
+  type PreparedSwitch,
+  PROFILE_ACCOUNT_ERROR,
+  type UpsertAccountRequest,
+  type UpsertAccountResult
+} from '@shared/profile'
+import { maskAccount } from '@shared/utils/maskAccount'
 import { app, safeStorage } from 'electron'
+
+const logger = loggerService.withContext('UserProfileService')
 
 export interface UserProfile {
   id: string
@@ -32,11 +46,16 @@ interface MigrationRecord {
 }
 
 interface ProfileRegistry {
-  version: 1
+  version: 2
   activeProfileId: string | null
   legacyOwnerProfileId: string | null
   profiles: Record<string, { createdAt: string }>
+  /** 一次性启动凭据（启动恢复用，读后即删） */
   bootstraps: Record<string, string>
+  /** 长期加密凭据（safeStorage 同管线），历史账号静默切换用 */
+  credentials: Record<string, string>
+  /** 历史登录账号元数据（≤ MAX_HISTORY_ACCOUNTS，LRU 淘汰） */
+  accounts: Record<string, AccountMeta>
   migrations: Record<string, MigrationRecord>
 }
 
@@ -57,13 +76,42 @@ const AUTH_BOOTSTRAP_KEYS = ['token', 'userInfo', 'serviceInfo', 'localUserSecre
 const PROFILE_HASH_LENGTH = 32
 
 const emptyRegistry = (): ProfileRegistry => ({
-  version: 1,
+  version: 2,
   activeProfileId: null,
   legacyOwnerProfileId: null,
   profiles: {},
   bootstraps: {},
+  credentials: {},
+  accounts: {},
   migrations: {}
 })
+
+/**
+ * v1 → v2 读兼容：缺失字段按空对象兜底（内存态升级为 v2，首次 writeRegistry 自然落盘）。
+ * 旧版本客户端回滚读 v2 文件时未知字段被忽略（JSON 超集兼容），可安全回滚。
+ */
+function normalizeRegistry(input: Partial<ProfileRegistry> | null | undefined): ProfileRegistry {
+  const base = emptyRegistry()
+  if (!input || typeof input !== 'object') return base
+  return {
+    ...base,
+    ...input,
+    version: 2,
+    activeProfileId: typeof input.activeProfileId === 'string' ? input.activeProfileId : null,
+    legacyOwnerProfileId: typeof input.legacyOwnerProfileId === 'string' ? input.legacyOwnerProfileId : null,
+    profiles: input.profiles && typeof input.profiles === 'object' ? input.profiles : {},
+    bootstraps: input.bootstraps && typeof input.bootstraps === 'object' ? input.bootstraps : {},
+    credentials: input.credentials && typeof input.credentials === 'object' ? input.credentials : {},
+    accounts: input.accounts && typeof input.accounts === 'object' ? input.accounts : {},
+    migrations: input.migrations && typeof input.migrations === 'object' ? input.migrations : {}
+  }
+}
+
+const toAccountView = (meta: AccountMeta): AccountView => {
+  // 显式摘除敏感字段：account 原文与 userId 永不下发渲染进程
+  const { userId: _userId, account: _account, ...view } = meta
+  return view
+}
 
 export class UserProfileService {
   private readonly registryPath: string
@@ -132,6 +180,9 @@ export class UserProfileService {
         ...this.registry.migrations[profile.id],
         state: 'cleanup_pending'
       }
+      // 激活即视为最近使用：刷新历史账号 lastLoginAt（LRU 依据），保护常用账号不被淘汰
+      const accountMeta = this.registry.accounts[profile.id]
+      if (accountMeta) accountMeta.lastLoginAt = new Date().toISOString()
       await this.writeRegistry()
       return profile
     } catch (error) {
@@ -157,6 +208,121 @@ export class UserProfileService {
         throw error
       }
     })
+  }
+
+  /**
+   * 历史登录账号列表（掩码元数据，不含 account 原文/userId/凭据）。
+   * 只读操作，无需 runExclusive（写路径统一串行，读到的最多是一致快照的旧版本）。
+   */
+  listAccounts(): ListAccountsResult {
+    const activeProfileId = this.registry.activeProfileId
+    const accounts = Object.values(this.registry.accounts)
+      .map(toAccountView)
+      .sort((a, b) => {
+        const aActive = a.profileId === activeProfileId ? 1 : 0
+        const bActive = b.profileId === activeProfileId ? 1 : 0
+        if (aActive !== bActive) return bActive - aActive
+        return (b.lastLoginAt ?? '').localeCompare(a.lastLoginAt ?? '')
+      })
+    return { activeProfileId, accounts }
+  }
+
+  /**
+   * 登录成功后写入历史账号：credentials（长期加密凭据）+ accounts（元数据），
+   * 并复用 activateUnlocked 写 profiles/bootstraps 与 active 指针；LRU 淘汰超出部分。
+   */
+  async upsertAccount(req: UpsertAccountRequest): Promise<UpsertAccountResult> {
+    return this.runExclusive(() => this.upsertAccountUnlocked(req))
+  }
+
+  private async upsertAccountUnlocked(req: UpsertAccountRequest): Promise<UpsertAccountResult> {
+    const userId = typeof req?.userId === 'string' ? req.userId.trim() : ''
+    if (!userId) throw new Error('Invalid profile user id')
+
+    // 展开为对象字面量并标注 Record，使 ProfileBootstrapPayload 满足 activateUnlocked/filterBootstrap 的索引签名要求
+    const bootstrap: Record<string, string | undefined> = { ...(req.bootstrap ?? {}) }
+    const profile = await this.activateUnlocked(userId, bootstrap)
+
+    this.registry.accounts[profile.id] = {
+      userId,
+      profileId: profile.id,
+      accountId: typeof req.accountId === 'string' ? req.accountId.trim() : '',
+      account: typeof req.account === 'string' ? req.account : '',
+      accountMasked: maskAccount(typeof req.account === 'string' ? req.account : ''),
+      accountType: req.accountType === 'sub' ? 'sub' : 'main',
+      nickName: typeof req.nickName === 'string' ? req.nickName : '',
+      avatarUrl: typeof req.avatarUrl === 'string' ? req.avatarUrl : '',
+      lastLoginAt: new Date().toISOString()
+    }
+
+    // 长期凭据：safeStorage 不可用等编码失败时降级为不写 credentials
+    //（该账号后续切换走 CREDENTIAL_MISSING → 重新登录兜底），不阻塞登录主流程
+    try {
+      this.registry.credentials[profile.id] = this.encodeBootstrap(this.filterBootstrap(bootstrap))
+    } catch (error) {
+      delete this.registry.credentials[profile.id]
+      logger.warn('Credential storage unavailable, history switch will require re-login', {
+        profileId: profile.id,
+        reason: error instanceof Error ? error.message : String(error)
+      })
+    }
+
+    this.evictHistoryAccounts()
+    await this.writeRegistry()
+    return { profileId: profile.id }
+  }
+
+  /** 移除历史登录记录：删 accounts + credentials；拒绝删除当前登录；保留数据目录 */
+  async removeAccount(profileId: string): Promise<{ success: boolean }> {
+    return this.runExclusive(async () => {
+      if (typeof profileId !== 'string' || !profileId.trim()) throw new Error('Invalid profile id')
+      if (profileId === this.registry.activeProfileId) {
+        throw new Error(`${PROFILE_ACCOUNT_ERROR.ACTIVE_PROFILE_PROTECTED}: active profile cannot be removed`)
+      }
+      const existed = profileId in this.registry.accounts || profileId in this.registry.credentials
+      delete this.registry.accounts[profileId]
+      delete this.registry.credentials[profileId]
+      if (existed) await this.writeRegistry()
+      return { success: true }
+    })
+  }
+
+  /**
+   * 切换前准备：解码长期凭据一次性返回（内存传递，不落盘、不打日志）。
+   * 账号不存在抛 ACCOUNT_NOT_FOUND；凭据缺失（被淘汰/加密不可用）抛 CREDENTIAL_MISSING。
+   */
+  prepareSwitch(profileId: string): PreparedSwitch {
+    if (typeof profileId !== 'string' || !profileId.trim()) throw new Error('Invalid profile id')
+    const meta = this.registry.accounts[profileId]
+    if (!meta) {
+      throw new Error(`${PROFILE_ACCOUNT_ERROR.ACCOUNT_NOT_FOUND}: ${profileId}`)
+    }
+    const encoded = this.registry.credentials[profileId]
+    if (!encoded) {
+      throw new Error(`${PROFILE_ACCOUNT_ERROR.CREDENTIAL_MISSING}: ${profileId}`)
+    }
+    return {
+      userId: meta.userId,
+      profileId,
+      bootstrap: this.decodeBootstrap(encoded),
+      account: meta.account
+    }
+  }
+
+  /** LRU 淘汰：超过上限时按 lastLoginAt 升序删除最旧的非活跃账号（同步清理 credentials） */
+  private evictHistoryAccounts(): void {
+    const ids = Object.keys(this.registry.accounts)
+    if (ids.length <= MAX_HISTORY_ACCOUNTS) return
+    const evictable = ids
+      .filter((id) => id !== this.registry.activeProfileId)
+      .sort((a, b) =>
+        (this.registry.accounts[a]?.lastLoginAt ?? '').localeCompare(this.registry.accounts[b]?.lastLoginAt ?? '')
+      )
+    for (const id of evictable.slice(0, ids.length - MAX_HISTORY_ACCOUNTS)) {
+      delete this.registry.accounts[id]
+      delete this.registry.credentials[id]
+      logger.info('History account evicted by LRU', { profileId: id })
+    }
   }
 
   async compensateActiveProfile(): Promise<void> {
@@ -386,14 +552,31 @@ export class UserProfileService {
   }
 
   private readRegistry(): ProfileRegistry {
+    let raw: unknown
     try {
       if (typeof fs.readFileSync !== 'function') return emptyRegistry()
-      const raw = fs.readFileSync(this.registryPath, 'utf8')
-      if (typeof raw !== 'string' || !raw.trim()) return emptyRegistry()
-      return JSON.parse(raw) as ProfileRegistry
+      raw = fs.readFileSync(this.registryPath, 'utf8')
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return emptyRegistry()
+      throw error
+    }
+    if (typeof raw !== 'string' || !raw.trim()) return emptyRegistry()
+    try {
+      return normalizeRegistry(JSON.parse(raw) as Partial<ProfileRegistry>)
+    } catch {
+      // registry 文件损坏：备份 `.corrupt-<ts>` 后按空注册表启动（重新登录即可恢复）
+      this.backupCorruptRegistry()
       return emptyRegistry()
+    }
+  }
+
+  private backupCorruptRegistry(): void {
+    try {
+      const backupPath = `${this.registryPath}.corrupt-${Date.now()}`
+      fs.renameSync(this.registryPath, backupPath)
+      logger.error('Profile registry corrupted, backed up and reset', { backupPath })
+    } catch {
+      logger.error('Profile registry corrupted and backup failed, reset in memory')
     }
   }
 

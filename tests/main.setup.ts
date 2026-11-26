@@ -1,5 +1,12 @@
 import { vi } from 'vitest'
 
+// vitest 以 threads 池运行，测试处于 worker 线程；LoggerService 构造函数在非主线程会抛错。
+// 强制 isMainThread=true（保留其余真实导出），使主进程日志单例可在测试中实例化。
+vi.mock('worker_threads', async () => {
+  const actual = await vi.importActual<typeof import('worker_threads')>('worker_threads')
+  return { ...actual, isMainThread: true }
+})
+
 // Mock LoggerService globally for main process tests
 vi.mock('@logger', async () => {
   const { MockMainLoggerService, mockMainLoggerService } = await import('./__mocks__/MainLoggerService')
@@ -79,36 +86,41 @@ vi.mock('electron', () => {
 })
 
 // Mock Winston for LoggerService dependencies
-vi.mock('winston', () => ({
-  createLogger: vi.fn(() => ({
-    log: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-    debug: vi.fn(),
-    level: 'info',
-    on: vi.fn(),
-    end: vi.fn()
-  })),
-  format: {
-    combine: vi.fn(),
-    splat: vi.fn(),
-    timestamp: vi.fn(),
-    errors: vi.fn(),
-    json: vi.fn()
-  },
-  transports: {
-    Console: vi.fn(),
-    File: vi.fn()
+vi.mock('winston', () => {
+  const winstonMock = {
+    createLogger: vi.fn(() => ({
+      log: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+      level: 'info',
+      on: vi.fn(),
+      end: vi.fn()
+    })),
+    format: {
+      combine: vi.fn(),
+      splat: vi.fn(),
+      timestamp: vi.fn(),
+      errors: vi.fn(),
+      json: vi.fn()
+    },
+    transports: {
+      Console: vi.fn(),
+      File: vi.fn()
+    }
   }
-}))
+  // LoggerService 以默认导入方式使用 winston（winston.createLogger 等），需同时提供 default 导出
+  return { ...winstonMock, default: winstonMock }
+})
 
 // Mock winston-daily-rotate-file
 vi.mock('winston-daily-rotate-file', () => {
-  return vi.fn().mockImplementation(() => ({
+  const DailyRotateFile = vi.fn().mockImplementation(() => ({
     on: vi.fn(),
     log: vi.fn()
   }))
+  return { default: DailyRotateFile }
 })
 
 // Mock electron-store to avoid file system operations

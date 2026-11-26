@@ -3,6 +3,7 @@ import { loggerService } from '@logger'
 import { getApikeyByUserId, getUserProfileApi, loginApi } from '@renderer/api/login'
 import { queryPhoneByName } from '@renderer/api/user'
 import Verify from '@renderer/components/verifition/Verify'
+import { FEATURE_IDENTITY_SWITCH } from '@renderer/config/featureFlags'
 import { useFetchAndSetupModels } from '@renderer/hooks/useAiOnlyModels'
 import i18n from '@renderer/i18n'
 import { applyProfileSwitch } from '@renderer/services/ProfileLifecycleService'
@@ -18,6 +19,7 @@ import styled from 'styled-components'
 
 import { LoginSceneType, useLoginContext } from '../../contexts/LoginContext'
 import BindPhoneEmailModal from './BindPhoneEmail'
+import { guardAndFinish } from './firstLoginGuard'
 
 interface SubAccountLoginProps {
   onComplete?: () => void
@@ -132,15 +134,11 @@ export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
     // 先做表单验证
     await form.validateFields()
 
-    // 调试日志：查看请求参数
-    logger.debug('账号登录请求参数', accountForm)
-
     // 触发滑块验证，验证成功后会调用 sendCode 方法
     triggerVerify()
   }
 
-  const onFinish: FormProps<SubAccountLoginFieldType>['onFinish'] = (values) => {
-    logger.debug('登录表单提交成功', values)
+  const onFinish: FormProps<SubAccountLoginFieldType>['onFinish'] = () => {
     login()
   }
 
@@ -164,9 +162,27 @@ export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
 
   /** 显示绑定手机/邮箱弹窗 **/
   const showBindPhoneEmail = useCallback(() => {
-    BindPhoneEmailModal.show({ parentForm: form, navigate }).then(() => {
+    verifyType.current = 'bind'
+    // 绑定路径登录成功后不再直接落 token，改由首登强制改密守卫统一编排（token 暂存内存，通过后才落盘）
+    const onLoginOk = async (accessToken: string) => {
+      // 先关闭绑定弹窗并等待其关闭动画结束，避免与强制改密弹窗遮罩叠加
+      BindPhoneEmailModal.hide()
+      await new Promise((r) => setTimeout(r, 200))
+      const values = form.getFieldsValue()
+      const guardResult = await guardAndFinish(
+        { username: values.username || '', phoneNumber: values.phoneNumber || '' },
+        accessToken,
+        handleLoginSuccess
+      )
+      if (guardResult === 'switch') {
+        form.setFieldsValue({ password: '' })
+      }
+      return guardResult
+    }
+    BindPhoneEmailModal.show({ parentForm: form, navigate, onLoginOk }).then(() => {
       verifyType.current = ''
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, navigate])
 
   /** 查询并保存用户信息 **/
@@ -196,8 +212,8 @@ export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
     return { userData: user_data, secretKey, providerApiKey: undefined }
   }, [])
 
-  /** 登录成功 **/
-  const handleLoginSuccess = async () => {
+  /** 登录成功；loginAccount 为子账号用户名（切换身份回写历史账号用） **/
+  const handleLoginSuccess = async (loginAccount?: string) => {
     const { userData, secretKey, providerApiKey } = await saveUserInfo()
     const userId = userData?.userId
     if (userId === undefined || userId === null || !String(userId).trim()) {
@@ -209,7 +225,19 @@ export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
       serviceInfo: localStorage.getItem('serviceInfo') || undefined,
       localUserSecret: secretKey || undefined
     }
-    const result = await window.api.profile.activate(String(userId), bootstrap)
+    // 开关开启：upsertAccount 内部复用 activate 编排，同时写入历史账号与长期凭据
+    const result = FEATURE_IDENTITY_SWITCH
+      ? await window.api.profile.upsertAccount({
+          userId: String(userId),
+          account: loginAccount ?? accountForm.username ?? '',
+          accountType: 'sub',
+          nickName: userData?.nickName ?? '',
+          avatarUrl: userData?.avatarUrl ?? '',
+          accountId: userData?.accountId ? String(userData.accountId) : '',
+          bootstrap
+        })
+      : await window.api.profile.activate(String(userId), bootstrap)
+    if (!result.profileId) throw new Error('Profile activation failed')
     await applyProfileSwitch({ profileId: result.profileId, bootstrap }, async () => {
       store.dispatch(setUserInfo(userData || {}))
       store.dispatch(setApiKey(secretKey))
@@ -236,8 +264,16 @@ export const SubAccountLogin: React.FC<SubAccountLoginProps> = (props) => {
           const login_res: any = await loginApi(params)
           const data = login_res?.data
           if (data && data.access_token) {
-            localStorage.setItem('token', data.access_token)
-            await handleLoginSuccess()
+            // 首登强制改密守卫：token 先暂存内存，check 未命中或改密成功后才落盘进入；
+            // 检查异常 fail-closed（不落 token，留在登录页），切换账号则清空密码
+            const guardResult = await guardAndFinish(
+              { username: userName, phoneNumber },
+              data.access_token,
+              handleLoginSuccess
+            )
+            if (guardResult === 'switch') {
+              form.setFieldsValue({ password: '' })
+            }
           }
         } else {
           verifyType.current = 'bind'

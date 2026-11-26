@@ -24,6 +24,7 @@
   --inner-glow-opacity: 0.3; /* For the glassmorphism effect in the dropdown menu */
 
   --color-primary: #1677ff;
+  --color-primary-light: #4a90ff;
   --color-primary-soft: #1677ff99;
   --color-primary-mute: #1677ff33;
   --color-primary-plain: #e5eeff;

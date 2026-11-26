@@ -15,6 +15,16 @@ export const deleteApikeyById = (params) => {
   return http.get(`/bus/apikey/deleteApikeyById`, params, { cancel: false })
 }
 
+/**
+ * 更新控制台 API Key 启用/禁用状态（对齐网站端 /bus/apikey/changeStatus）
+ * @param params.id key 主键
+ * @param params.status '0' 禁用 / '1' 启用
+ * showError:false — 业务失败由调用方 toast msg，避免全局重复弹错
+ */
+export const changeApikeyStatus = (params: { id: number | string; status: '0' | '1' }) => {
+  return http.post(`/bus/apikey/changeStatus`, params, { cancel: false, showError: false })
+}
+
 export const addApikeyIpWhitelist = (params) => {
   return http.post(`/bus/apikeyIpWhitelist`, params, { cancel: false })
 }

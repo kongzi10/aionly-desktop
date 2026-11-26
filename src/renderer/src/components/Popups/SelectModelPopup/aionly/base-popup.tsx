@@ -1,8 +1,11 @@
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
+import { listUnopenedPayLaterModelsApi } from '@renderer/api/openManagement'
 import DiscountTag from '@renderer/components/Tags/Model/DiscountTag'
 import ModelLabelTags from '@renderer/components/Tags/Model/ModelLabelTags'
+import ModelQuotaMeter from '@renderer/components/Tags/Model/ModelQuotaMeter'
 import { TopView } from '@renderer/components/TopView'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
+import { FEATURE_SELECT_MODEL_QUOTA_TABS } from '@renderer/config/featureFlags'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
 import {
   createActivePayLaterFilter,
@@ -10,7 +13,9 @@ import {
   transformToModel,
   useAiOnlyModels
 } from '@renderer/hooks/useAiOnlyModels'
+import { useExperienceModels } from '@renderer/hooks/useExperienceModels'
 import { useModelLabels } from '@renderer/hooks/useModelLabels'
+import type { ModelQuota } from '@renderer/hooks/useModelQuota'
 import { invalidatePublishPriceDiscountCache, usePublishPriceDiscount } from '@renderer/hooks/usePublishPriceDiscount'
 import useUserTokenPlan from '@renderer/hooks/useUserTokenPlan'
 import { getModelUniqId } from '@renderer/services/ModelService'
@@ -18,7 +23,7 @@ import { useAppSelector } from '@renderer/store'
 import { selectUserInfo } from '@renderer/store/user'
 import type { Model, Provider } from '@renderer/types'
 import { classNames } from '@renderer/utils'
-import { Avatar, Empty, Modal, Spin } from 'antd'
+import { Avatar, Button, Empty, Modal, Spin } from 'antd'
 import { first } from 'lodash'
 import { ChevronRight } from 'lucide-react'
 import React, {
@@ -35,11 +40,14 @@ import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import OpenNewModelButton from '../OpenNewModelButton'
+import QuotaTabHeader, { type ModelTabKey } from '../QuotaTabHeader'
 import SelectModelSearchBar from '../searchbar'
 import type { FlatListItem, FlatListModel } from '../types'
 
 const PAGE_SIZE = 12
 const ITEM_HEIGHT = 36
+/** 免费体验页签卡片行高（V3 样式，见 docs/选择模型弹窗免费体验改造/样式方案V3-卡片环形额度.html） */
+const FREE_ITEM_HEIGHT = 64
 
 export interface SelectModelPopupParams {
   providers: Provider[]
@@ -107,6 +115,35 @@ const SelectModelPopupView: React.FC<Props> = ({
   const [tokenPlanModels, setTokenPlanModels] = useState<any[]>([])
   const [userEnabledPlan] = useState<any>(getUserEnabledPlan())
 
+  // 双页签（按量付费/免费体验）：特性开关一键回滚，关闭时行为与改造前完全一致
+  const quotaTabsEnabled = FEATURE_SELECT_MODEL_QUOTA_TABS
+  const [activeTab, setActiveTab] = useState<ModelTabKey>('pay')
+  const isFreeTab = quotaTabsEnabled && activeTab === 'free'
+
+  // 免费体验模型（selectType=office，与网站端体验中心同源接口；额度已归一到 quota 字段）
+  const {
+    models: freeModels,
+    loading: freeLoading,
+    error: freeError,
+    refetch: refetchFree
+  } = useExperienceModels({
+    enabled: quotaTabsEnabled,
+    modelAttribute: modelAttribute ?? 'text_model',
+    modelType: modelType ?? '1'
+  })
+
+  // 「已开通 n / 共 m」统计用：未开通按量模型 key 集合；拉取失败降级为空（共 m = 已开通 ∪ 免费体验）
+  const [unopenedKeys, setUnopenedKeys] = useState<string[]>([])
+  useEffect(() => {
+    if (!quotaTabsEnabled) return
+    listUnopenedPayLaterModelsApi()
+      .then((res: any) => {
+        const rows = Array.isArray(res?.data) ? res.data : []
+        setUnopenedKeys(rows.map((u: any) => `${u.baseId ?? u.id ?? ''}-${u.serviceName ?? ''}`))
+      })
+      .catch(() => setUnopenedKeys([]))
+  }, [quotaTabsEnabled])
+
   // 当前选中的模型ID
   const currentModelId = model ? getModelUniqId(model) : ''
 
@@ -133,6 +170,34 @@ const SelectModelPopupView: React.FC<Props> = ({
 
   // 推荐标签（人气模型/最新推荐等）：字典 labelId → 名称，列表接口透传 recommendLabel/modelLabel
   const { getLabelItems } = useModelLabels()
+
+  // 按量付费模型源（未经搜索/分组折叠处理，供列表构建与统计复用）
+  const payModels = useMemo(
+    () => (!userEnabledPlan ? getFilteredModels(createActivePayLaterFilter()) : tokenPlanModels),
+    [userEnabledPlan, getFilteredModels, tokenPlanModels]
+  )
+
+  // 「已开通 n / 共 m」统计：m = 已开通 ∪ 未开通按量 ∪ 免费体验 的去重并集（baseId/id + serviceName 口径）
+  const quotaStats = useMemo(() => {
+    if (!quotaTabsEnabled) return undefined
+    const key = (m: any) => `${m.baseId ?? m.id ?? ''}-${m.serviceName ?? ''}`
+    const openedSet = new Set(payModels.map(key))
+    const union = new Set(openedSet)
+    unopenedKeys.forEach((k) => union.add(k))
+    freeModels.forEach((m) => union.add(key(m)))
+    return { openedCount: openedSet.size, totalCount: union.size }
+  }, [quotaTabsEnabled, payModels, unopenedKeys, freeModels])
+
+  // 汇总条：免费额度总剩余（仅免费页签展示；无任何额度配置时隐藏）
+  const freeTotalRest = useMemo(() => {
+    if (!isFreeTab) return undefined
+    const withQuota = freeModels.filter((m) => !!m.quota)
+    if (withQuota.length === 0) return undefined
+    return {
+      total: withQuota.reduce((sum, m) => sum + (m.quota?.rest ?? 0), 0),
+      unit: withQuota[0].quota?.unit ?? ('tokens' as const)
+    }
+  }, [isFreeTab, freeModels])
 
   // TODO: 当用户启用了tokenPlan时，查询套餐下的模型数据
   const fetchSelectTokenPlanHourlyDayUsage = async () => {
@@ -166,8 +231,12 @@ const SelectModelPopupView: React.FC<Props> = ({
     } else {
       reset()
     }
+    // 双页签开启时同步刷新免费体验列表（额度/开通状态可能变化）
+    if (quotaTabsEnabled) {
+      refetchFree()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userEnabledPlan, reset])
+  }, [userEnabledPlan, reset, quotaTabsEnabled, refetchFree])
 
   useEffect(() => {
     const userSelectedPlan: any = getUserEnabledPlan()
@@ -194,86 +263,105 @@ const SelectModelPopupView: React.FC<Props> = ({
     }
   }
 
-  // 创建模型列表项
+  // 创建模型列表项（free=true 时为「免费体验」页签卡片行：两行名称+标签、大头像、右侧额度环）
   const createModelItem = useCallback(
-    (model: any): FlatListModel => {
+    (model: any, free = false): FlatListModel => {
       const modelId = getModelUniqId(model)
       // 使用与去重逻辑一致的唯一标识：baseId-serviceName
       const uniqueKey = `${model.baseId || model.id}-${model.serviceName}`
+      const quota: ModelQuota | undefined = free ? model.quota : undefined
+      const pills = (
+        <>
+          {/* 免费标签：与网站模型广场/添加模型弹窗口径一致（ai_model.free_flag，pagePcList 透传） */}
+          {model.freeFlag == '1' && <FreePill>{t('models.type.free')}</FreePill>}
+          {model.memberSpecial == '1' && <VipPill>VIP</VipPill>}
+          <ModelLabelTags items={getLabelItems(model)} />
+          <DiscountTag activity={getDiscount(model)} />
+        </>
+      )
       return {
         key: uniqueKey,
         type: 'model',
-        name: (
+        name: free ? (
+          <ModelName className="free">
+            <div className="nm">{model.modelName}</div>
+            <div className="tags">{pills}</div>
+          </ModelName>
+        ) : (
           <ModelName>
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <span className="min-w-0 truncate">{model.modelName}</span>
-              {/* 免费标签：与网站模型广场/添加模型弹窗口径一致（ai_model.free_flag，pagePcList 透传） */}
-              {model.freeFlag == '1' && <FreePill>{t('models.type.free')}</FreePill>}
-              {model.memberSpecial == '1' && <VipPill>VIP</VipPill>}
-              <ModelLabelTags items={getLabelItems(model)} />
-              <DiscountTag activity={getDiscount(model)} />
+              {pills}
             </div>
           </ModelName>
         ),
         tags: null,
         icon: (
-          <Avatar src={model?.modelFileUrl} size={24}>
+          <Avatar src={model?.modelFileUrl} size={free ? 36 : 24}>
             {first(model.modelName) || 'M'}
           </Avatar>
         ),
         model,
-        isSelected: modelId === currentModelId
+        isSelected: modelId === currentModelId,
+        quota,
+        // 额度耗尽的免费模型禁选（置灰 + hover 提示，点击不生效）
+        disabled: free && quota?.tone === 'empty'
       }
     },
     [currentModelId, getDiscount, getLabelItems, t]
   )
 
-  // 构建列表数据
+  // 构建列表数据（按量付费/免费体验双页签共用 分组 + 搜索 + 折叠逻辑）
   const { listItems, modelItems } = useMemo(() => {
     const items: FlatListItem[] = []
-    let filterModels = !userEnabledPlan ? getFilteredModels(createActivePayLaterFilter()) : tokenPlanModels
 
-    // 应用 modelFilter（如果提供）
-    if (modelFilter) {
-      filterModels = filterModels
-        .map((x: any) => {
-          const baseItem = {
-            origin_id: x.id,
-            id: x.baseId || x.model,
+    // 将接口行补齐为 resolve 可消费的 Model（id/name/provider；agent 场景含 origin）
+    const augmentModel = (x: any) => {
+      const baseItem = {
+        origin_id: x.id,
+        id: x.baseId || x.model,
+        name: x.modelName,
+        provider: 'aionly'
+      }
+      if (fromType === 'agent') {
+        return {
+          ...x,
+          ...baseItem,
+          origin: {
+            id: `aionly:${x.baseId || x.model}`,
+            object: 'model',
+            created: x.createTime,
             name: x.modelName,
-            provider: 'aionly'
+            owned_by: 'AIOnly',
+            provider: 'aionly',
+            provider_model_id: x.baseId || x.model,
+            provider_name: 'AIOnly',
+            provider_type: 'openai',
+            // 保留原始的 AiOnly 模型信息
+            modelName: x.modelName,
+            serviceName: x.serviceName,
+            modelFileUrl: x.modelFileUrl,
+            baseId: x.baseId || x.model
           }
-          if (fromType === 'agent') {
-            return {
-              ...x,
-              ...baseItem,
-              origin: {
-                id: `aionly:${x.baseId || x.model}`,
-                object: 'model',
-                created: x.createTime,
-                name: x.modelName,
-                owned_by: 'AIOnly',
-                provider: 'aionly',
-                provider_model_id: x.baseId || x.model,
-                provider_name: 'AIOnly',
-                provider_type: 'openai',
-                // 保留原始的 AiOnly 模型信息
-                modelName: x.modelName,
-                serviceName: x.serviceName,
-                modelFileUrl: x.modelFileUrl,
-                baseId: x.baseId || x.model
-              }
-            }
-          }
+        }
+      }
 
-          return {
-            ...x,
-            ...baseItem,
-            supported_text_delta: !isNotSupportTextDeltaModel(x)
-          }
-        })
-        .filter(modelFilter)
+      return {
+        ...x,
+        ...baseItem,
+        supported_text_delta: !isNotSupportTextDeltaModel(x)
+      }
     }
+
+    // 免费体验行始终 augment（保证 resolve 返回的 model 结构与按量行一致）；
+    // 按量行维持原逻辑（仅 modelFilter 存在时 augment 并过滤）
+    let filterModels: any[] = isFreeTab ? freeModels : payModels
+    if (isFreeTab) {
+      filterModels = filterModels.map(augmentModel).filter((m: any) => (modelFilter ? modelFilter(m) : true))
+    } else if (modelFilter) {
+      filterModels = filterModels.map(augmentModel).filter(modelFilter)
+    }
+
     // 去重：同一 (id, serviceName) 只保留第一条
     const seen = new Set<string>()
     filterModels = filterModels.filter((m: any) => {
@@ -281,10 +369,10 @@ const SelectModelPopupView: React.FC<Props> = ({
       return seen.has(k) ? false : (seen.add(k), true)
     })
 
-    // 搜索过滤：按 modelName 搜索
+    // 搜索过滤：按 modelName 搜索（免费页签同样为前端过滤，与按量口径一致）
     if (searchText.trim()) {
       const lowerSearchText = searchText.toLowerCase()
-      filterModels = filterModels.filter((m: any) => m.modelName.toLowerCase().includes(lowerSearchText))
+      filterModels = filterModels.filter((m: any) => (m.modelName || '').toLowerCase().includes(lowerSearchText))
     }
 
     // 按 serviceName 分组
@@ -316,7 +404,7 @@ const SelectModelPopupView: React.FC<Props> = ({
       if (!collapsedGroups.has(serviceName)) {
         const typedModels = models as typeof filterModels
         typedModels.forEach((model) => {
-          items.push(createModelItem(model))
+          items.push(createModelItem(model, isFreeTab))
         })
       }
     })
@@ -324,21 +412,12 @@ const SelectModelPopupView: React.FC<Props> = ({
     // 获取可选择的模型项（过滤掉分组标题）
     const modelItems = items.filter((item) => item.type === 'model')
     return { listItems: items, modelItems }
-  }, [
-    models,
-    createModelItem,
-    tokenPlanModels,
-    searchText,
-    collapsedGroups,
-    modelFilter,
-    fromType,
-    getFilteredModels,
-    userEnabledPlan
-  ])
+  }, [payModels, freeModels, isFreeTab, createModelItem, searchText, collapsedGroups, modelFilter, fromType])
 
   const listHeight = useMemo(() => {
-    return Math.min(PAGE_SIZE, listItems.length) * ITEM_HEIGHT
-  }, [listItems.length])
+    const rowHeight = isFreeTab ? FREE_ITEM_HEIGHT : ITEM_HEIGHT
+    return Math.min(PAGE_SIZE, listItems.length) * rowHeight
+  }, [listItems.length, isFreeTab])
 
   // 处理程序化滚动（加载、搜索开始、搜索清空、tag 筛选）
   useLayoutEffect(() => {
@@ -349,6 +428,8 @@ const SelectModelPopupView: React.FC<Props> = ({
     (item: FlatListItem) => {
       // console.log('handleItemClick', item)
       if (item.type === 'model') {
+        // 额度耗尽的免费模型禁选：点击不生效（行上带 exhausted 提示）
+        if (item.disabled) return
         resolve(item.model)
         setOpen(false)
       }
@@ -428,13 +509,27 @@ const SelectModelPopupView: React.FC<Props> = ({
     setOpen(false)
   }, [])
 
+  // 页签切换：重置聚焦项并回到列表顶部
+  const handleTabChange = useCallback(
+    (tab: ModelTabKey) => {
+      setActiveTab(tab)
+      setFocusedItemKey('')
+      listRef.current?.scrollToOffset(0)
+    },
+    [setFocusedItemKey]
+  )
+
   const onAfterClose = useCallback(async () => {
     resolve(undefined)
     SelectModelPopup.hide()
   }, [resolve])
 
   const getItemKey = useCallback((index: number) => listItems[index].key, [listItems])
-  const estimateSize = useCallback(() => ITEM_HEIGHT, [])
+  // 免费页签模型行为卡片行高（分组头仍为 ITEM_HEIGHT）
+  const estimateSize = useCallback(
+    (index: number) => (isFreeTab && listItems[index]?.type === 'model' ? FREE_ITEM_HEIGHT : ITEM_HEIGHT),
+    [isFreeTab, listItems]
+  )
   const isSticky = useCallback((index: number) => listItems[index].type === 'group', [listItems])
 
   const rowRenderer = useCallback(
@@ -458,8 +553,11 @@ const SelectModelPopupView: React.FC<Props> = ({
         <ModelItem
           className={classNames({
             focused: isFocused,
-            selected: item.isSelected
+            selected: item.isSelected,
+            'free-card': isFreeTab,
+            disabled: !!item.disabled
           })}
+          title={item.disabled ? t('selectModel.quota.exhausted') : undefined}
           onClick={() => handleItemClick(item)}
           onMouseOver={() => !isFocused && setFocusedItemKey(item.key)}>
           <ModelItemLeft>
@@ -467,10 +565,11 @@ const SelectModelPopupView: React.FC<Props> = ({
             {item.name}
             {item.tags}
           </ModelItemLeft>
+          {item.quota && <ModelQuotaMeter quota={item.quota} />}
         </ModelItem>
       )
     },
-    [focusedItemKey, handleItemClick, setFocusedItemKey, collapsedGroups, toggleGroupCollapsed]
+    [focusedItemKey, handleItemClick, setFocusedItemKey, collapsedGroups, toggleGroupCollapsed, isFreeTab, t]
   )
 
   return (
@@ -499,6 +598,16 @@ const SelectModelPopupView: React.FC<Props> = ({
       }}
       footer={null}>
       <ListContainer onMouseMove={() => !isMouseOver && setIsMouseOver(true)}>
+        {quotaTabsEnabled && (
+          <QuotaTabHeader
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            totalRest={freeTotalRest?.total}
+            totalRestUnit={freeTotalRest?.unit}
+            openedCount={quotaStats?.openedCount ?? 0}
+            totalCount={quotaStats?.totalCount}
+          />
+        )}
         <SelectModelSearchBar
           onSearch={setSearchText}
           extra={
@@ -507,7 +616,7 @@ const SelectModelPopupView: React.FC<Props> = ({
             ) : undefined
           }
         />
-        <Spin spinning={loading}>
+        <Spin spinning={loading || (isFreeTab && freeLoading)}>
           {listItems.length > 0 ? (
             <DynamicVirtualList
               ref={listRef}
@@ -522,6 +631,22 @@ const SelectModelPopupView: React.FC<Props> = ({
               onChange={handleDynamicListChange}>
               {rowRenderer}
             </DynamicVirtualList>
+          ) : isFreeTab ? (
+            <EmptyState>
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={freeError ? t('selectModel.free.loadFailed') : t('selectModel.free.empty')}>
+                {freeError ? (
+                  <Button size="small" onClick={() => refetchFree()}>
+                    {t('selectModel.free.retry')}
+                  </Button>
+                ) : (
+                  <Button size="small" onClick={() => handleTabChange('pay')}>
+                    {t('selectModel.free.goPayLater')}
+                  </Button>
+                )}
+              </Empty>
+            </EmptyState>
           ) : (
             <EmptyState>
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -547,6 +672,34 @@ const ModelName = styled.div`
   margin: 0 8px;
   min-width: 0;
   gap: 5px;
+
+  /* 免费体验卡片行：名称 + 标签两行布局（V3 样式） */
+  &.free {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    margin: 0 10px 0 8px;
+
+    .nm {
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.3;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--color-text);
+    }
+
+    .tags {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+  }
 `
 
 // 与添加模型弹窗 .free-tag 同款的免费 pill（口径同网站模型广场 ai_model.free_flag）
@@ -648,6 +801,46 @@ const ModelItem = styled.div`
 
   &:hover .pin-icon {
     opacity: 0.3;
+  }
+
+  /* 免费体验页签：卡片行（V3 样式，行高 FREE_ITEM_HEIGHT=64） */
+  &.free-card {
+    height: ${FREE_ITEM_HEIGHT - 8}px;
+    margin: 1px 8px 7px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s,
+      background-color 0.1s ease;
+
+    &.focused {
+      background-color: transparent;
+      border-color: var(--color-primary);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+    }
+
+    &.selected {
+      background-color: var(--color-background-mute);
+      border-color: var(--color-primary);
+
+      &::before {
+        display: none;
+      }
+    }
+
+    /* 额度耗尽：置灰禁选 */
+    &.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+
+      &:hover,
+      &.focused {
+        border-color: var(--color-border);
+        box-shadow: none;
+      }
+    }
   }
 `
 

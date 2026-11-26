@@ -1,6 +1,7 @@
 import path from 'node:path'
 
 import { IpcChannel } from '@shared/IpcChannel'
+import type { UpsertAccountRequest } from '@shared/profile'
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import { app, BrowserWindow, ipcMain } from 'electron'
 
@@ -126,6 +127,41 @@ export function registerProfileIpc(runtime: ProfileRuntime): void {
     if (!getUserProfileService().getActiveProfile()) return { started: false }
     await runtime.start()
     return { started: true }
+  })
+
+  // 历史登录账号列表：仅下发掩码元数据（AccountView 已在主进程剥离 account 原文与 userId）
+  ipcMain.handle(IpcChannel.Profile_ListAccounts, (event) => {
+    requireTrustedProfileIpcSender(event)
+    return getUserProfileService().listAccounts()
+  })
+
+  // 移除历史登录记录：拒绝删除当前登录（ACTIVE_PROFILE_PROTECTED）；保留数据目录
+  ipcMain.handle(IpcChannel.Profile_RemoveAccount, async (event, profileId: string) => {
+    requireTrustedProfileIpcSender(event)
+    return getUserProfileService().removeAccount(profileId)
+  })
+
+  // 切换前准备：解码长期凭据一次性返回（凭据零日志，异常信息仅含 profileId 与错误码）
+  ipcMain.handle(IpcChannel.Profile_PrepareSwitch, (event, profileId: string) => {
+    requireTrustedProfileIpcSender(event)
+    return getUserProfileService().prepareSwitch(profileId)
+  })
+
+  // 登录成功回写：credentials + accounts（LRU）+ 复用 activate 编排（runtime 停机/窗口关闭/UA 刷新）
+  ipcMain.handle(IpcChannel.Profile_UpsertAccount, async (event, req: UpsertAccountRequest) => {
+    requireTrustedProfileIpcSender(event)
+    if (!req || typeof req.userId !== 'string' || !req.userId.trim()) throw new Error('Invalid profile user id')
+    event.sender.session.flushStorageData()
+    await runtime.stop()
+    try {
+      const result = await getUserProfileService().upsertAccount(req)
+      closeProfileRendererWindows(BrowserWindow.getAllWindows(), event.sender.id)
+      initSessionUserAgent()
+      return result
+    } catch (error) {
+      if (getUserProfileService().getActiveProfile()) await runtime.start()
+      throw error
+    }
   })
 
   const resolveLegacyService = createProfileScopedServiceResolver<LegacyDataService, UserProfile>(

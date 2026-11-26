@@ -1,3 +1,4 @@
+import type { ModelQuota } from '@renderer/hooks/useModelQuota'
 import type { Model } from '@renderer/types'
 import type { ReactNode } from 'react'
 
@@ -38,6 +39,10 @@ export type FlatListModel = FlatListBaseItem & {
   model: Model
   tags?: ReactNode
   isPinned?: boolean
+  /** 免费体验额度（仅「免费体验」页签行渲染额度区） */
+  quota?: ModelQuota
+  /** 额度耗尽禁选（点击不生效，置灰展示） */
+  disabled?: boolean
 }
 
 /**

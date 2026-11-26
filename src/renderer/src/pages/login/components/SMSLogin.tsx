@@ -18,11 +18,14 @@ const logger = loggerService.withContext('SMSLogin')
 
 interface LoginFormProps {
   ref?: React.Ref<SMSLoginRef>
-  onSuccess?: () => void
+  /** 登录成功回调；loginAccount 为本次登录手机号（切换身份回写历史账号用） */
+  onSuccess?: (loginAccount?: string) => void
   onFormChange?: (valid: boolean) => void
   verifyRef?: any
   setLoading?: (loading: boolean) => void
   isAccept: boolean
+  /** 预填手机号（切换身份会话过期 → 登录页一次性预填） */
+  initialAccount?: string
 }
 
 export interface SMSLoginRef {
@@ -55,6 +58,14 @@ export const SMSLogin = ({ ref, ...props }: LoginFormProps) => {
     loginUrl: window.location.href
   })
 
+  // 预填手机号（内存一次性传递，勿持久化）
+  useEffect(() => {
+    if (!props.initialAccount) return
+    form.setFieldsValue({ phonenumber: props.initialAccount })
+    setCodeForm((prev) => ({ ...prev, phonenumber: props.initialAccount as string }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // 登录接口
   const login = async () => {
     props.setLoading?.(true)
@@ -70,7 +81,7 @@ export const SMSLogin = ({ ref, ...props }: LoginFormProps) => {
       const { data } = await loginApi(codeForm)
       if (data && data.access_token) {
         localStorage.setItem('token', data.access_token)
-        await props.onSuccess?.()
+        await props.onSuccess?.(codeForm.phonenumber)
       }
     } catch (error: any) {
       logger.error('短信登录失败', error)

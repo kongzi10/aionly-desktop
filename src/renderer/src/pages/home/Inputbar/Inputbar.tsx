@@ -16,13 +16,14 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import { useShortcut } from '@renderer/hooks/useShortcuts'
 import { useTextareaResize } from '@renderer/hooks/useTextareaResize'
 import { useTimer } from '@renderer/hooks/useTimer'
+import { isReusableEmptyTopic } from '@renderer/hooks/useTopic'
 import {
   InputbarToolsProvider,
   useInputbarToolsDispatch,
   useInputbarToolsInternalDispatch,
   useInputbarToolsState
 } from '@renderer/pages/home/Inputbar/context/InputbarToolsProvider'
-import { getDefaultTopic, isDefaultTopicName } from '@renderer/services/AssistantService'
+import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { CacheService } from '@renderer/services/CacheService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import FileManager from '@renderer/services/FileManager'
@@ -39,6 +40,8 @@ import {
   type FileMetadata,
   type KnowledgeBase,
   type Model,
+  normalizeRoundtableMentions,
+  type RoundtableMention,
   type Topic,
   TopicType
 } from '@renderer/types'
@@ -53,6 +56,8 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { isRoundtableRoleBindingEnabled } from '../../roundtable/roundtableFeatureFlag'
+import { findPendingRoundtableMention, setRoundtableMentionFallback } from '../../roundtable/roundtableMentions'
 import RoundtableModelBar from '../../roundtable/RoundtableModelBar'
 import { canSendRoundtableMessage, getRoundtableMaxModels, isRoundtableMember } from '../../roundtable/roundtablePolicy'
 import SettingsButton from '../components/ChatNavBar/Tools/SettingsButton'
@@ -84,7 +89,13 @@ interface Props {
   setActiveTopic: (topic: Topic) => void
   topic: Topic
   mode?: 'chat' | 'roundtable'
-  onMessageAccepted?: () => void
+  /** 消息被接受发送后的回调，回传实际发送所用话题（首页据此跳转对话页） */
+  onMessageAccepted?: (topic: Topic) => void
+  /**
+   * 发送前解析实际使用的话题（如首页懒创建新会话），返回的话题将替代 props.topic 用于本次发送。
+   * 仅首页传入；对话页 / 圆桌不传则直接使用 props.topic。
+   */
+  resolveTopicBeforeSend?: () => Promise<Topic>
   /** 首页 / 对话页：无可用模型时在发送位置展示「开通模型」按钮 */
   showOpenModelButton?: boolean
   compact?: boolean
@@ -112,6 +123,7 @@ const Inputbar: FC<Props> = ({
   topic,
   mode = 'chat',
   onMessageAccepted,
+  resolveTopicBeforeSend,
   showOpenModelButton,
   compact,
   excludedTools
@@ -159,6 +171,7 @@ const Inputbar: FC<Props> = ({
         topic={topic}
         mode={mode}
         onMessageAccepted={onMessageAccepted}
+        resolveTopicBeforeSend={resolveTopicBeforeSend}
         showOpenModelButton={showOpenModelButton}
         compact={compact}
         excludedTools={excludedTools}
@@ -175,6 +188,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   topic,
   mode = 'chat',
   onMessageAccepted,
+  resolveTopicBeforeSend,
   showOpenModelButton,
   compact,
   excludedTools,
@@ -221,6 +235,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   const isMultiSelectMode = useAppSelector((state) => state.runtime.chat.isMultiSelectMode)
   const userInfo: any = useAppSelector(selectUserInfo)
   const availableModels = useAppSelector(selectAiOnlyModels)
+  const assistants = useAppSelector((state) => state.assistants.assistants)
 
   const isVisionSupported = useMemo(
     () =>
@@ -312,23 +327,39 @@ const InputbarInner: FC<InputbarInnerProps> = ({
 
     if (onMessageAccepted) landingSendInFlight.current = true
 
+    // 发送前解析实际使用的话题（首页在此懒创建新会话，避免提问被追加进既有历史对话）
+    let sendTopic = topic
+    if (resolveTopicBeforeSend) {
+      try {
+        sendTopic = await resolveTopicBeforeSend()
+      } catch (error) {
+        landingSendInFlight.current = false
+        logger.warn('Failed to resolve topic before send:', error as Error)
+        return
+      }
+    }
+
     logger.info('Starting to send message')
 
     const parent = spanManagerService.startTrace(
-      { topicId: topic.id, name: 'sendMessage', inputs: text },
+      { topicId: sendTopic.id, name: 'sendMessage', inputs: text },
       mentionedModels.length > 0 ? mentionedModels : [assistant.model]
     )
-    void EventEmitter.emit(EVENT_NAMES.SEND_MESSAGE, { topicId: topic.id, traceId: parent?.spanContext().traceId })
+    void EventEmitter.emit(EVENT_NAMES.SEND_MESSAGE, { topicId: sendTopic.id, traceId: parent?.spanContext().traceId })
 
     try {
       const uploadedFiles = await FileManager.uploadFiles(files)
 
-      const baseUserMessage: MessageInputBaseParams = { assistant, topic, content: text }
+      const baseUserMessage: MessageInputBaseParams = { assistant, topic: sendTopic, content: text }
       if (uploadedFiles) {
         baseUserMessage.files = uploadedFiles
       }
       if (mentionedModels.length) {
-        baseUserMessage.mentions = mentionedModels
+        // 群聊且角色绑定开关开启：mentions 写 RoundtableMention[]（携带角色绑定），其余场景保持 Model[]
+        baseUserMessage.mentions =
+          mode === 'roundtable' && isRoundtableRoleBindingEnabled()
+            ? mentionedModels.map((model) => findPendingRoundtableMention(model) ?? { model })
+            : mentionedModels
       }
 
       baseUserMessage.usage = await estimateUserPromptUsage(baseUserMessage)
@@ -336,7 +367,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
       const { message, blocks } = getUserMessage(baseUserMessage)
       message.traceId = parent?.spanContext().traceId
 
-      void dispatch(_sendMessage(message, blocks, assistant, topic.id))
+      void dispatch(_sendMessage(message, blocks, assistant, sendTopic.id))
 
       setText('')
       setFiles([])
@@ -344,7 +375,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
       setTimeoutTimer('sendMessage_2', () => resizeTextArea(), 0)
       // Restore focus to textarea after sending to maintain IME state (fcitx5 issue)
       focusTextarea()
-      onMessageAccepted?.()
+      onMessageAccepted?.(sendTopic)
     } catch (error) {
       landingSendInFlight.current = false
       logger.warn('Failed to send message:', error as Error)
@@ -364,6 +395,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
     focusTextarea,
     mode,
     onMessageAccepted,
+    resolveTopicBeforeSend,
     userInfo,
     t
   ])
@@ -404,14 +436,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({
 
   const addNewTopic = useCallback(async () => {
     // 当前对话为空（无消息、默认名称、未设置话题提示词、未置顶）时直接复用，避免堆积空对话
-    const currentTopicRecord = await db.topics.get(topic.id)
-    const isEmptyTopic =
-      (currentTopicRecord?.messages?.length ?? 0) === 0 &&
-      isDefaultTopicName(topic.name) &&
-      !topic.prompt &&
-      !topic.pinned
-
-    if (isEmptyTopic) {
+    if (await isReusableEmptyTopic(topic)) {
       message.info(t('chat.add.topic.empty_tip'))
       focusTextarea()
       return
@@ -446,6 +471,36 @@ const InputbarInner: FC<InputbarInnerProps> = ({
       setMentionedModels(mentionedModels.filter((current) => current.id !== modelToRemove.id))
     },
     [mentionedModels, setMentionedModels]
+  )
+
+  // 群聊：当前话题最近一条携带 mentions 的用户消息，作为角色绑定的回退源
+  // （pending 暂存仅内存态，重启后 chip 需从历史消息恢复绑定展示）
+  const historyMentions = useMemo<RoundtableMention[]>(() => {
+    if (mode !== 'roundtable') return []
+    const messages = topic.messages ?? []
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const item = messages[i]
+      if (item.role === 'user' && Array.isArray(item.mentions) && item.mentions.length > 0) {
+        return normalizeRoundtableMentions(item.mentions)
+      }
+    }
+    return []
+  }, [mode, topic.messages])
+
+  useEffect(() => {
+    if (mode !== 'roundtable' || !isRoundtableRoleBindingEnabled()) return
+    setRoundtableMentionFallback(() => historyMentions)
+    return () => setRoundtableMentionFallback(null)
+  }, [historyMentions, mode])
+
+  // 群聊：成员 chip 展示当前绑定的角色名（取自待发送的 RoundtableMention，含历史回退）
+  const getMentionRoleName = useCallback(
+    (model: Model) => {
+      if (mode !== 'roundtable') return undefined
+      const mention = findPendingRoundtableMention(model)
+      return mention?.assistantId ? assistants.find((item) => item.id === mention.assistantId)?.name : undefined
+    },
+    [assistants, mode]
   )
 
   const handleRemoveKnowledgeBase = useCallback(
@@ -570,7 +625,12 @@ const InputbarInner: FC<InputbarInnerProps> = ({
   const topContent = (
     <>
       {mentionedModels.length > 0 && (
-        <MentionModelsInput selectedModels={mentionedModels} onRemoveModel={handleRemoveModel} />
+        <MentionModelsInput
+          selectedModels={mentionedModels}
+          onRemoveModel={handleRemoveModel}
+          getRoleName={getMentionRoleName}
+          roleSwitchable={mode === 'roundtable' && isRoundtableRoleBindingEnabled()}
+        />
       )}
       {selectedKnowledgeBases.length > 0 && (
         <KnowledgeBaseInput

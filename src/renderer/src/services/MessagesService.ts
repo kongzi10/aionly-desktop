@@ -7,7 +7,7 @@ import { fetchMessagesSummary } from '@renderer/services/ApiService'
 import store from '@renderer/store'
 import { messageBlocksSelectors, removeManyBlocks } from '@renderer/store/messageBlock'
 import { selectMessagesForTopic } from '@renderer/store/newMessage'
-import type { Assistant, FileMetadata, Model, Topic, Usage } from '@renderer/types'
+import type { Assistant, FileMetadata, MentionItem, Model, Topic, Usage } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
 import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
@@ -130,7 +130,7 @@ export function getUserMessage({
   content?: string
   files?: FileMetadata[]
   knowledgeBaseIds?: string[]
-  mentions?: Model[]
+  mentions?: MentionItem[]
   usage?: Usage
 }): { message: Message; blocks: MessageBlock[] } {
   const defaultModel = getDefaultModel()

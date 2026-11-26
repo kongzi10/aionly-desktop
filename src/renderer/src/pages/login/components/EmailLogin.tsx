@@ -7,11 +7,14 @@ import styled from 'styled-components'
 
 interface EmailLoginProps {
   ref?: React.Ref<EmailLoginRef>
-  onSuccess?: () => void
+  /** 登录成功回调；loginAccount 为本次登录邮箱（切换身份回写历史账号用） */
+  onSuccess?: (loginAccount?: string) => void
   onFormChange?: (valid: boolean) => void
   verifyRef?: any
   setLoading?: (loading: boolean) => void
   isAccept: boolean
+  /** 预填邮箱（切换身份会话过期 → 登录页一次性预填） */
+  initialAccount?: string
 }
 
 export interface EmailLoginRef {
@@ -54,6 +57,14 @@ export const EmailLogin = ({ ref, ...props }: EmailLoginProps) => {
     loginUrl: window.location.href
   })
 
+  // 预填邮箱（内存一次性传递，勿持久化）
+  useEffect(() => {
+    if (!props.initialAccount) return
+    form.setFieldsValue({ email: props.initialAccount })
+    setEmailForm((prev) => ({ ...prev, email: props.initialAccount as string }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // 登录接口
   const login = async () => {
     props.setLoading?.(true)
@@ -69,7 +80,7 @@ export const EmailLogin = ({ ref, ...props }: EmailLoginProps) => {
       const { data } = await loginApi(emailForm)
       if (data && data.access_token) {
         localStorage.setItem('token', data.access_token)
-        await props.onSuccess?.()
+        await props.onSuccess?.(emailForm.email)
       }
     } catch (error: any) {
       logger.error('邮箱登录失败', error)

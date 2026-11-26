@@ -16,6 +16,8 @@ interface Props {
   onSuccess?: () => void | Promise<void>
   onFormChange?: (valid: boolean) => void
   verifyRef?: React.RefObject<any | null>
+  /** 登录成功回调（首登强制改密守卫）：提供时不在此直接落 token，改为上抛 accessToken 由守卫编排 */
+  onLoginOk?: (accessToken: string) => Promise<unknown> | void
 }
 
 export interface EmailBindRef {
@@ -33,7 +35,7 @@ const StyleInput = styled(Input)`
 
 const emailRegExp = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
-const EmailBind: React.FC<Props> = ({ ref, verifyRef, onSuccess, onFormChange }) => {
+const EmailBind: React.FC<Props> = ({ ref, verifyRef, onSuccess, onFormChange, onLoginOk }) => {
   type FieldType = {
     email?: string
     emailCode?: string
@@ -92,8 +94,13 @@ const EmailBind: React.FC<Props> = ({ ref, verifyRef, onSuccess, onFormChange })
     const loginParams = getLoginFormData()
     const { data } = await loginApi(loginParams)
     if (data && data.access_token) {
-      localStorage.setItem('token', data.access_token)
-      await onSuccess?.()
+      if (onLoginOk) {
+        // 首登强制改密：token 交由登录后守卫统一编排（暂存内存，检查通过/改密成功后才落盘）
+        await onLoginOk(data.access_token)
+      } else {
+        localStorage.setItem('token', data.access_token)
+        await onSuccess?.()
+      }
     }
   }
 

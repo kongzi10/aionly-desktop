@@ -39,11 +39,12 @@ export const addModelPayLater = (params) => {
   return http.post(`/money/moneyConsumption/addModelPayLater`, params, { cancel: false, headers: { isEncrypt: true } })
 }
 
-/** 一键批量开通先用后付模型，请求体加密，传参 { modelIds, autoOpenNewModel } */
-export const batchAddModelPayLaterApi = (params) => {
+/** 一键批量开通先用后付模型，请求体加密，传参 { modelIds, autoOpenNewModel }；options 可覆盖请求配置（如 showError: false 由调用方自行处理业务错误） */
+export const batchAddModelPayLaterApi = (params, options: Record<string, any> = {}) => {
   return http.post(`/money/moneyConsumption/batchAddModelPayLater`, params, {
     cancel: false,
-    headers: { isEncrypt: true }
+    headers: { isEncrypt: true },
+    ...options
   })
 }
 

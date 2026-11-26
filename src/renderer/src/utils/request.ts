@@ -113,7 +113,10 @@ class RequestHttp {
         }
         // 全局错误信息拦截（防止下载文件的时候返回数据流，没有 code 直接报错）
         if (data.code && data.code != 200) {
-          message.error(data.msg)
+          // showError=false 时不弹全局 toast，业务错误交由调用方自行处理（如强制改密弹窗行内提示、扫码区域提示）
+          if (config.showError !== false) {
+            message.error(data.msg)
+          }
           return Promise.reject(data.msg || '系统错误')
         }
         // 成功请求（在页面上除非特殊情况，否则不用处理失败逻辑）
@@ -123,11 +126,14 @@ class RequestHttp {
         // console.log("error======>", error);
         const { response, config } = error
         // 请求超时 && 网络错误单独判断，没有 response
-        if (error.message.indexOf('timeout') !== -1) {
-          message.error('请求超时！请您稍后重试')
-        }
-        if (error.message.indexOf('Network Error') !== -1) {
-          message.error('网络错误！请您稍后重试')
+        // showError=false 时不弹全局 toast，交由调用方自行处理（如轮询、强制改密守卫的 fail-closed 提示）
+        if (config?.showError !== false) {
+          if (error.message.indexOf('timeout') !== -1) {
+            message.error('请求超时！请您稍后重试')
+          }
+          if (error.message.indexOf('Network Error') !== -1) {
+            message.error('网络错误！请您稍后重试')
+          }
         }
         // 根据服务器响应的错误状态码，做不同的处理
         if (response) checkStatus(response.status, response.data.msg, config.showError)

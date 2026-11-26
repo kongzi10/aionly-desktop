@@ -7,12 +7,13 @@ import CustomCollapse from '@renderer/components/CustomCollapse'
 import DiscountTag from '@renderer/components/Tags/Model/DiscountTag'
 import ModelLabelTags from '@renderer/components/Tags/Model/ModelLabelTags'
 import { TopView } from '@renderer/components/TopView'
+import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useModelLabels } from '@renderer/hooks/useModelLabels'
 import { isHiddenOmniOrDecisionModel } from '@renderer/hooks/useNewShelfModelPush'
 import { usePublishPriceDiscount } from '@renderer/hooks/usePublishPriceDiscount'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import type { Provider } from '@renderer/types'
-import { Button, Checkbox, Empty, Flex, Input, message, Modal, Radio, Spin } from 'antd'
+import { Alert, Button, Checkbox, Empty, Flex, Input, message, Modal, Radio, Spin } from 'antd'
 import type { CheckboxGroupProps } from 'antd/es/checkbox'
 import { Search } from 'lucide-react'
 import React, { useCallback, useEffect, useState } from 'react'
@@ -38,6 +39,9 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
   const [searchText, setSearchText] = useState('')
   const [loading, setLoading] = useState(false)
   const [confirmLoading, setConfirmLoading] = useState(false)
+  // 开通失败错误信息（如余额不足）：在弹窗内醒目展示，替代页面顶部全局 toast
+  const [activateError, setActivateError] = useState('')
+  const { handleToRecharge } = useMinappPopup()
 
   // 限时折扣活动：ModelVo.id 即 ai_model.id，作为活动 map 的合并键
   const { getDiscount } = usePublishPriceDiscount(modelList, (m: any) => m.id)
@@ -147,11 +151,16 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
   /** 开通模型 **/
   const handleActivateModel = async () => {
     setConfirmLoading(true)
+    setActivateError('')
     try {
-      const res = await batchAddModelPayLaterApi({
-        modelIds: selectedModelIds,
-        autoOpenNewModel: false
-      })
+      const res = await batchAddModelPayLaterApi(
+        {
+          modelIds: selectedModelIds,
+          autoOpenNewModel: false
+        },
+        // 失败（如余额不足）不在页面顶部弹全局 toast，改为弹窗内醒目提示
+        { showError: false }
+      )
       if (res.code === 200 || res.code === 0) {
         message.success('开通成功')
         setOpen(false)
@@ -160,6 +169,8 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
         resolve({ success: true, modelIds: selectedModelIds })
       }
     } catch (e) {
+      // 响应拦截器对业务错误 reject 的是 msg 字符串；网络层错误为 Error 对象，兜底通用文案
+      setActivateError(typeof e === 'string' && e ? e : t('common.error'))
     } finally {
       setConfirmLoading(false)
     }
@@ -298,6 +309,21 @@ const PopupContainer: React.FC<Props> = ({ resolve, modelType }) => {
           )}
         </div>
       </div>
+      {activateError && (
+        <Alert
+          className="activate-error-alert"
+          type="error"
+          showIcon
+          closable
+          onClose={() => setActivateError('')}
+          message={activateError}
+          action={
+            <Button size="small" type="primary" danger onClick={() => handleToRecharge({})}>
+              {t('settings.provider.oauth.topup')}
+            </Button>
+          }
+        />
+      )}
     </Modal>
   )
 }
