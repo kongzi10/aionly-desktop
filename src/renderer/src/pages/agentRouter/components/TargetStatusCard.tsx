@@ -17,7 +17,8 @@ export const TargetStatusCard = ({
   missingConfigWillBeCreated?: boolean
 }) => {
   const { t } = useTranslation()
-  const ready = Boolean(target?.exists && target.readable && target.writable)
+  const ready = Boolean(target?.detectionState === 'detected' && target.exists && target.readable && target.writable)
+  const profileTarget = target?.targetId === 'codex' || target?.targetId === 'claude-code'
   const willCreateConfig = missingConfigWillBeCreated && target?.detectionState === 'notFound'
   const tone: Tone = ready ? 'success' : willCreateConfig ? 'neutral' : 'warning'
 
@@ -46,6 +47,10 @@ export const TargetStatusCard = ({
               ? t('agentRouter.configNotFoundDescription')
               : t('agentRouter.configNeedsAttentionDescription')}
           </span>
+        ) : null}
+        {profileTarget ? <ConfigPath title={target.configPath}>{target.configPath}</ConfigPath> : null}
+        {profileTarget && target.installed === false ? (
+          <Notice>{t('agentRouter.installationNotDetectedDescription')}</Notice>
         ) : null}
       </Copy>
       {ready && showEntryCounts ? (
@@ -164,6 +169,16 @@ const Divider = styled.span`
   width: 1px;
   height: 14px;
   background: var(--color-border);
+`
+
+const ConfigPath = styled.span`
+  flex-basis: 100%;
+  color: var(--color-text-3);
+`
+
+const Notice = styled.span`
+  flex-basis: 100%;
+  white-space: normal;
 `
 
 const Action = styled.button`

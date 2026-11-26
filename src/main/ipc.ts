@@ -56,6 +56,8 @@ import type { ProxyConfig } from 'electron'
 import { BrowserWindow, dialog, ipcMain, session, shell, systemPreferences, webContents } from 'electron'
 
 import { AgentRouterService } from './services/agentRouter'
+import { ProfileConfigPaths } from './services/agentRouter/ProfileConfigPaths'
+import { detectTargetInstallation } from './services/agentRouter/TargetInstallation'
 import { getTargetDetector } from './services/agentRouter/TargetRegistry'
 import { agentMessageRepository } from './services/agents/database'
 import { skillService } from './services/agents/skills/SkillService'
@@ -159,12 +161,13 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     domestic: workBuddyConfigPaths[0],
     overseas: workBuddyConfigPaths[1]
   }
-  let claudeCodeConfigPath = getTargetDetector('claude-code').defaultConfigPaths()[0]
-  const [codexDefaultConfigPath, codexDefaultAuthPath] = getTargetDetector('codex').defaultConfigPaths()
-  let codexConfigPath = codexDefaultConfigPath
-  let codexAuthPath = codexDefaultAuthPath ?? path.join(path.dirname(codexDefaultConfigPath), 'auth.json')
+  const profileConfigPaths = new ProfileConfigPaths()
   const backupConfigPathFor = (targetId: AgentRouterTargetId): string =>
-    targetId === 'claude-code' ? claudeCodeConfigPath : targetId === 'codex' ? codexConfigPath : workBuddyConfigPath
+    targetId === 'claude-code'
+      ? profileConfigPaths.claudeCode
+      : targetId === 'codex'
+        ? profileConfigPaths.codex
+        : workBuddyConfigPath
   const workBuddyConfigWatcher = new ConfigFileWatcher(() => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send(IpcChannel.AgentRouter_TargetChanged, 'workbuddy')
@@ -186,13 +189,13 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     }
   }
   const watchClaudeCodeConfig = () => {
-    if (!claudeCodeConfigWatcher.watch(claudeCodeConfigPath)) {
-      logger.warn(`Unable to watch Claude Code config directory: ${path.dirname(claudeCodeConfigPath)}`)
+    if (!claudeCodeConfigWatcher.watch(profileConfigPaths.claudeCode)) {
+      logger.warn(`Unable to watch Claude Code config directory: ${path.dirname(profileConfigPaths.claudeCode)}`)
     }
   }
   const watchCodexConfig = () => {
-    if (!codexConfigWatcher.watch(codexConfigPath)) {
-      logger.warn(`Unable to watch Codex config directory: ${path.dirname(codexConfigPath)}`)
+    if (!codexConfigWatcher.watch(profileConfigPaths.codex)) {
+      logger.warn(`Unable to watch Codex config directory: ${path.dirname(profileConfigPaths.codex)}`)
     }
   }
   watchWorkBuddyConfig()
@@ -208,7 +211,12 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     if (targetId !== 'workbuddy' && targetId !== 'claude-code' && targetId !== 'codex') return null
     const isClaudeCode = targetId === 'claude-code'
     const isCodex = targetId === 'codex'
-    const currentPath = isCodex ? codexConfigPath : isClaudeCode ? claudeCodeConfigPath : workBuddyConfigPath
+    if (isCodex || isClaudeCode) await profileConfigPaths.resolve()
+    const currentPath = isCodex
+      ? profileConfigPaths.codex
+      : isClaudeCode
+        ? profileConfigPaths.claudeCode
+        : workBuddyConfigPath
     const result = await dialog.showOpenDialog(mainWindow, {
       title: isCodex
         ? 'Select Codex config.toml'
@@ -222,11 +230,10 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     if (result.canceled || !result.filePaths[0]) return null
     const configPath = path.resolve(result.filePaths[0])
     if (isCodex) {
-      codexConfigPath = configPath
-      codexAuthPath = path.join(path.dirname(configPath), 'auth.json')
+      profileConfigPaths.select('codex', configPath)
       watchCodexConfig()
     } else if (isClaudeCode) {
-      claudeCodeConfigPath = configPath
+      profileConfigPaths.select('claude-code', configPath)
       watchClaudeCodeConfig()
     } else {
       workBuddyConfigPath = configPath
@@ -244,13 +251,33 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     watchWorkBuddyConfig()
     return workBuddyConfigPath
   })
-  ipcMain.handle(IpcChannel.AgentRouter_InspectTarget, (_, targetId: AgentRouterTargetId, accountId?: string) => {
-    if (targetId === 'workbuddy')
-      return getAgentRouter().inspectTarget('workbuddy', workBuddyConfigPath, accountId, workBuddyEdition)
-    if (targetId === 'claude-code') return getAgentRouter().inspectClaudeCodeTarget(claudeCodeConfigPath, accountId)
-    if (targetId === 'codex') return getAgentRouter().inspectCodexTarget(codexConfigPath, codexAuthPath, accountId)
-    return null
-  })
+  ipcMain.handle(
+    IpcChannel.AgentRouter_InspectTarget,
+    async (_, targetId: AgentRouterTargetId, accountId?: string, refreshEnvironment = false) => {
+      if (targetId === 'workbuddy')
+        return getAgentRouter().inspectTarget('workbuddy', workBuddyConfigPath, accountId, workBuddyEdition)
+      if (targetId === 'claude-code' || targetId === 'codex') {
+        const previousClaudeCodePath = profileConfigPaths.claudeCode
+        const previousCodexPath = profileConfigPaths.codex
+        await profileConfigPaths.resolve(refreshEnvironment === true)
+        if (
+          previousClaudeCodePath !== profileConfigPaths.claudeCode ||
+          (refreshEnvironment === true && targetId === 'claude-code')
+        )
+          watchClaudeCodeConfig()
+        if (previousCodexPath !== profileConfigPaths.codex || (refreshEnvironment === true && targetId === 'codex'))
+          watchCodexConfig()
+        const [snapshot, installed] = await Promise.all([
+          targetId === 'codex'
+            ? getAgentRouter().inspectCodexTarget(profileConfigPaths.codex, profileConfigPaths.codexAuth, accountId)
+            : getAgentRouter().inspectClaudeCodeTarget(profileConfigPaths.claudeCode, accountId),
+          detectTargetInstallation(targetId)
+        ])
+        return { ...snapshot, installed }
+      }
+      return null
+    }
+  )
   ipcMain.handle(IpcChannel.AgentRouter_IdentifyConfig, (_, filePath: string) =>
     getAgentRouter().identifyConfig(filePath)
   )
@@ -312,11 +339,12 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
       getAgentRouter().saveClaudeCodeProfile(accountId, request)
   )
   ipcMain.handle(IpcChannel.AgentRouter_DeleteClaudeCodeProfile, (_, request: DeleteClaudeCodeProfileRequest) =>
-    getAgentRouter().deleteClaudeCodeProfile(claudeCodeConfigPath, request.accountId, request.profileId)
+    getAgentRouter().deleteClaudeCodeProfile(profileConfigPaths.claudeCode, request.accountId, request.profileId)
   )
-  ipcMain.handle(IpcChannel.AgentRouter_PreviewClaudeCodeRoute, (_, request: PreviewClaudeCodeRouteRequest) =>
-    getAgentRouter().previewClaudeCodeRoute(claudeCodeConfigPath, request)
-  )
+  ipcMain.handle(IpcChannel.AgentRouter_PreviewClaudeCodeRoute, async (_, request: PreviewClaudeCodeRouteRequest) => {
+    await profileConfigPaths.resolve()
+    return getAgentRouter().previewClaudeCodeRoute(profileConfigPaths.claudeCode, request)
+  })
   ipcMain.handle(IpcChannel.AgentRouter_ListCodexProfiles, (_, accountId: string) =>
     getAgentRouter().listCodexProfiles(accountId)
   )
@@ -324,11 +352,17 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     getAgentRouter().saveCodexProfile(accountId, request)
   )
   ipcMain.handle(IpcChannel.AgentRouter_DeleteCodexProfile, (_, request: DeleteCodexProfileRequest) =>
-    getAgentRouter().deleteCodexProfile(codexConfigPath, codexAuthPath, request.accountId, request.profileId)
+    getAgentRouter().deleteCodexProfile(
+      profileConfigPaths.codex,
+      profileConfigPaths.codexAuth,
+      request.accountId,
+      request.profileId
+    )
   )
-  ipcMain.handle(IpcChannel.AgentRouter_PreviewCodexRoute, (_, request: PreviewCodexRouteRequest) =>
-    getAgentRouter().previewCodexRoute(codexConfigPath, codexAuthPath, request)
-  )
+  ipcMain.handle(IpcChannel.AgentRouter_PreviewCodexRoute, async (_, request: PreviewCodexRouteRequest) => {
+    await profileConfigPaths.resolve()
+    return getAgentRouter().previewCodexRoute(profileConfigPaths.codex, profileConfigPaths.codexAuth, request)
+  })
   ipcMain.handle(IpcChannel.AgentRouter_Apply, async (_, request) => {
     const result = await getAgentRouter().apply(request)
     if (result.targetId === 'claude-code') watchClaudeCodeConfig()
@@ -336,13 +370,16 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     else watchWorkBuddyConfig()
     return result
   })
-  ipcMain.handle(IpcChannel.AgentRouter_ListBackups, (_, targetId: AgentRouterTargetId) =>
-    getAgentRouter().listBackups(backupConfigPathFor(targetId))
-  )
+  ipcMain.handle(IpcChannel.AgentRouter_ListBackups, async (_, targetId: AgentRouterTargetId) => {
+    if (targetId === 'codex' || targetId === 'claude-code') await profileConfigPaths.resolve()
+    return getAgentRouter().listBackups(backupConfigPathFor(targetId))
+  })
   ipcMain.handle(
     IpcChannel.AgentRouter_Rollback,
-    (_, targetId: AgentRouterTargetId, backupId: string, expectedRevision: string) =>
-      getAgentRouter().rollback(targetId, backupConfigPathFor(targetId), backupId, expectedRevision)
+    async (_, targetId: AgentRouterTargetId, backupId: string, expectedRevision: string) => {
+      if (targetId === 'codex' || targetId === 'claude-code') await profileConfigPaths.resolve()
+      return getAgentRouter().rollback(targetId, backupConfigPathFor(targetId), backupId, expectedRevision)
+    }
   )
   const appUpdater = new AppUpdater()
   const notificationService = new NotificationService()

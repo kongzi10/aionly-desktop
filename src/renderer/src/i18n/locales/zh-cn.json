@@ -796,6 +796,7 @@
     "identifyFailed": "无法识别该配置文件",
     "inDevelopment": "待开发",
     "independentKey": "独立 Key",
+    "installationNotDetectedDescription": "未检测到可用的安装。你仍可预先配置，但写入成功不代表 Agent 已使用此配置。",
     "loading": "正在检测配置",
     "managedCount": "AiOnly 托管 {{count}} 项",
     "managedEntries": "托管条目",

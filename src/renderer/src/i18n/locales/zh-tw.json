@@ -796,6 +796,7 @@
     "identifyFailed": "無法識別此設定檔",
     "inDevelopment": "[to be translated]:In development",
     "independentKey": "獨立 Key",
+    "installationNotDetectedDescription": "未偵測到可用的安裝。你仍可預先設定，但寫入成功不代表 Agent 已使用此設定。",
     "loading": "正在偵測設定",
     "managedCount": "AiOnly 管理 {{count}} 項",
     "managedEntries": "管理項目",

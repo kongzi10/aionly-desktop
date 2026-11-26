@@ -79,7 +79,18 @@ vi.mock('../hooks/useClaudeCodeRouter', () => ({
   useClaudeCodeRouter: () => claudeCode
 }))
 const codex = {
-  target: { targetId: 'codex', detectionState: 'notFound', issues: [], managedEntryCount: 0 },
+  target: {
+    targetId: 'codex',
+    configPath: '/mock/.codex/config.toml',
+    installed: false,
+    exists: false,
+    readable: false,
+    writable: true,
+    detectionState: 'notFound',
+    issues: [],
+    managedEntryCount: 0,
+    externalEntryCount: 0
+  } as TargetSnapshot,
   library: { version: 1 as const, profiles: [] as unknown[], activeProfileId: undefined as string | undefined },
   selectedProfileId: undefined,
   profile: undefined,
@@ -166,9 +177,10 @@ describe('AgentRouterPage', () => {
     expect(screen.getByTestId('claude-code-route-form')).toBeInTheDocument()
   })
 
-  it('shows profile-based target status as recognized or unrecognized only', () => {
+  it('does not recognize a profile target from residual configuration alone', () => {
     claudeCode.target = {
       targetId: 'claude-code',
+      installed: false,
       configPath: 'C:\\Users\\kongz\\.claude\\settings.json',
       exists: true,
       readable: true,
@@ -181,7 +193,7 @@ describe('AgentRouterPage', () => {
     const { unmount } = render(<AgentRouterPage />)
 
     const target = screen.getByRole('button', { name: /agentRouter.target.claudeCode.label/ })
-    expect(target).toHaveTextContent('agentRouter.detected')
+    expect(target).toHaveTextContent('agentRouter.notDetected')
     expect(target).not.toHaveTextContent('agentRouter.detection.needsAttention')
 
     unmount()
@@ -196,6 +208,46 @@ describe('AgentRouterPage', () => {
       managedEntryCount: 0,
       externalEntryCount: 0
     }
+  })
+
+  it('recognizes installed profile targets even before their config is created', () => {
+    const previousClaude = claudeCode.target
+    const previousCodex = codex.target
+    claudeCode.target = { ...previousClaude, installed: true, detectionState: 'notFound' }
+    codex.target = { ...previousCodex, installed: true, detectionState: 'notFound' }
+    const { unmount } = render(<AgentRouterPage />)
+    expect(screen.getByRole('button', { name: /agentRouter.target.claudeCode.label/ })).toHaveTextContent(
+      'agentRouter.detected'
+    )
+    expect(screen.getByRole('button', { name: /agentRouter.target.codex.label/ })).toHaveTextContent(
+      'agentRouter.detected'
+    )
+    unmount()
+    claudeCode.target = previousClaude
+    codex.target = previousCodex
+  })
+
+  it('does not recognize Codex from a malformed config', () => {
+    const previous = codex.target
+    codex.target = { ...previous, installed: false, detectionState: 'needsAttention' }
+    const { unmount } = render(<AgentRouterPage />)
+    expect(screen.getByRole('button', { name: /agentRouter.target.codex.label/ })).toHaveTextContent(
+      'agentRouter.notDetected'
+    )
+    unmount()
+    codex.target = previous
+  })
+
+  it('refreshes the login environment only for an explicit profile target refresh', () => {
+    codex.refresh.mockClear()
+    claudeCode.refresh.mockClear()
+    render(<AgentRouterPage />)
+    fireEvent.click(screen.getByRole('button', { name: /agentRouter.target.codex.label/ }))
+    fireEvent.click(screen.getByRole('button', { name: /agentRouter.refresh/ }))
+    expect(codex.refresh).toHaveBeenCalledWith(true)
+    fireEvent.click(screen.getByRole('button', { name: /agentRouter.target.claudeCode.label/ }))
+    fireEvent.click(screen.getByRole('button', { name: /agentRouter.refresh/ }))
+    expect(claudeCode.refresh).toHaveBeenCalledWith(true)
   })
 
   it('keeps a switch on every row, disables the active one, and applies after the overwrite reminder', () => {

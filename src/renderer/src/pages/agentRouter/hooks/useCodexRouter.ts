@@ -15,27 +15,30 @@ export const useCodexRouter = ({ onError }: { onError?: (error: unknown) => void
   const [busy, setBusy] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  const refresh = useCallback(async () => {
-    if (!sources.accountId) return
-    setRefreshing(true)
-    try {
-      const [nextTarget, nextLibrary] = await Promise.all([
-        window.api.agentRouter.inspectTarget('codex', sources.accountId),
-        window.api.agentRouter.listCodexProfiles(sources.accountId)
-      ])
-      setTarget(nextTarget)
-      setLibrary(nextLibrary)
-      setSelectedProfileId((current) =>
-        current && nextLibrary.profiles.some(({ id }) => id === current)
-          ? current
-          : (nextLibrary.activeProfileId ?? nextLibrary.profiles[0]?.id)
-      )
-    } catch (error) {
-      loggerService.warn('useCodexRouter#refresh failed', { error })
-    } finally {
-      setRefreshing(false)
-    }
-  }, [sources.accountId])
+  const refresh = useCallback(
+    async (refreshEnvironment = false) => {
+      if (!sources.accountId) return
+      setRefreshing(true)
+      try {
+        const [nextTarget, nextLibrary] = await Promise.all([
+          window.api.agentRouter.inspectTarget('codex', sources.accountId, refreshEnvironment),
+          window.api.agentRouter.listCodexProfiles(sources.accountId)
+        ])
+        setTarget(nextTarget)
+        setLibrary(nextLibrary)
+        setSelectedProfileId((current) =>
+          current && nextLibrary.profiles.some(({ id }) => id === current)
+            ? current
+            : (nextLibrary.activeProfileId ?? nextLibrary.profiles[0]?.id)
+        )
+      } catch (error) {
+        loggerService.warn('useCodexRouter#refresh failed', { error })
+      } finally {
+        setRefreshing(false)
+      }
+    },
+    [sources.accountId]
+  )
 
   useEffect(() => void refresh(), [refresh])
   useEffect(

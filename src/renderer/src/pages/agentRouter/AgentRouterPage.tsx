@@ -48,14 +48,6 @@ const AgentRouterPage = () => {
     setProfileModalOpen(true)
   }
 
-  /** 目标卡的状态胶囊：profile 类目标按「配置是否可写」判定，避免 needsAttention 被误报为未识别 */
-  const readyChip = (exists?: boolean, readable?: boolean, writable?: boolean): ChipTone =>
-    exists && readable && writable ? 'success' : 'muted'
-
-  const claudeCodeReady = readyChip(claudeCode.target?.exists, claudeCode.target?.readable, claudeCode.target?.writable)
-  const claudeCodeChip: ChipTone =
-    claudeCodeReady === 'success' ? 'success' : claudeCode.target?.detectionState === 'notFound' ? 'warning' : 'muted'
-
   const targetCards = [
     {
       id: 'workbuddy' as TargetId,
@@ -76,24 +68,16 @@ const AgentRouterPage = () => {
       id: 'codex' as TargetId,
       label: t('agentRouter.target.codex.label'),
       logo: codexLogo,
-      chip: (codex.target && codex.target.detectionState !== 'notFound' ? 'success' : 'muted') as ChipTone,
-      status:
-        codex.target && codex.target.detectionState !== 'notFound'
-          ? t('agentRouter.detected')
-          : t('agentRouter.notDetected'),
+      chip: (codex.target?.installed ? 'success' : 'muted') as ChipTone,
+      status: codex.target?.installed ? t('agentRouter.detected') : t('agentRouter.notDetected'),
       meta: <span>{t('agentRouter.planCount', { count: codex.library.profiles.length })}</span>
     },
     {
       id: 'claude-code' as TargetId,
       label: t('agentRouter.target.claudeCode.label'),
       logo: claudeCodeLogo,
-      chip: claudeCodeChip,
-      status:
-        claudeCodeChip === 'warning'
-          ? t('agentRouter.configNotFoundShort')
-          : claudeCodeChip === 'success'
-            ? t('agentRouter.detected')
-            : t('agentRouter.notDetected'),
+      chip: (claudeCode.target?.installed ? 'success' : 'muted') as ChipTone,
+      status: claudeCode.target?.installed ? t('agentRouter.detected') : t('agentRouter.notDetected'),
       meta: <span>{t('agentRouter.planCount', { count: claudeCode.library.profiles.length })}</span>
     }
   ]
@@ -104,8 +88,12 @@ const AgentRouterPage = () => {
       : activeTarget === 'claude-code'
         ? claudeCode.refreshing
         : codex.refreshing
-  const refresh =
-    activeTarget === 'workbuddy' ? router.refresh : activeTarget === 'claude-code' ? claudeCode.refresh : codex.refresh
+  const refresh = () =>
+    activeTarget === 'workbuddy'
+      ? router.refresh()
+      : activeTarget === 'claude-code'
+        ? claudeCode.refresh(true)
+        : codex.refresh(true)
 
   const primaryAction =
     activeTab === 'global'

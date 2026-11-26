@@ -796,6 +796,7 @@
     "identifyFailed": "Could not identify this configuration file",
     "inDevelopment": "In development",
     "independentKey": "Independent Key",
+    "installationNotDetectedDescription": "No usable installation was detected. You can prepare this configuration, but writing it does not confirm that the agent is using it.",
     "loading": "Inspecting configuration",
     "managedCount": "{{count}} managed by AiOnly",
     "managedEntries": "Managed entries",

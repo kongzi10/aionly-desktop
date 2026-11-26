@@ -1,0 +1,67 @@
+name: macOS test build
+
+on:
+  push:
+    branches:
+      - codex/mac-agent-router-test-20261126
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mac-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Unsigned macOS test package
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Install native build dependencies
+        run: brew install python-setuptools
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check agent installation detection on macOS
+        run: >-
+          pnpm exec vitest run --project main
+          src/main/services/agentRouter/__tests__/TargetInstallation.test.ts
+          src/main/services/agentRouter/__tests__/ProfileConfigPaths.test.ts
+          src/main/services/agentRouter/__tests__/TargetRegistry.test.ts
+          src/main/services/agentRouter/__tests__/AgentRouterService.test.ts
+          src/main/services/agentRouter/__tests__/ConfigTransactionService.test.ts
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Package Apple Silicon and Intel test builds
+        run: >-
+          pnpm exec electron-builder --config electron-builder.test-mac.yml
+          --mac --arm64 --x64 --publish never
+
+      - name: Upload test packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: AiOnly-mac-test-${{ github.sha }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: error
+          retention-days: 7

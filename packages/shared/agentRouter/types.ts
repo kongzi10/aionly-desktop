@@ -269,6 +269,8 @@ export type WorkBuddyEdition = 'domestic' | 'overseas'
 
 export interface TargetSnapshot {
   targetId: AgentRouterTargetId
+  /** Installation evidence, independent of the configuration file's state. */
+  installed?: boolean
   configPath: string
   authPath?: string
   exists: boolean

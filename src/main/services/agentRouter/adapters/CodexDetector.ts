@@ -10,8 +10,8 @@ export class CodexDetector implements TargetDetector {
   readonly targetId = AGENT_ROUTER_TARGET_CODEX
   private readonly adapter = new CodexAdapter()
 
-  defaultConfigPaths(): string[] {
-    const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex')
+  defaultConfigPaths(env: NodeJS.ProcessEnv = process.env): string[] {
+    const codexHome = env.CODEX_HOME || join(homedir(), '.codex')
     return [join(codexHome, 'config.toml'), join(codexHome, 'auth.json')]
   }
 

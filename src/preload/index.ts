@@ -188,8 +188,8 @@ const api = {
       ipcRenderer.on(IpcChannel.AgentRouter_TargetChanged, listener)
       return () => ipcRenderer.removeListener(IpcChannel.AgentRouter_TargetChanged, listener)
     },
-    inspectTarget: (targetId: AgentRouterTargetId, accountId?: string) =>
-      ipcRenderer.invoke(IpcChannel.AgentRouter_InspectTarget, targetId, accountId),
+    inspectTarget: (targetId: AgentRouterTargetId, accountId?: string, refreshEnvironment = false) =>
+      ipcRenderer.invoke(IpcChannel.AgentRouter_InspectTarget, targetId, accountId, refreshEnvironment),
     identifyConfig: (filePath: string) => ipcRenderer.invoke(IpcChannel.AgentRouter_IdentifyConfig, filePath),
     selectConfig: (targetId: AgentRouterTargetId) => ipcRenderer.invoke(IpcChannel.AgentRouter_SelectConfig, targetId),
     setWorkBuddyEdition: (edition: WorkBuddyEdition) =>

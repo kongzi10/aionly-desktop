@@ -807,6 +807,39 @@ describe('AgentRouterService Codex routes', () => {
 
   afterEach(async () => rm(root, { recursive: true, force: true }))
 
+  it('prepares a missing custom Codex home without touching the default configuration', async () => {
+    const selectedConfig = join(root, 'custom-home', 'config.toml')
+    const selectedAuth = join(root, 'custom-home', 'auth.json')
+    const profile = await service.saveCodexProfile('account-a', {
+      name: 'Prepared profile',
+      accessMode: 'api',
+      apiKey: 'prepared-key',
+      model: 'gpt-5-codex'
+    })
+    const initial = await service.inspectCodexTarget(selectedConfig, selectedAuth, 'account-a')
+    expect(initial).toMatchObject({ exists: false, detectionState: 'notFound' })
+    const preview = await service.previewCodexRoute(selectedConfig, selectedAuth, {
+      accountId: 'account-a',
+      profileId: profile.id,
+      expectedRevision: initial.revision!,
+      apiUrl: 'https://api.aionly.com/v1'
+    })
+    await service.apply({
+      accountId: 'account-a',
+      previewToken: preview.previewToken,
+      expectedRevision: preview.expectedRevision
+    })
+    expect(await readFile(selectedConfig, 'utf8')).toContain('gpt-5-codex')
+    expect(JSON.parse(await readFile(selectedAuth, 'utf8')).OPENAI_API_KEY).toBe('prepared-key')
+    expect(await readFile(configPath, 'utf8')).toBe('')
+    expect(await readFile(authPath, 'utf8')).toBe('{}\n')
+    expect(await service.inspectCodexTarget(selectedConfig, selectedAuth, 'account-a')).toMatchObject({
+      configPath: selectedConfig,
+      authPath: selectedAuth,
+      detectionState: 'detected'
+    })
+  })
+
   it('deleting the active profile leaves Codex configuration files untouched', async () => {
     const saved = await service.saveCodexProfile('account-a', {
       name: 'API profile',

@@ -51,4 +51,42 @@ describe('TargetStatusCard', () => {
     expect(screen.queryByText('agentRouter.managedEntries')).not.toBeInTheDocument()
     expect(screen.queryByText('agentRouter.externalEntries')).not.toBeInTheDocument()
   })
+
+  it('shows the profile config path and explains preconfiguration when no installation was found', () => {
+    const target: TargetSnapshot = {
+      targetId: 'codex',
+      installed: false,
+      configPath: '/custom/codex/config.toml',
+      exists: true,
+      readable: true,
+      writable: true,
+      detectionState: 'detected',
+      managedEntryCount: 0,
+      externalEntryCount: 0,
+      issues: []
+    }
+    render(<TargetStatusCard target={target} onSelect={vi.fn()} showEntryCounts={false} />)
+    expect(screen.getByText(target.configPath)).toBeInTheDocument()
+    expect(screen.getByText('agentRouter.installationNotDetectedDescription')).toBeInTheDocument()
+    expect(screen.getByText('agentRouter.configReady')).toBeInTheDocument()
+  })
+
+  it('does not show malformed configuration as ready', () => {
+    const target: TargetSnapshot = {
+      targetId: 'codex',
+      installed: true,
+      configPath: '/custom/codex/config.toml',
+      exists: true,
+      readable: true,
+      writable: true,
+      detectionState: 'needsAttention',
+      managedEntryCount: 0,
+      externalEntryCount: 0,
+      issues: ['unsupportedFormat']
+    }
+    render(<TargetStatusCard target={target} onSelect={vi.fn()} showEntryCounts={false} />)
+    expect(screen.getByText('agentRouter.configNeedsAttention')).toBeInTheDocument()
+    expect(screen.queryByText('agentRouter.configReady')).not.toBeInTheDocument()
+    expect(screen.queryByText('agentRouter.installationNotDetectedDescription')).not.toBeInTheDocument()
+  })
 })

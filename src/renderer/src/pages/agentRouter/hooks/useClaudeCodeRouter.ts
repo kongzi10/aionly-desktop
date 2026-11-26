@@ -15,27 +15,30 @@ export const useClaudeCodeRouter = ({ onError }: { onError?: (error: unknown) =>
   const [busy, setBusy] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  const refresh = useCallback(async () => {
-    if (!sources.accountId) return
-    setRefreshing(true)
-    try {
-      const [nextTarget, nextLibrary] = await Promise.all([
-        window.api.agentRouter.inspectTarget('claude-code', sources.accountId),
-        window.api.agentRouter.listClaudeCodeProfiles(sources.accountId)
-      ])
-      setTarget(nextTarget)
-      setLibrary(nextLibrary)
-      setSelectedProfileId((current) =>
-        current && nextLibrary.profiles.some(({ id }) => id === current)
-          ? current
-          : (nextLibrary.activeProfileId ?? nextLibrary.profiles[0]?.id)
-      )
-    } catch (error) {
-      loggerService.warn('useClaudeCodeRouter#refresh failed', { error })
-    } finally {
-      setRefreshing(false)
-    }
-  }, [sources.accountId])
+  const refresh = useCallback(
+    async (refreshEnvironment = false) => {
+      if (!sources.accountId) return
+      setRefreshing(true)
+      try {
+        const [nextTarget, nextLibrary] = await Promise.all([
+          window.api.agentRouter.inspectTarget('claude-code', sources.accountId, refreshEnvironment),
+          window.api.agentRouter.listClaudeCodeProfiles(sources.accountId)
+        ])
+        setTarget(nextTarget)
+        setLibrary(nextLibrary)
+        setSelectedProfileId((current) =>
+          current && nextLibrary.profiles.some(({ id }) => id === current)
+            ? current
+            : (nextLibrary.activeProfileId ?? nextLibrary.profiles[0]?.id)
+        )
+      } catch (error) {
+        loggerService.warn('useClaudeCodeRouter#refresh failed', { error })
+      } finally {
+        setRefreshing(false)
+      }
+    },
+    [sources.accountId]
+  )
 
   useEffect(() => void refresh(), [refresh])
   useEffect(
