@@ -2207,6 +2207,7 @@
     "loadFailed": "帳號列表載入失敗",
     "loginOther": "登錄其他帳號",
     "manage": "管理",
+    "manageDone": "完成",
     "noOthers": "沒有其他歷史帳號",
     "ok": "確定",
     "removeActiveProtected": "當前登錄帳號不可移除",

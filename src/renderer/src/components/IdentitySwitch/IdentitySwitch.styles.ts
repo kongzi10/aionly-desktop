@@ -295,27 +295,24 @@ export const SectionHead = styled.div`
   }
 `
 
-export const ManageSwitch = styled.button<{ $on: boolean }>`
-  background: ${(p) => (p.$on ? 'var(--color-primary)' : 'rgba(120,130,150,0.25)')};
-  width: 40px;
-  height: 22px;
-  border-radius: 11px;
+/** 管理文字按钮：替代原开关，点击进入/退出管理模式 */
+export const ManageBtn = styled.button<{ $on: boolean }>`
+  background: ${(p) => (p.$on ? 'var(--is-tag-main-bg)' : 'transparent')};
   border: none;
-  position: relative;
+  color: var(--color-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 4px 10px;
+  border-radius: 7px;
   cursor: pointer;
-  transition: background 0.25s;
+  transition:
+    background 0.2s,
+    color 0.2s;
   flex: 0 0 auto;
 
-  .knob {
-    position: absolute;
-    top: 3px;
-    left: ${(p) => (p.$on ? '21px' : '3px')};
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #fff;
-    transition: left 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  &:hover {
+    background: ${(p) => (p.$on ? 'var(--is-tag-main-bg)' : 'rgba(120, 130, 150, 0.12)')};
   }
 `
 

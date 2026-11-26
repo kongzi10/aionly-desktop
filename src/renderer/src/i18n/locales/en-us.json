@@ -2207,6 +2207,7 @@
     "loadFailed": "Failed to load accounts",
     "loginOther": "Sign in Another Account",
     "manage": "Manage",
+    "manageDone": "Done",
     "noOthers": "No other accounts",
     "ok": "Confirm",
     "removeActiveProtected": "The current account cannot be removed",

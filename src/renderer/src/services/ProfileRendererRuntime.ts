@@ -1,3 +1,4 @@
+import { CacheService } from './CacheService'
 import { ACTIVE_PROFILE_STORAGE_KEY, authStorage } from './ProfileStorageService'
 
 export interface RendererProfileBootstrap {
@@ -83,6 +84,8 @@ export async function switchRendererProfile(
     dependencies.pauseStore()
     dependencies.closeDatabase()
     dependencies.applyProfileStorage(profile)
+    // 丢弃旧身份的渲染进程内存 UI 缓存（输入框草稿、模型缓存等），避免重建 UI 后残留到新身份页面
+    CacheService.clear()
     dependencies.resetDatabase()
     await dependencies.resetStore()
     await dependencies.initializeProfile?.()

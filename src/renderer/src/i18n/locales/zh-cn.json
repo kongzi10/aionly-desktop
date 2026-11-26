@@ -2207,6 +2207,7 @@
     "loadFailed": "账号列表加载失败",
     "loginOther": "登录其他账号",
     "manage": "管理",
+    "manageDone": "完成",
     "noOthers": "没有其他历史账号",
     "ok": "确定",
     "removeActiveProtected": "当前登录账号不可移除",

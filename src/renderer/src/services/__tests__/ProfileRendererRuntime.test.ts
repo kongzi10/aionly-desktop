@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { CacheService } from '../CacheService'
 import { ProfileGeneration, switchRendererProfile } from '../ProfileRendererRuntime'
 
 describe('switchRendererProfile', () => {
@@ -155,5 +156,25 @@ describe('switchRendererProfile', () => {
     ).rejects.toThrow('close failed')
 
     expect(recover).toHaveBeenCalledOnce()
+  })
+
+  it('clears renderer memory caches so the previous profile draft does not leak into the new profile', async () => {
+    CacheService.set('inputbar-draft', 'previous profile draft', 60_000)
+
+    await switchRendererProfile(
+      { profileId: 'profile-b', bootstrap: null },
+      {
+        flushStore: async () => undefined,
+        pauseStore: () => undefined,
+        closeDatabase: () => undefined,
+        applyProfileStorage: () => undefined,
+        resetDatabase: () => undefined,
+        resetStore: () => undefined,
+        notifyProfileChanged: () => undefined,
+        navigate: () => undefined
+      }
+    )
+
+    expect(CacheService.get('inputbar-draft')).toBeNull()
   })
 })

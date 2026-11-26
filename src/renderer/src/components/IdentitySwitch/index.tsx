@@ -29,7 +29,7 @@ import {
   IdentityRoot,
   List,
   LoginOtherBtn,
-  ManageSwitch,
+  ManageBtn,
   MeAvatar,
   MeCard,
   NoOthers,
@@ -231,14 +231,14 @@ const IdentitySwitchDrawer: FC<IdentitySwitchDrawerProps> = ({ open, onClose }) 
         <Body>
           <SectionHead>
             <span className="sh-title">{t('identity.historyTitle')}</span>
-            <ManageSwitch
+            <ManageBtn
               type="button"
               $on={managing}
               aria-label={t('identity.manage')}
               aria-pressed={managing}
               onClick={() => setManaging(!managing)}>
-              <span className="knob" />
-            </ManageSwitch>
+              {managing ? t('identity.manageDone') : t('identity.manage')}
+            </ManageBtn>
           </SectionHead>
           <CountRow>
             <Info size={13} />
