@@ -19,3 +19,6 @@ export const FEATURE_SUB_FORCE_UPDATE_PWD = true
 
 /** 选择模型弹窗双页签（按量付费/免费体验）+ 免费体验额度展示（V3 卡片环形样式；见 docs/选择模型弹窗免费体验改造/开发方案.md。关闭时行为与改造前完全一致） */
 export const FEATURE_SELECT_MODEL_QUOTA_TABS = true
+
+/** 选择模型弹窗「免费体验」页签入口：产品要求暂时屏蔽（隐藏页签按钮并锁定按量付费页签，功能代码保留）。下周放开时改回 true 即可 */
+export const FEATURE_FREE_TRIAL_TAB = false

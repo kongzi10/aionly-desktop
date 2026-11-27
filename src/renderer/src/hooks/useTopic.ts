@@ -149,7 +149,9 @@ export const autoRenameTopic = async (assistant: Assistant, topicId: string) => 
       if (topic.id === _activeTopic.id) {
         _setActiveTopic(data)
       }
-      store.dispatch(updateTopic({ assistantId: assistant.id, topic: data }))
+      // 群聊绑定角色时，完成回调里的 assistant 是「角色应用」副本（applyRoleToAssistant 展开角色字段后 id 为角色 id），
+      // 按 assistant.id 回写会找不到话题归属助手导致重命名静默失效；以 topic 自身 assistantId 为准
+      store.dispatch(updateTopic({ assistantId: topic.assistantId || assistant.id, topic: data }))
     }
 
     const getFirstMessageName = () => {

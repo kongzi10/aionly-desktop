@@ -17,7 +17,7 @@ export interface RoundtableMention {
 export type MentionItem = Model | RoundtableMention
 
 /**
- * 判断是否为「成员化」提及项。裸 Model 无 model 字段；
+ * 判断是否为「成员化」提及项。裸 Model 的 model 字段为字符串（aionly 原始字段）或缺失；
  * RoundtableMention.model 必须是含 id 的对象。
  */
 export function isRoundtableMention(item: unknown): item is RoundtableMention {

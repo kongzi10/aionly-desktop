@@ -1,5 +1,6 @@
 import { formatPrivateKey, hasProviderConfig, type StringKeys } from '@aionly/ai-core/provider'
 import type { AppProviderId, AppProviderSettingsMap } from '@renderer/aiCore/types'
+import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
 import {
   getAwsBedrockAccessKeyId,
   getAwsBedrockApiKey,
@@ -17,7 +18,8 @@ import {
   formatOllamaApiHost,
   formatVertexApiHost,
   isWithTrailingSharp,
-  routeToEndpoint
+  routeToEndpoint,
+  withoutTrailingApiVersion
 } from '@renderer/utils/api'
 import {
   isAnthropicProvider,
@@ -130,6 +132,7 @@ export function providerToAiSdkConfig(
     { match: (_, id) => id === 'google-vertex', build: buildVertexConfig },
     { match: (_, id) => id === 'market', build: buildMarketConfig },
     { match: (_, id) => id === 'newapi', build: buildNewApiConfig },
+    { match: (p) => p.id === SystemProviderIds.aionly, build: buildAionlyConfig },
     { match: (_, id) => id === 'aihubmix', build: buildAiHubMixConfig }
   ]
 
@@ -409,4 +412,56 @@ function buildNewApiConfig(ctx: BuilderContext): ProviderConfig<'newapi'> {
       headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers }
     }
   }
+}
+
+/**
+ * AiOnly 平台厂商配置
+ *
+ * Gemini 系列模型路由到平台 Gemini 原生入口
+ * (/v1beta/models/{model}:generateContent|:streamGenerateContent)，
+ * 调用日志接口类型记为 gemini，且 thinking tokens 等原生统计维度与文档对接方式一致；
+ * 其余模型（GPT/Claude/embedding/rerank/图像生成等）保持原有 OpenAI 兼容链路 (/v1/chat/completions)。
+ */
+function buildAionlyConfig(ctx: BuilderContext): ProviderConfig<'newapi'> | ProviderConfig<'openai-compatible'> {
+  if (!isAionlyGeminiNativeModel(ctx.model)) {
+    return buildOpenAICompatibleConfig(ctx)
+  }
+
+  // apiHost 经 formatProviderApiHost 已补 /v1 后缀，需先剥离版本号再拼接 /v1beta；
+  // 不复用 formatNewApiBaseURL：其内部 hasAPIVersion 命中 /v1 后不会替换为 v1beta
+  const baseURL = formatApiHost(withoutTrailingApiVersion(ctx.baseConfig.baseURL), true, 'v1beta')
+
+  return {
+    providerId: 'newapi',
+    endpoint: ctx.endpoint,
+    providerSettings: {
+      ...ctx.baseConfig,
+      baseURL,
+      endpointType: 'gemini',
+      headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers }
+    }
+  }
+}
+
+/**
+ * 判断 AiOnly 模型是否应走 Gemini 原生入口：
+ * - embedding/rerank/图像生成模型排除（平台原生入口仅覆盖文本对话）
+ * - endpoint_type 已明确时以其为准（服务端下发，或 getDefaultEndpointTypeById 按 id 推断的结果；
+ *   用户在模型编辑界面手动指定的值同样生效）
+ * - endpoint_type 缺失（如内置静态模型列表）时按 gemini id 前缀兜底推断
+ */
+export function isAionlyGeminiNativeModel(model: Model): boolean {
+  const modelId = model.id.toLowerCase()
+  if (
+    model.endpoint_type === 'image-generation' ||
+    modelId.includes('image') ||
+    isEmbeddingModel(model) ||
+    isRerankModel(model)
+  ) {
+    return false
+  }
+  if (model.endpoint_type) {
+    return model.endpoint_type === 'gemini'
+  }
+  return modelId.startsWith('gemini')
 }

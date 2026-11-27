@@ -217,7 +217,15 @@ const ForceUpdatePwdInner = ({
       footer={null}
       destroyOnClose
       afterClose={handleAfterClose}
-      styles={{ body: { maxHeight: 'calc(92vh - 100px)', overflowY: 'auto', paddingRight: 4 } }}>
+      styles={{
+        content: { borderRadius: 14, padding: '24px 26px 22px', position: 'relative' },
+        body: {
+          maxHeight: 'calc(92vh - 100px)',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          paddingRight: 4
+        }
+      }}>
       <Wrap>
         <NoCloseBadge>
           <Lock size={11} />
@@ -237,13 +245,13 @@ const ForceUpdatePwdInner = ({
         <AccountsBar>
           <AccountCard>
             <span className="acc-label">
-              <Users size={13} /> {t('main_account_label')}
+              <Users size={12} /> {t('main_account_label')}
             </span>
             <span className="acc-value">{phoneNumber}</span>
           </AccountCard>
           <AccountCard>
             <span className="acc-label">
-              <KeyRound size={13} /> {t('account_label')}
+              <KeyRound size={12} /> {t('account_label')}
             </span>
             <span className="acc-value">{username}</span>
           </AccountCard>
@@ -282,7 +290,9 @@ const ForceUpdatePwdInner = ({
         <RulesBox>
           {rules.map((r) => (
             <RuleRow key={r.key} $ok={r.ok}>
-              <span className="rule-icon">{r.ok ? <Check size={11} /> : <span className="rule-dot" />}</span>
+              <span className="rule-icon">
+                {r.ok ? <Check size={9} strokeWidth={3} /> : <span className="rule-dot" />}
+              </span>
               <span className="rule-text">{r.label}</span>
             </RuleRow>
           ))}
@@ -347,28 +357,45 @@ export default class ForceUpdatePwdModal {
 
 // ==================== styled-components ====================
 const Wrap = styled.div`
-  position: relative;
-  padding-top: 4px;
+  .ant-form-item {
+    margin-bottom: 14px;
+  }
+  .ant-form-vertical .ant-form-item-label {
+    padding-bottom: 6px;
+  }
+  .ant-input-affix-wrapper.ant-input-affix-wrapper-lg {
+    height: 42px;
+    border-radius: 8px;
+  }
+  .ant-input-affix-wrapper-lg > input.ant-input {
+    font-size: 13px;
+  }
+  .ant-input-affix-wrapper-lg .ant-input-suffix {
+    color: var(--color-text-3);
+  }
+  .ant-input-password-icon:hover {
+    color: var(--color-text-2) !important;
+  }
 `
 
 const NoCloseBadge = styled.div`
   position: absolute;
-  top: -2px;
-  right: 0;
+  top: 14px;
+  right: 16px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 11px;
   font-weight: 600;
-  color: #0f766e;
-  background: #ccfbf1;
+  color: var(--color-primary);
+  background: #eaf1ff;
   padding: 3px 10px;
   border-radius: 999px;
   z-index: 2;
 
   [theme-mode='dark'] & {
-    color: #5eead4;
-    background: rgba(13, 148, 136, 0.16);
+    color: var(--color-primary-light);
+    background: #182338;
   }
 `
 
@@ -376,19 +403,19 @@ const Head = styled.div`
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 18px;
-  padding-right: 96px;
+  margin-bottom: 16px;
+  padding-right: 92px;
 
   .head-title {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     color: var(--color-text-1);
     margin-bottom: 4px;
   }
   .head-desc {
-    font-size: 12.5px;
+    font-size: 12px;
     color: var(--color-text-3);
-    line-height: 1.5;
+    line-height: 1.6;
     margin: 0;
   }
 `
@@ -397,16 +424,16 @@ const ShieldIcon = styled.div`
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(15, 118, 110, 0.1);
-  color: #0f766e;
+  background: #eaf1ff;
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 
   [theme-mode='dark'] & {
-    background: rgba(13, 148, 136, 0.18);
-    color: #5eead4;
+    background: #182338;
+    color: var(--color-primary-light);
   }
 `
 
@@ -420,23 +447,26 @@ const AccountsBar = styled.div`
 const AccountCard = styled.div`
   background: var(--color-gray-5);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   min-width: 0;
 
   .acc-label {
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--color-text-3);
     margin-bottom: 3px;
   }
   .acc-value {
+    display: block;
     font-size: 13px;
     font-weight: 600;
     color: var(--color-text-1);
     font-family: var(--code-font-family);
-    word-break: break-all;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 `
 
@@ -453,17 +483,19 @@ const RulesBox = styled.div`
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: 4px;
+  margin-top: 0;
 `
 
 const RuleRow = styled.div<{ $ok: boolean }>`
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 12px;
   padding: 3px 0;
-  color: ${({ $ok }) => ($ok ? '#16a34a' : 'var(--color-text-3)')};
+  color: ${({ $ok }) => ($ok ? '#18a058' : 'var(--color-text-3)')};
   transition: color 0.18s;
+
+  ${({ $ok }) => $ok && `[theme-mode='dark'] & { color: #5bd48f; }`}
 
   .rule-icon {
     width: 14px;
@@ -473,7 +505,7 @@ const RuleRow = styled.div<{ $ok: boolean }>`
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: ${({ $ok }) => ($ok ? 'rgba(22,163,74,0.14)' : 'transparent')};
+    background: ${({ $ok }) => ($ok ? 'rgba(24,160,88,0.14)' : 'transparent')};
   }
   .rule-dot {
     width: 5px;
@@ -488,7 +520,8 @@ const AlertBox = styled.div`
   margin-top: 12px;
 
   .ant-alert {
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1.6;
     border-radius: 8px;
   }
 `
@@ -503,12 +536,22 @@ const SubmitButton = styled(Button)`
     font-size: 14px;
     font-weight: 600;
     border: none;
+    border-radius: 8px;
   }
   &.ant-btn-primary:not(:disabled) {
-    background: linear-gradient(135deg, #0f766e, #0d9488);
+    background: var(--color-primary);
   }
   &.ant-btn-primary:not(:disabled):hover {
-    background: linear-gradient(135deg, #0d9488, #14b8a6) !important;
+    background: #4096ff !important;
+  }
+
+  [theme-mode='dark'] & {
+    &.ant-btn-primary:not(:disabled) {
+      background: var(--color-primary-light);
+    }
+    &.ant-btn-primary:not(:disabled):hover {
+      background: #6ba6ff !important;
+    }
   }
 `
 
@@ -530,6 +573,9 @@ const SwitchLink = styled(Button)`
   &.ant-btn:not(:disabled):hover {
     color: var(--color-primary) !important;
     background: transparent !important;
+  }
+  [theme-mode='dark'] &.ant-btn:not(:disabled):hover {
+    color: var(--color-primary-light) !important;
   }
 `
 

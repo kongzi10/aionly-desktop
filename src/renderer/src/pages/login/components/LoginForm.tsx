@@ -130,10 +130,11 @@ export const LoginForm = (_props: LoginFormProps) => {
       if (userId === undefined || userId === null || !String(userId).trim()) {
         throw new Error('登录响应缺少用户 ID，无法创建用户数据目录')
       }
+      // serviceInfo 不再随 bootstrap 携带（明文 key 读取存在 Layout 拉取未返回的竞态）；
+      // 登录/切换后由 refreshServiceInfo() 统一拉取写入 profile 隔离存储
       const bootstrap = {
         token: localStorage.getItem('token') || undefined,
         userInfo: JSON.stringify(userData || {}),
-        serviceInfo: localStorage.getItem('serviceInfo') || undefined,
         localUserSecret: secretKey || undefined
       }
       // 开关开启：upsertAccount 内部复用 activate 编排，同时写入历史账号元数据与长期凭据；

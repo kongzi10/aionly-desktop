@@ -9,6 +9,7 @@ export {
   formatApiKeys,
   hasAPIVersion,
   isWithTrailingSharp,
+  withoutTrailingApiVersion,
   withoutTrailingSharp,
   withoutTrailingSlash
 } from '@shared/utils/api'

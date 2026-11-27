@@ -16,6 +16,7 @@ import { useAppSelector } from '@renderer/store'
 import type { MultiModelMessageStyle } from '@renderer/store/settings'
 import type { Assistant, Topic } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
+import { getMentionAssistantId, getMentionModel } from '@renderer/types/roundtable'
 import { cn } from '@renderer/utils'
 import { scrollIntoView } from '@renderer/utils/dom'
 import { isMessageProcessing } from '@renderer/utils/messageUtils/is'
@@ -93,10 +94,11 @@ const MessageItem: FC<Props> = ({
       const item = topicMessages[i]
       if (item.role !== 'user') continue
       const mention = (item.mentions ?? []).find((candidate) => {
-        const mentionModel = 'model' in candidate ? candidate.model : candidate
+        // 注意：aionly 的 Model 自身带 model 字符串字段，不能用 'model' in candidate 判断格式
+        const mentionModel = getMentionModel(candidate)
         return !!mentionModel && getModelUniqId(mentionModel) === uniqId
       })
-      return mention && 'assistantId' in mention ? mention.assistantId : undefined
+      return mention ? getMentionAssistantId(mention) : undefined
     }
     return undefined
   }, [message, mode, topicMessages])

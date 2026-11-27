@@ -73,6 +73,8 @@ const HomePanel: FC<Props> = ({
 
   const showTab = position === 'left' && topicPosition === 'left'
   const mergePanels = position === 'left'
+  // 群聊模块不展示侧栏顶部角色选择区域（仅 roundtable 工作区隐藏，其他模块保持现状）
+  const showRolePicker = mergePanels && workspace !== 'roundtable'
 
   const onCreateAssistant = async () => {
     if (mergePanels) setRolePickerOpen(false)
@@ -130,7 +132,7 @@ const HomePanel: FC<Props> = ({
   useEffect(() => {
     const unsubscribes = [
       EventEmitter.on(EVENT_NAMES.SHOW_ASSISTANTS, (): any => {
-        if (mergePanels) setRolePickerOpen(true)
+        if (showRolePicker) setRolePickerOpen(true)
         else if (showTab) setTab('assistants')
       }),
       EventEmitter.on(EVENT_NAMES.SHOW_TOPIC_SIDEBAR, (): any => {
@@ -146,7 +148,7 @@ const HomePanel: FC<Props> = ({
       })
     ]
     return () => unsubscribes.forEach((unsub) => unsub())
-  }, [mergePanels, position, showTab, toggleShowTopics, topicPosition])
+  }, [mergePanels, showRolePicker, position, showTab, toggleShowTopics, topicPosition])
 
   useEffect(() => {
     if (position === 'right' && topicPosition === 'right' && tab === 'assistants') {
@@ -190,7 +192,7 @@ const HomePanel: FC<Props> = ({
         </CustomTabs>
       )}*/}
 
-      {mergePanels && (
+      {showRolePicker && (
         <RolePicker className="role-picker">
           <Popover
             open={rolePickerOpen}

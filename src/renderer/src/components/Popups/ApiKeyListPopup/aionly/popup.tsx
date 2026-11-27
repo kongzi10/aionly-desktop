@@ -142,10 +142,7 @@ const PopupContainer: React.FC<Props> = ({ resolve, providerId }) => {
       if (statusFilter === 'off' && (r.isNew || isEnabled(r))) return false
       if (statusFilter === 'inuse' && !isInUse(r)) return false
       if (q) {
-        const hay = [r.appname, r.apikey, r.apikey ? maskApiKey(r.apikey) : '', r.keyType]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
+        const hay = String(r.appname || '').toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true

@@ -1015,6 +1015,8 @@ export interface StoreSyncAction {
   meta?: {
     fromSync?: boolean
     source?: string
+    /** 广播方当前身份 id：接收方据此丢弃跨身份动作，避免辅窗 persistor 串写其它身份的持久化数据 */
+    profileId?: string
   }
 }
 

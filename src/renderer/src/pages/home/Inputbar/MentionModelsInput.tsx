@@ -35,9 +35,7 @@ const MentionModelsInput: FC<{
               ? `${model.name} · ${model.group}`
               : model.name
           const nameNode = (
-            <Tooltip
-              title={roleSwitchable ? `${baseTitle}（${t('roundtable.role.select')}）` : baseTitle}
-              mouseEnterDelay={0.4}>
+            <Tooltip title={baseTitle} mouseEnterDelay={0.4}>
               <ModelName>
                 {model.name}
                 {shownRoleName && <RoleName $bound={!!roleName}> · {shownRoleName}</RoleName>}

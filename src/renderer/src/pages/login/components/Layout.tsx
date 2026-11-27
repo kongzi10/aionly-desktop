@@ -3,6 +3,7 @@ import bgLoginDark from '@renderer/assets/images/login/bg-login-dark.jpg'
 import bgLoginF from '@renderer/assets/images/login/bg-login-f.jpg'
 import lwImg from '@renderer/assets/images/login/lw.png'
 import i18n from '@renderer/i18n'
+import { resolveServiceDomainName } from '@renderer/services/serviceInfoService'
 import { useAppDispatch } from '@renderer/store'
 import { setServiceInfo } from '@renderer/store/user'
 import { type FC, useCallback, useEffect, useState } from 'react'
@@ -86,8 +87,8 @@ const Layout: FC<Props> = ({ children }) => {
   const [logoUrl, setLogoUrl] = useState<null | undefined | string>(undefined)
 
   const fetchService = useCallback(() => {
-    // 供应商 信息设置(网页tab,logo,网页title)
-    getServiceApi(window.location.hostname).then((res: any) => {
+    // 供应商 信息设置(网页tab,logo,网页title)；domainName 统一经 resolveServiceDomainName 解析（打包版 file:// 下 hostname 为空）
+    getServiceApi(resolveServiceDomainName()).then((res: any) => {
       const agentInfo = res.data
       setLogoUrl(agentInfo?.logoUrl ?? undefined)
       // localStorage.setItem('agentInfo', JSON.stringify(agentInfo))

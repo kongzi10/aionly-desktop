@@ -103,8 +103,12 @@ const userSlice = createSlice({
       state.userInfo.payPassword = action.payload.payPassword
     },
     setServiceInfo(state, action: PayloadAction<Record<string, unknown>>) {
-      state.serviceInfo = action.payload
-      authStorage.setItem('serviceInfo', JSON.stringify(action.payload))
+      const payload = action.payload
+      // 空值防护：接口异常返回 undefined/null 时保留既有缓存，
+      // 避免把字符串 'undefined' 写入存储或清空 planStatus
+      if (!payload || typeof payload !== 'object') return
+      state.serviceInfo = payload
+      authStorage.setItem('serviceInfo', JSON.stringify(payload))
     },
     setApiKey(state, action: PayloadAction<string>) {
       state.apiKey = action.payload

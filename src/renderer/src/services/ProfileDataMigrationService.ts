@@ -354,3 +354,116 @@ export async function migrateLegacyProfileData(
   await migrateIndexedDb(profileId)
   storage.setItem(markerKey, 'completed')
 }
+
+export type AutoMigrationResult =
+  | 'disabled'
+  | 'none'
+  | 'copied'
+  | 'replaced'
+  | 'skipped-owner-mismatch'
+  | 'skipped-owner-unknown'
+  | 'skipped-target-in-use'
+
+export interface AutoMigrationDependencies {
+  storage?: Storage
+  legacyDatabaseExists?: () => Promise<boolean>
+  profileDatabaseInUse?: (profileId: string) => Promise<boolean>
+  migrate?: (storage: Storage, profileId: string) => Promise<void>
+  replaceReduxState?: (storage: Storage, profileId: string) => boolean
+  replaceIndexedDb?: (profileId: string) => Promise<void>
+}
+
+/**
+ * 判断当前 profile 的 IndexedDB 是否已产生过真实对话数据（topics 表非空）。
+ * 用于自动迁移时决定是否允许覆盖：已有使用痕迹的 profile 绝不自动替换，只保留手动恢复入口。
+ */
+export async function hasProfileDatabaseUsage(profileId: string): Promise<boolean> {
+  const databaseName = `AiOnly-${profileId}`
+  if (!(await Dexie.exists(databaseName))) return false
+  const database = new Dexie(databaseName)
+  try {
+    await database.open()
+    const topics = database.tables.find((table) => table.name === 'topics')
+    return topics ? (await topics.count()) > 0 : false
+  } finally {
+    database.close()
+  }
+}
+
+/**
+ * 启动/登录/切换身份时的一次性自动迁移（方案 A）：
+ * 把旧版本固定命名空间（`persist:aionly` / IndexedDB `AiOnly`）的数据迁入当前 profile
+ * 命名空间（`persist:aionly:<profileId>` / `AiOnly-<profileId>`）。
+ *
+ * 安全约束：
+ * 1. 幂等：`aionly:renderer-migration:<profileId>` marker 为 completed 时直接跳过；
+ * 2. 归属校验：仅当旧数据 owner 与当前 profile 的 userId 一致（match）才迁移，
+ *    mismatch/unknown 一律跳过，防止子账号登录错误吞并其他账号的数据；
+ * 3. 不覆盖已有数据：目标 redux key 不存在 → 只补缺拷贝；已存在且 profile 已被使用
+ *    （IndexedDB topics 非空）→ 跳过（保留手动"数据恢复"入口）；已存在但从未使用 →
+ *    用旧数据替换（保留当前 user slice）；
+ * 4. 只拷不删：旧命名空间数据原样保留，迁移失败可重试或走手动恢复。
+ */
+export async function autoMigrateLegacyProfileData(
+  profileId: string,
+  dependencies: AutoMigrationDependencies = {}
+): Promise<AutoMigrationResult> {
+  if (!isLegacyProfileDataMigrationEnabled()) return 'disabled'
+
+  const storage = dependencies.storage ?? localStorage
+  const markerKey = `${PROFILE_RENDERER_MIGRATION_PREFIX}${profileId}`
+  if (storage.getItem(markerKey) === 'completed') return 'none'
+
+  const legacyDatabaseExists = dependencies.legacyDatabaseExists ?? (() => Dexie.exists('AiOnly'))
+  const hasLegacyRedux = storage.getItem(LEGACY_REDUX_KEY) !== null
+  const hasLegacyDatabase = await legacyDatabaseExists()
+  if (!hasLegacyRedux && !hasLegacyDatabase) {
+    // 从未存在过旧数据（全新安装），标记完成避免每次启动重复探测
+    storage.setItem(markerKey, 'completed')
+    return 'none'
+  }
+
+  const ownerStatus = classifyLegacyDataOwner(readLegacyReduxUserId(storage), readProfileAuthUserId(storage, profileId))
+  if (ownerStatus !== 'match') {
+    logger.warn(
+      'Legacy auto migration skipped by owner classification',
+      { profileId, ownerStatus, hasLegacyRedux, hasLegacyDatabase },
+      { logToMain: true }
+    )
+    return ownerStatus === 'mismatch' ? 'skipped-owner-mismatch' : 'skipped-owner-unknown'
+  }
+
+  const targetKey = `persist:aionly:${profileId}`
+  if (storage.getItem(targetKey) === null) {
+    const migrate = dependencies.migrate ?? ((target: Storage, id: string) => migrateLegacyProfileData(target, id))
+    await migrate(storage, profileId)
+    logger.info('Legacy profile data auto migrated (copy)', { profileId }, { logToMain: true })
+    return 'copied'
+  }
+
+  // 目标 key 已存在：说明新版本已经运行过（可能只是空默认状态）。
+  // 仅当该 profile 尚未产生任何对话数据时才允许替换，避免吞掉用户更新后新建的会话。
+  const profileDatabaseInUse = dependencies.profileDatabaseInUse ?? hasProfileDatabaseUsage
+  if (await profileDatabaseInUse(profileId)) {
+    logger.warn(
+      'Legacy auto migration skipped: current profile already in use',
+      { profileId, hasLegacyRedux, hasLegacyDatabase },
+      { logToMain: true }
+    )
+    return 'skipped-target-in-use'
+  }
+
+  const replaceReduxState = dependencies.replaceReduxState ?? replaceLegacyReduxState
+  const replaceIndexedDb = dependencies.replaceIndexedDb ?? ((id: string) => replaceLegacyIndexedDb(id))
+  storage.setItem(markerKey, 'recovering')
+  try {
+    replaceReduxState(storage, profileId)
+    await replaceIndexedDb(profileId)
+    storage.setItem(markerKey, 'completed')
+  } catch (error) {
+    storage.setItem(markerKey, 'failed')
+    throw error
+  }
+  logger.info('Legacy profile data auto migrated (replace unused profile)', { profileId }, { logToMain: true })
+  return 'replaced'
+}

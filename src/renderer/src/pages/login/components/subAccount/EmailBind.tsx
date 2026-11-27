@@ -89,7 +89,7 @@ const EmailBind: React.FC<Props> = ({ ref, verifyRef, onSuccess, onFormChange, o
     const params = getInfoFormData()
     const user_res = await editUserInfo(params)
     if (user_res.code == 200) {
-      window.toast.success(i18n.t('login.sub_account.bind_success'))
+      window.toast.success(i18n.t('login.sub_account.bind_phone_email.bind_success'))
     }
     const loginParams = getLoginFormData()
     const { data } = await loginApi(loginParams)

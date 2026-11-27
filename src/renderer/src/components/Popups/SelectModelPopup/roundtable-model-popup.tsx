@@ -1,4 +1,4 @@
-import { CrownFilled, PushpinFilled } from '@ant-design/icons'
+import { CrownFilled } from '@ant-design/icons'
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
 import DiscountTag from '@renderer/components/Tags/Model/DiscountTag'
 import ModelLabelTags from '@renderer/components/Tags/Model/ModelLabelTags'
@@ -30,10 +30,9 @@ import OpenNewModelButton from './OpenNewModelButton'
 import SelectModelSearchBar from './searchbar'
 import type { FlatListItem, FlatListModel } from './types'
 
-const PAGE_SIZE = 12
 const ITEM_HEIGHT = 36
 /** 左栏虚拟列表最大可视高度（双栏主体固定高度内滚动） */
-const LEFT_LIST_MAX_HEIGHT = 324
+const LEFT_LIST_MAX_HEIGHT = 424
 
 export interface SelectRoundtableModelsPopupParams {
   /** 初始已选成员：兼容旧格式裸 Model[] 与新格式 RoundtableMention[] */
@@ -128,7 +127,7 @@ export const RolePanel: React.FC<{
 
 /**
  * 群聊（圆桌 V2）成员选择弹窗：双栏布局。
- * 左栏：模型库（搜索 + 分组虚拟列表 + 已选置顶），
+ * 左栏：模型库（搜索 + 分组虚拟列表，模型位置不随选中态变化），
  * 右栏：已选成员列表（模型 × 角色独立绑定，支持单个/批量设置角色）。
  * 确认返回 RoundtableMention[]，取消/关闭返回 undefined。
  */
@@ -141,6 +140,9 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(true)
   const listRef = useRef<DynamicVirtualListRef>(null)
+  // 左栏列表区域容器：实测剩余可用高度，避免列表溢出压到底栏
+  const listAreaRef = useRef<HTMLDivElement>(null)
+  const [listAreaHeight, setListAreaHeight] = useState(0)
   const [_searchText, _setSearchText] = useState('')
   const searchText = useDeferredValue(_searchText)
 
@@ -318,6 +320,19 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
     })
   }, [])
 
+  // 监听左栏列表区域实际可用高度（弹窗内为固定高度布局，实测可兼容标题/底栏高度变化）
+  useEffect(() => {
+    const el = listAreaRef.current
+    if (!el) return
+    setListAreaHeight(el.clientHeight)
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height ?? 0
+      setListAreaHeight(height)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   // 构建左栏列表：过滤 → 去重 → 搜索 → 已选置顶 + 按 serviceName 分组（组标题可折叠）
   const { listItems, modelItems } = useMemo(() => {
     const items: FlatListItem[] = []
@@ -357,8 +372,8 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
       return { raw, model, uniqId: getModelUniqId(model) }
     })
 
-    const buildModelItem = (entry: ModelEntry, pinned: boolean): FlatListModel => ({
-      key: `${pinned ? 'pinned-' : ''}${entry.raw.baseId || entry.model.id}-${entry.raw.serviceName}`,
+    const buildModelItem = (entry: ModelEntry): FlatListModel => ({
+      key: `${entry.raw.baseId || entry.model.id}-${entry.raw.serviceName}`,
       type: 'model',
       name: (
         <ModelName>
@@ -380,29 +395,13 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
         </Avatar>
       ),
       model: entry.model,
-      isSelected: selectedModelUniqIds.has(entry.uniqId),
-      isPinned: pinned
+      isSelected: selectedModelUniqIds.has(entry.uniqId)
     })
 
-    // 已选置顶：仅在无搜索时展示
-    const showPinned = !searchText.trim()
-    const pinnedEntries = showPinned ? entries.filter((entry) => selectedModelUniqIds.has(entry.uniqId)) : []
-    const restEntries = showPinned ? entries.filter((entry) => !selectedModelUniqIds.has(entry.uniqId)) : entries
-
-    if (pinnedEntries.length > 0) {
-      items.push({
-        key: 'group-pinned',
-        type: 'group',
-        name: t('roundtable.popup.pinned'),
-        icon: null,
-        actions: null,
-        isSelected: false
-      })
-      pinnedEntries.forEach((entry) => items.push(buildModelItem(entry, true)))
-    }
-
+    // 不按选中态重排：模型始终停留在原分组原位（选中态仅由勾选框与右栏已选条体现），
+    // 避免勾选/取消勾选时列表整体跳动、模型位置到处变化，影响选择操作
     // 按 serviceName 分组
-    const groupedByService = restEntries.reduce(
+    const groupedByService = entries.reduce(
       (acc, entry) => {
         const serviceName = entry.raw.serviceName || 'Unknown'
         if (!acc[serviceName]) {
@@ -425,7 +424,7 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
       })
 
       if (!collapsedGroups.has(serviceName)) {
-        groupEntries.forEach((entry) => items.push(buildModelItem(entry, false)))
+        groupEntries.forEach((entry) => items.push(buildModelItem(entry)))
       }
     })
 
@@ -440,14 +439,16 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
     collapsedGroups,
     selectedModelUniqIds,
     getDiscount,
-    getLabelItems,
-    t
+    getLabelItems
   ])
 
   const listHeight = useMemo(() => {
-    const rows = Math.min(PAGE_SIZE, Math.max(1, Math.ceil(listItems.length / 2)))
-    return Math.min(rows * ITEM_HEIGHT, LEFT_LIST_MAX_HEIGHT)
-  }, [listItems.length])
+    // 左栏为单列虚拟列表且弹窗主体固定高度：视口直接铺满 ListArea 实测可用高度
+    // （上限 LEFT_LIST_MAX_HEIGHT）。此前按「条目数 / 2」计算行数，视口只有内容一半高，
+    // 导致列表区域过矮、行被裁切并出现多余滚动条
+    const available = listAreaHeight > 0 ? Math.floor(listAreaHeight) : LEFT_LIST_MAX_HEIGHT
+    return Math.max(Math.min(available, LEFT_LIST_MAX_HEIGHT), ITEM_HEIGHT)
+  }, [listAreaHeight])
 
   const handleItemClick = useCallback(
     (item: FlatListItem) => {
@@ -476,15 +477,6 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
     (item: FlatListItem) => {
       const isFocused = item.key === focusedKey
       if (item.type === 'group') {
-        // 已选置顶分组头：不可折叠
-        if (item.key === 'group-pinned') {
-          return (
-            <GroupItem as="div" onClick={undefined} style={{ cursor: 'default' }}>
-              <PushpinFilled style={{ fontSize: 12 }} />
-              {item.name}
-            </GroupItem>
-          )
-        }
         const serviceName = String(item.name)
         const isCollapsed = collapsedGroups.has(serviceName)
         return (
@@ -522,6 +514,7 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
   return (
     <Modal
       open={open}
+      centered
       onCancel={() => setOpen(false)}
       afterClose={() => {
         resolve(undefined)
@@ -536,7 +529,7 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
           padding: 0
         },
         body: {
-          height: 460,
+          height: 560,
           maxHeight: 'inherit',
           // 全局 ant.css 给 .ant-modal-body 设了 overflow-y: auto 会裁剪星光飞散动画，
           // 本弹窗列表为虚拟滚动（自身容器内滚动），body 无需滚动，覆盖为 visible
@@ -556,27 +549,29 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
               onSearch={setSearchText}
               extra={showOpenModelButton ? <OpenNewModelButton onSuccess={handleOpenModelSuccess} /> : undefined}
             />
-            <Spin spinning={loading}>
-              {modelItems.length > 0 ? (
-                <DynamicVirtualList
-                  ref={listRef}
-                  list={listItems}
-                  size={listHeight}
-                  getItemKey={getItemKey}
-                  estimateSize={estimateSize}
-                  isSticky={isSticky}
-                  scrollPaddingStart={ITEM_HEIGHT}
-                  overscan={5}
-                  scrollerStyle={{ pointerEvents: isMouseOver ? 'auto' : 'none' }}
-                  onChange={handleDynamicListChange}>
-                  {rowRenderer}
-                </DynamicVirtualList>
-              ) : (
-                <EmptyState>
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('models.no_matches')} />
-                </EmptyState>
-              )}
-            </Spin>
+            <ListArea ref={listAreaRef}>
+              <Spin spinning={loading}>
+                {modelItems.length > 0 ? (
+                  <DynamicVirtualList
+                    ref={listRef}
+                    list={listItems}
+                    size={listHeight}
+                    getItemKey={getItemKey}
+                    estimateSize={estimateSize}
+                    isSticky={isSticky}
+                    scrollPaddingStart={ITEM_HEIGHT}
+                    overscan={5}
+                    scrollerStyle={{ pointerEvents: isMouseOver ? 'auto' : 'none' }}
+                    onChange={handleDynamicListChange}>
+                    {rowRenderer}
+                  </DynamicVirtualList>
+                ) : (
+                  <EmptyState>
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('models.no_matches')} />
+                  </EmptyState>
+                )}
+              </Spin>
+            </ListArea>
           </LeftColumn>
           <RightColumn>
             <RightHeader>
@@ -673,7 +668,7 @@ const SelectRoundtableModelsPopupView: React.FC<Props> = ({
 const PopupBody = styled.div`
   display: flex;
   flex-direction: column;
-  height: 460px;
+  height: 560px;
   /* 保持可见：搜索栏右侧「开通新模型」按钮的星光飞散动画需要溢出到容器外 */
   overflow: visible;
 `
@@ -709,6 +704,12 @@ const LeftColumn = styled.div`
   flex-direction: column;
   flex: 1;
   min-width: 0;
+`
+
+/** 左栏列表区域：占据搜索栏以下的剩余高度，供 ResizeObserver 实测可用高度 */
+const ListArea = styled.div`
+  flex: 1;
+  min-height: 0;
 `
 
 const RightColumn = styled.div`

@@ -1,11 +1,10 @@
 import { selectTokenPlanHourlyDayUsageApi } from '@renderer/api/billManagement'
-import { listUnopenedPayLaterModelsApi } from '@renderer/api/openManagement'
 import DiscountTag from '@renderer/components/Tags/Model/DiscountTag'
 import ModelLabelTags from '@renderer/components/Tags/Model/ModelLabelTags'
 import ModelQuotaMeter from '@renderer/components/Tags/Model/ModelQuotaMeter'
 import { TopView } from '@renderer/components/TopView'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
-import { FEATURE_SELECT_MODEL_QUOTA_TABS } from '@renderer/config/featureFlags'
+import { FEATURE_FREE_TRIAL_TAB, FEATURE_SELECT_MODEL_QUOTA_TABS } from '@renderer/config/featureFlags'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
 import {
   createActivePayLaterFilter,
@@ -118,7 +117,8 @@ const SelectModelPopupView: React.FC<Props> = ({
   // 双页签（按量付费/免费体验）：特性开关一键回滚，关闭时行为与改造前完全一致
   const quotaTabsEnabled = FEATURE_SELECT_MODEL_QUOTA_TABS
   const [activeTab, setActiveTab] = useState<ModelTabKey>('pay')
-  const isFreeTab = quotaTabsEnabled && activeTab === 'free'
+  // 「免费体验」入口临时屏蔽（FEATURE_FREE_TRIAL_TAB=false）时锁定按量付费页签
+  const isFreeTab = quotaTabsEnabled && FEATURE_FREE_TRIAL_TAB && activeTab === 'free'
 
   // 免费体验模型（selectType=office，与网站端体验中心同源接口；额度已归一到 quota 字段）
   const {
@@ -131,18 +131,6 @@ const SelectModelPopupView: React.FC<Props> = ({
     modelAttribute: modelAttribute ?? 'text_model',
     modelType: modelType ?? '1'
   })
-
-  // 「已开通 n / 共 m」统计用：未开通按量模型 key 集合；拉取失败降级为空（共 m = 已开通 ∪ 免费体验）
-  const [unopenedKeys, setUnopenedKeys] = useState<string[]>([])
-  useEffect(() => {
-    if (!quotaTabsEnabled) return
-    listUnopenedPayLaterModelsApi()
-      .then((res: any) => {
-        const rows = Array.isArray(res?.data) ? res.data : []
-        setUnopenedKeys(rows.map((u: any) => `${u.baseId ?? u.id ?? ''}-${u.serviceName ?? ''}`))
-      })
-      .catch(() => setUnopenedKeys([]))
-  }, [quotaTabsEnabled])
 
   // 当前选中的模型ID
   const currentModelId = model ? getModelUniqId(model) : ''
@@ -171,22 +159,11 @@ const SelectModelPopupView: React.FC<Props> = ({
   // 推荐标签（人气模型/最新推荐等）：字典 labelId → 名称，列表接口透传 recommendLabel/modelLabel
   const { getLabelItems } = useModelLabels()
 
-  // 按量付费模型源（未经搜索/分组折叠处理，供列表构建与统计复用）
+  // 按量付费模型源（未经搜索/分组折叠处理，供列表构建复用）
   const payModels = useMemo(
     () => (!userEnabledPlan ? getFilteredModels(createActivePayLaterFilter()) : tokenPlanModels),
     [userEnabledPlan, getFilteredModels, tokenPlanModels]
   )
-
-  // 「已开通 n / 共 m」统计：m = 已开通 ∪ 未开通按量 ∪ 免费体验 的去重并集（baseId/id + serviceName 口径）
-  const quotaStats = useMemo(() => {
-    if (!quotaTabsEnabled) return undefined
-    const key = (m: any) => `${m.baseId ?? m.id ?? ''}-${m.serviceName ?? ''}`
-    const openedSet = new Set(payModels.map(key))
-    const union = new Set(openedSet)
-    unopenedKeys.forEach((k) => union.add(k))
-    freeModels.forEach((m) => union.add(key(m)))
-    return { openedCount: openedSet.size, totalCount: union.size }
-  }, [quotaTabsEnabled, payModels, unopenedKeys, freeModels])
 
   // 汇总条：免费额度总剩余（仅免费页签展示；无任何额度配置时隐藏）
   const freeTotalRest = useMemo(() => {
@@ -604,8 +581,6 @@ const SelectModelPopupView: React.FC<Props> = ({
             onTabChange={handleTabChange}
             totalRest={freeTotalRest?.total}
             totalRestUnit={freeTotalRest?.unit}
-            openedCount={quotaStats?.openedCount ?? 0}
-            totalCount={quotaStats?.totalCount}
           />
         )}
         <SelectModelSearchBar

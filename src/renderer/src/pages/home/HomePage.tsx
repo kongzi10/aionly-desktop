@@ -7,19 +7,27 @@ import { useActiveTopic } from '@renderer/hooks/useTopic'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import NavigationService from '@renderer/services/NavigationService'
+import type { RootState } from '@renderer/store'
+import { updateAssistant } from '@renderer/store/assistants'
 import { newMessagesActions } from '@renderer/store/newMessage'
+import { setRoundtableAssistantId, setRoundtableTopicRecoveryDone } from '@renderer/store/settings'
 import type { Assistant, AssistantWorkspace, Topic } from '@renderer/types'
 import { uuid } from '@renderer/utils'
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, SECOND_MIN_WINDOW_WIDTH } from '@shared/config/constant'
 import { AnimatePresence, motion } from 'motion/react'
 import type { FC } from 'react'
 import { startTransition, useCallback, useEffect, useState } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styled, { css } from 'styled-components'
 
 import RoundtableChat from '../roundtable/RoundtableChat'
-import { filterAssistantsByWorkspace, getAssistantWorkspace } from '../roundtable/roundtableWorkspace'
+import { computeRoundtableTopicRecovery, logRoundtableTopicRecovery } from '../roundtable/roundtableRecovery'
+import {
+  filterAssistantsByWorkspace,
+  getAssistantWorkspace,
+  pickRoundtableCarrier
+} from '../roundtable/roundtableWorkspace'
 import Chat from './Chat'
 import LandingPage from './LandingPage'
 import Navbar from './Navbar'
@@ -38,6 +46,9 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
   const { assistants, addAssistant } = useAssistants()
   const { defaultAssistant } = useDefaultAssistant()
   const workspaceAssistants = filterAssistantsByWorkspace(assistants, workspace)
+  // 群聊会话载体 id（按身份持久化于 settings，随 redux-persist 存取）
+  const roundtableAssistantId = useSelector((state: RootState) => state.settings.roundtableAssistantId)
+  const roundtableTopicRecoveryDone = useSelector((state: RootState) => state.settings.roundtableTopicRecoveryDone)
   const navigate = useNavigate()
   const { isLeftNavbar } = useNavbarPosition()
 
@@ -51,6 +62,12 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
   const [activeAssistant, _setActiveAssistant] = useState<Assistant>(() => {
     const stateAssistant = state?.assistant as Assistant | undefined
     if (stateAssistant && getAssistantWorkspace(stateAssistant) === workspace) return stateAssistant
+    if (workspace === 'roundtable') {
+      // 群聊：持久化 id 优先，其次「最旧」（addAssistant 头插 ⇒ 末位 = 最早的会话载体）。
+      // 不走模块缓存与 workspaceAssistants[0]：切换身份重挂载后缓存被其它身份覆写，
+      // 而 [0] 是最新创建的角色，会导致对话列表"消失"。
+      return pickRoundtableCarrier(workspaceAssistants, roundtableAssistantId) || workspaceDefault
+    }
     const cachedAssistant = workspaceAssistants.find((assistant) => assistant.id === activeAssistants[workspace]?.id)
     return cachedAssistant || workspaceAssistants[0] || workspaceDefault
   })
@@ -67,6 +84,30 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
       addAssistant(workspaceDefault)
     }
   }, [addAssistant, workspaceAssistants.length, workspaceDefault])
+
+  // 群聊：把当前会话载体 id 回写到 settings（按身份持久化），保证重挂载/重启/切换身份后可精确命中
+  useEffect(() => {
+    if (workspace !== 'roundtable') return
+    const carrierId = activeAssistant?.id
+    if (!carrierId || carrierId === roundtableAssistantId) return
+    dispatch(setRoundtableAssistantId(carrierId))
+  }, [workspace, activeAssistant?.id, roundtableAssistantId, dispatch])
+
+  // 群聊：存量话题归位（每身份一次）。把历史 bug 期间误挂到角色下的"用过"的话题搬回会话载体，
+  // 只移动不删除；消息按 topicId 存于 IndexedDB，移动归属不影响消息读取。
+  useEffect(() => {
+    if (workspace !== 'roundtable' || roundtableTopicRecoveryDone) return
+    if (workspaceAssistants.length === 0) return
+    const carrier = activeAssistant
+    if (!carrier || !workspaceAssistants.some((assistant) => assistant.id === carrier.id)) return
+    const others = workspaceAssistants.filter((assistant) => assistant.id !== carrier.id)
+    const result = computeRoundtableTopicRecovery(carrier, others)
+    result.patches.forEach((patch) => {
+      dispatch(updateAssistant({ id: patch.assistantId, topics: patch.topics }))
+    })
+    logRoundtableTopicRecovery(carrier, result)
+    dispatch(setRoundtableTopicRecoveryDone(true))
+  }, [workspace, roundtableTopicRecoveryDone, workspaceAssistants, activeAssistant, dispatch])
 
   useShortcut('toggle_show_assistants', () => {
     if (topicPosition === 'right') {
@@ -111,8 +152,12 @@ const HomePage: FC<Props> = ({ mode = 'chat' }) => {
         const newTopic = newAssistant.topics[0]
         _setActiveTopic((prev) => (newTopic?.id === prev.id ? prev : newTopic))
       })
+      if (workspace === 'roundtable') {
+        // 群聊内显式切换会话载体时同步持久化，保证下次挂载精确命中
+        dispatch(setRoundtableAssistantId(newAssistant.id))
+      }
     },
-    [_setActiveTopic, activeAssistant?.id]
+    [_setActiveTopic, activeAssistant?.id, workspace, dispatch]
   )
 
   const setActiveTopic = useCallback(

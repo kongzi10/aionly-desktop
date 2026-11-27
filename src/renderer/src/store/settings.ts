@@ -247,6 +247,10 @@ export interface SettingsState {
   // API Server
   apiServer: ApiServerConfig
   showMessageOutline: boolean
+  /** 群聊(roundtable)会话载体 assistant id：按身份持久化，避免依赖数组顺序/内存缓存选取 */
+  roundtableAssistantId?: string
+  /** 群聊存量话题归位（把误挂在角色下的对话搬回会话载体）幂等标记，每身份执行一次 */
+  roundtableTopicRecoveryDone?: boolean
 }
 
 export type MultiModelMessageStyle = 'horizontal' | 'vertical' | 'fold' | 'grid'
@@ -448,7 +452,9 @@ export const initialState: SettingsState = {
     port: API_SERVER_DEFAULTS.PORT,
     apiKey: `cs-sk-${uuid()}`
   },
-  showMessageOutline: false
+  showMessageOutline: false,
+  roundtableAssistantId: undefined,
+  roundtableTopicRecoveryDone: false
 }
 
 const settingsSlice = createSlice({
@@ -901,6 +907,12 @@ const settingsSlice = createSlice({
     },
     setShowMessageOutline: (state, action: PayloadAction<boolean>) => {
       state.showMessageOutline = action.payload
+    },
+    setRoundtableAssistantId: (state, action: PayloadAction<string>) => {
+      state.roundtableAssistantId = action.payload
+    },
+    setRoundtableTopicRecoveryDone: (state, action: PayloadAction<boolean>) => {
+      state.roundtableTopicRecoveryDone = action.payload
     }
   }
 })
@@ -1036,7 +1048,9 @@ export const {
   // API Server actions
   setApiServerEnabled,
   setApiServerPort,
-  setApiServerApiKey
+  setApiServerApiKey,
+  setRoundtableAssistantId,
+  setRoundtableTopicRecoveryDone
 } = settingsSlice.actions
 
 export default settingsSlice.reducer

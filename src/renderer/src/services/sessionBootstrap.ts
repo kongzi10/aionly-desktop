@@ -13,6 +13,7 @@ import { getFinanceInfo } from '@renderer/api/balance'
 import { getApikeyByUserId, getUserProfileApi } from '@renderer/api/login'
 import { setupModelsForCurrentUser } from '@renderer/hooks/useAiOnlyModels'
 import { profileStorage } from '@renderer/services/ProfileStorageService'
+import { refreshServiceInfo } from '@renderer/services/serviceInfoService'
 import { store } from '@renderer/store'
 import { updateProvider as updateProviderAction } from '@renderer/store/llm'
 import { setApiKey, setMyBalance, setUserInfo } from '@renderer/store/user'
@@ -96,6 +97,8 @@ export async function initializeSwitchedSession(
   if (!fresh) return 'expired'
 
   applySessionData(fresh)
+  // 切换身份后补拉服务配置（serviceInfo/planStatus），失败不阻塞切换链路（内部已捕获）
+  await refreshServiceInfo()
   await setupModelsForCurrentUser(10, userId).catch(() => undefined)
   return 'ok'
 }

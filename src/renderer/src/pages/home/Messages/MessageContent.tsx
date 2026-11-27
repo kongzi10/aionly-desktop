@@ -1,6 +1,7 @@
 import { getModelUniqId } from '@renderer/services/ModelService'
 import { useAppSelector } from '@renderer/store'
 import type { Message } from '@renderer/types/newMessage'
+import { getMentionAssistantId, getMentionModel } from '@renderer/types/roundtable'
 import { Flex } from 'antd'
 import { isEmpty } from 'lodash'
 import React from 'react'
@@ -19,12 +20,13 @@ const MessageContent: React.FC<Props> = ({ message }) => {
         <Flex gap="8px" wrap style={{ marginBottom: '10px' }}>
           {message.mentions?.map((mention) => {
             // 兼容旧格式裸 Model 与新格式 RoundtableMention（{ model, assistantId }）
-            const model = 'model' in mention ? mention.model : mention
+            // 注意：aionly 的 Model 自身带 model 字符串字段，不能用 'model' in mention 判断格式
+            const model = getMentionModel(mention)
             if (!model) {
               return null
             }
-            const role =
-              'assistantId' in mention ? assistants.find((item) => item.id === mention.assistantId) : undefined
+            const mentionAssistantId = getMentionAssistantId(mention)
+            const role = mentionAssistantId ? assistants.find((item) => item.id === mentionAssistantId) : undefined
             return (
               <MentionTag key={getModelUniqId(model)}>
                 {'@' + model.name}

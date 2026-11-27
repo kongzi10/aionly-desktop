@@ -866,6 +866,84 @@ describe('providerToAiSdkConfig', () => {
     })
   })
 
+  describe('AiOnly (aionly) builder', () => {
+    // 运行时 apiHost 已经过 formatProviderApiHost 追加 /v1 后缀
+    const makeAionlyProvider = () =>
+      makeProvider({
+        id: 'aionly',
+        type: 'openai',
+        apiHost: 'https://api.aionly.com/api/ai/v1'
+      })
+
+    it('routes gemini models (endpoint_type=gemini) to the native /v1beta entry', async () => {
+      const provider = makeAionlyProvider()
+      const model = makeModel('gemini-3.6-flash', provider.id, { endpoint_type: 'gemini' })
+
+      const config = await providerToAiSdkConfig(provider, model)
+
+      expect(config.providerId).toBe('newapi')
+      const settings = config.providerSettings as NewApiProviderSettings
+      expect(settings.endpointType).toBe('gemini')
+      // /v1 后缀需被替换为 /v1beta，而非叠加或保留
+      expect(settings.baseURL).toBe('https://api.aionly.com/api/ai/v1beta')
+      expect(settings.apiKey).toBe('test-key')
+    })
+
+    it('routes gemini-prefixed models without endpoint_type to the native /v1beta entry', async () => {
+      const provider = makeAionlyProvider()
+      const model = makeModel('gemini-2.5-pro', provider.id)
+
+      const config = await providerToAiSdkConfig(provider, model)
+
+      expect(config.providerId).toBe('newapi')
+      const settings = config.providerSettings as NewApiProviderSettings
+      expect(settings.endpointType).toBe('gemini')
+      expect(settings.baseURL).toBe('https://api.aionly.com/api/ai/v1beta')
+    })
+
+    it('keeps non-gemini models on the OpenAI-compatible path', async () => {
+      const provider = makeAionlyProvider()
+      const model = makeModel('gpt-4o', provider.id, { endpoint_type: 'openai' })
+
+      const config = await providerToAiSdkConfig(provider, model)
+
+      expect(config.providerId).toBe('openai-compatible')
+      const settings = config.providerSettings as OpenAICompatibleProviderSettings
+      expect(settings.baseURL).toBe('https://api.aionly.com/api/ai/v1')
+    })
+
+    it('keeps claude models (endpoint_type=anthropic) on the OpenAI-compatible path', async () => {
+      const provider = makeAionlyProvider()
+      const model = makeModel('claude-sonnet-4-5', provider.id, { endpoint_type: 'anthropic' })
+
+      const config = await providerToAiSdkConfig(provider, model)
+
+      expect(config.providerId).toBe('openai-compatible')
+    })
+
+    it('excludes gemini embedding models from native routing', async () => {
+      const provider = makeAionlyProvider()
+      // getDefaultEndpointTypeById 会因 id 含 gemini 而推断为 gemini，但 embedding 必须走兼容链路
+      const model = makeModel('gemini-embedding-001', provider.id, { endpoint_type: 'gemini' })
+
+      const config = await providerToAiSdkConfig(provider, model)
+
+      expect(config.providerId).toBe('openai-compatible')
+    })
+
+    it('excludes image generation models from native routing', async () => {
+      const provider = makeAionlyProvider()
+
+      const geminiImageModel = makeModel('gemini-2.5-flash-image', provider.id, { endpoint_type: 'gemini' })
+      const imageConfig = await providerToAiSdkConfig(provider, geminiImageModel)
+      expect(imageConfig.providerId).toBe('openai-compatible')
+
+      const dalleModel = makeModel('dall-e-3', provider.id, { endpoint_type: 'image-generation' })
+      const dalleConfig = await providerToAiSdkConfig(provider, dalleModel)
+      expect(dalleConfig.providerId).toBe('openai-compatible')
+    })
+  })
+
   describe('AiHubMix builder', () => {
     it('returns aihubmix provider config', async () => {
       const provider = makeProvider({

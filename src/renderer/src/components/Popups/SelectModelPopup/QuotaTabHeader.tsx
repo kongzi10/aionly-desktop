@@ -1,3 +1,4 @@
+import { FEATURE_FREE_TRIAL_TAB } from '@renderer/config/featureFlags'
 import { formatQuotaNumber } from '@renderer/hooks/useModelQuota'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -5,7 +6,7 @@ import styled from 'styled-components'
 
 /**
  * 选择模型弹窗双页签头部（V3 卡片环形额度样式）：
- * - 胶囊页签：按量付费 / 免费体验；右侧「已开通 n / 共 m」统计；
+ * - 分段页签（灰底圆角容器 + 白底选中项）：按量付费 / 免费体验；
  * - 绿色汇总条：免费额度总剩余，仅「免费体验」页签展示（按量付费页签无额度区）。
  * 视觉参数对齐 docs/选择模型弹窗免费体验改造/样式方案V3-卡片环形额度.html。
  */
@@ -19,22 +20,17 @@ interface QuotaTabHeaderProps {
   totalRest?: number
   /** 汇总条单位：tokens（文本模型，默认）/ times（交互次数） */
   totalRestUnit?: 'tokens' | 'times'
-  /** 已开通模型数 */
-  openedCount: number
-  /** 模型总数（已开通 ∪ 未开通 ∪ 免费体验；undefined 时隐藏统计） */
-  totalCount?: number
 }
 
 const QuotaTabHeader: React.FC<QuotaTabHeaderProps> = ({
   activeTab,
   onTabChange,
   totalRest,
-  totalRestUnit = 'tokens',
-  openedCount,
-  totalCount
+  totalRestUnit = 'tokens'
 }) => {
   const { t } = useTranslation()
-  const showSumbar = activeTab === 'free' && totalRest !== undefined
+  const freeTabVisible = FEATURE_FREE_TRIAL_TAB
+  const showSumbar = freeTabVisible && activeTab === 'free' && totalRest !== undefined
 
   return (
     <Wrap>
@@ -43,11 +39,12 @@ const QuotaTabHeader: React.FC<QuotaTabHeaderProps> = ({
           <Pill className={activeTab === 'pay' ? 'on' : ''} onClick={() => onTabChange('pay')}>
             {t('selectModel.tab.payLater')}
           </Pill>
-          <Pill className={activeTab === 'free' ? 'on' : ''} onClick={() => onTabChange('free')}>
-            {t('selectModel.tab.freeTrial')}
-          </Pill>
+          {freeTabVisible && (
+            <Pill className={activeTab === 'free' ? 'on' : ''} onClick={() => onTabChange('free')}>
+              {t('selectModel.tab.freeTrial')}
+            </Pill>
+          )}
         </Pills>
-        {totalCount !== undefined && <Stats>{t('selectModel.openedStats', { n: openedCount, m: totalCount })}</Stats>}
       </TabRow>
       {showSumbar && (
         <SumBar>
@@ -77,13 +74,14 @@ const TabRow = styled.div`
 const Pills = styled.div`
   display: inline-flex;
   background: var(--color-background-mute);
-  border-radius: 999px;
+  border-radius: 10px;
   padding: 3px;
 `
 
 const Pill = styled.div`
-  padding: 5px 14px;
-  border-radius: 999px;
+  padding: 4px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font-size: 13px;
   color: var(--color-text-2);
   cursor: pointer;
@@ -96,16 +94,12 @@ const Pill = styled.div`
   }
 
   &.on {
-    background: var(--color-primary-soft);
-    color: var(--color-white);
-    font-weight: 600;
+    background: var(--color-background);
+    border-color: var(--color-border);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    color: var(--color-text);
+    font-weight: 500;
   }
-`
-
-const Stats = styled.div`
-  font-size: 12px;
-  color: var(--color-text-3);
-  white-space: nowrap;
 `
 
 const SumBar = styled.div`

@@ -5942,7 +5942,7 @@
             "quota_tip": "已创建 {{created}} 个 · 最多可创建 {{max}} 个",
             "range_info": "第 {{from}}-{{to}} 个 / 共 {{total}} 个",
             "reset_filters": "重置筛选",
-            "search_placeholder": "搜索名称 / 密钥…",
+            "search_placeholder": "搜索名称…",
             "sort_created": "按创建时间",
             "sort_name": "按名称",
             "stat_total": "全部密钥",

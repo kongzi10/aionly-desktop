@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CacheService } from '../CacheService'
-import { ProfileGeneration, switchRendererProfile } from '../ProfileRendererRuntime'
+import { applyRendererProfileStorage, ProfileGeneration, switchRendererProfile } from '../ProfileRendererRuntime'
+import { ACTIVE_PROFILE_STORAGE_KEY } from '../ProfileStorageService'
 
 describe('switchRendererProfile', () => {
   it('invalidates work started before an account switch', () => {
@@ -176,5 +177,52 @@ describe('switchRendererProfile', () => {
     )
 
     expect(CacheService.get('inputbar-draft')).toBeNull()
+  })
+})
+
+describe('applyRendererProfileStorage', () => {
+  const profileId = '0123456789abcdef0123456789abcdef'
+
+  beforeEach(() => localStorage.clear())
+
+  it('keeps profile-scoped serviceInfo when the bootstrap does not carry it', () => {
+    localStorage.setItem(`profile:${profileId}:serviceInfo`, '{"planStatus":1}')
+
+    applyRendererProfileStorage({ profileId, bootstrap: { token: 'next-token', userInfo: '{"userId":"42"}' } })
+
+    expect(localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe(profileId)
+    expect(localStorage.getItem(`profile:${profileId}:serviceInfo`)).toBe('{"planStatus":1}')
+    expect(localStorage.getItem(`profile:${profileId}:token`)).toBe('next-token')
+  })
+
+  it('overwrites serviceInfo when the bootstrap carries a newer value', () => {
+    localStorage.setItem(`profile:${profileId}:serviceInfo`, '{"planStatus":0}')
+
+    applyRendererProfileStorage({ profileId, bootstrap: { serviceInfo: '{"planStatus":1}' } })
+
+    expect(localStorage.getItem(`profile:${profileId}:serviceInfo`)).toBe('{"planStatus":1}')
+  })
+
+  it('still removes credential keys missing from the bootstrap and clears plain keys', () => {
+    localStorage.setItem(`profile:${profileId}:token`, 'old-token')
+    localStorage.setItem(`profile:${profileId}:userSecretKey`, 'old-secret')
+    localStorage.setItem('serviceInfo', 'plain-service-info')
+
+    applyRendererProfileStorage({ profileId, bootstrap: { userInfo: '{"userId":"42"}' } })
+
+    expect(localStorage.getItem(`profile:${profileId}:token`)).toBeNull()
+    expect(localStorage.getItem(`profile:${profileId}:userSecretKey`)).toBeNull()
+    expect(localStorage.getItem('serviceInfo')).toBeNull()
+  })
+
+  it('clears plain auth keys entirely when switching to the logged-out runtime', () => {
+    localStorage.setItem('token', 'plain-token')
+    localStorage.setItem('serviceInfo', 'plain-service-info')
+
+    applyRendererProfileStorage({ profileId: null, bootstrap: null })
+
+    expect(localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBeNull()
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(localStorage.getItem('serviceInfo')).toBeNull()
   })
 })

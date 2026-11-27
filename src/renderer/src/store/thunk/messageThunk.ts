@@ -1056,8 +1056,9 @@ export const sendMessage =
         })
       } else {
         // 兼容旧格式裸 Model 与新格式 RoundtableMention（{ model, assistantId }），统一提取 Model
+        // 注意：aionly 的 Model 自身带 model 字符串字段，不能用 'model' in mention 判断格式
         const mentionedModels = (userMessage.mentions ?? [])
-          .map((mention) => ('model' in mention ? mention.model : mention))
+          .map((mention) => getMentionModel(mention))
           .filter((model): model is Model => !!model)
 
         if (mentionedModels.length > 0) {
@@ -1309,8 +1310,9 @@ export const resendMessageThunk =
       // 再处理新的重传（用户消息提及，但是现有助手消息中不存在提及的模型）
       const originModelSet = new Set(assistantMessagesToReset.map((m) => m.model).filter((m) => m !== undefined))
       // 兼容旧格式裸 Model 与新格式 RoundtableMention（{ model, assistantId }），统一提取 Model
+      // 注意：aionly 的 Model 自身带 model 字符串字段，不能用 'model' in mention 判断格式
       const mentionedModels = (userMessageToResend.mentions ?? [])
-        .map((mention) => ('model' in mention ? mention.model : mention))
+        .map((mention) => getMentionModel(mention))
         .filter((model): model is Model => !!model)
       const mentionedModelSet = new Set(mentionedModels)
       const newModelSet = new Set([...mentionedModelSet].filter((m) => !originModelSet.has(m)))

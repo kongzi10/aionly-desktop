@@ -1,14 +1,12 @@
-import { getUserProfileApi } from '@renderer/api/login'
 import { TopView } from '@renderer/components/TopView'
 import Verify from '@renderer/components/verifition/Verify'
 import { SubAccountLoginProvider } from '@renderer/pages/login/contexts/SubAccountContext'
 import { applyProfileSwitch } from '@renderer/services/ProfileLifecycleService'
-import { store } from '@renderer/store'
-import { setUserInfo } from '@renderer/store/user'
+import { applySessionData, fetchSessionData } from '@renderer/services/sessionBootstrap'
 import type { FormInstance, TabsProps } from 'antd'
 import { Button, Flex, Modal } from 'antd'
 import { Tabs } from 'antd'
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { NavigateFunction } from 'react-router-dom'
 import styled from 'styled-components'
@@ -46,25 +44,21 @@ const BindPhoneEmail: React.FC<Props> = ({ resolve, parentForm, navigate, onLogi
   const phoneBindRef = useRef<PhoneBindRef | null>(null)
   const emailBindRef = useRef<EmailBindRef | null>(null)
 
-  /** 查询并保存用户信息 **/
-  const saveUserInfo = useCallback(async () => {
-    const res = await getUserProfileApi()
-    const data = res.data?.user
-    // const balance = await getFinanceInfo()
-    // dispatch(setMyBalance(balance.data))
-    return data
-  }, [])
-
-  /** 登录成功 **/
+  /** 登录成功：会话数据拉取复用 sessionBootstrap（与 LoginForm/SubAccountLogin 链路一致，401 时返回 null） **/
   const handleLoginSuccess = async () => {
-    const userData = await saveUserInfo()
+    const session = await fetchSessionData()
+    if (!session) throw new Error('登录态无效，请重新登录')
+    const userData = session.userData
+    // serviceInfo 不随 bootstrap 携带：登录后由 refreshServiceInfo() 统一拉取写入 profile 隔离存储；
+    // localUserSecret 补全，避免绑定链路登录后 profile 凭据缺失
     const bootstrap = {
       token: localStorage.getItem('token') || undefined,
-      userInfo: JSON.stringify(userData || {})
+      userInfo: JSON.stringify(userData || {}),
+      localUserSecret: session.secretKey || undefined
     }
     const result = await window.api.profile.activate(String(userData?.userId || ''), bootstrap)
     await applyProfileSwitch({ profileId: result.profileId, bootstrap }, () => {
-      store.dispatch(setUserInfo(userData || {}))
+      applySessionData(session)
     })
   }
 

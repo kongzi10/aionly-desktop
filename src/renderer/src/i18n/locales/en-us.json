@@ -5942,7 +5942,7 @@
             "quota_tip": "{{created}} created · up to {{max}}",
             "range_info": "{{from}}-{{to}} of {{total}}",
             "reset_filters": "Reset filters",
-            "search_placeholder": "Search name / key…",
+            "search_placeholder": "Search name…",
             "sort_created": "By creation time",
             "sort_name": "By name",
             "stat_total": "All keys",

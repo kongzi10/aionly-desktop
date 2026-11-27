@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  autoMigrateLegacyProfileData,
   classifyLegacyDataOwner,
   copyMissingRecords,
   isLegacyProfileDataMigrationEnabled,
@@ -12,6 +13,15 @@ import {
 } from '../ProfileDataMigrationService'
 
 const profileId = '0123456789abcdef0123456789abcdef'
+const markerKey = `aionly:renderer-migration:${profileId}`
+
+function seedLegacyReduxOwner(userId: string): void {
+  localStorage.setItem('persist:aionly', JSON.stringify({ user: JSON.stringify({ userInfo: { userId } }) }))
+}
+
+function seedProfileAuth(userId: string): void {
+  localStorage.setItem(`profile:${profileId}:userInfo`, JSON.stringify({ userId }))
+}
 
 describe('ProfileDataMigrationService', () => {
   beforeEach(() => localStorage.clear())
@@ -106,5 +116,159 @@ describe('ProfileDataMigrationService', () => {
 
     await migrateLegacyProfileData(localStorage, profileId, async () => undefined)
     expect(localStorage.getItem(markerKey)).toBe('completed')
+  })
+})
+
+describe('autoMigrateLegacyProfileData', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('marks completion and does nothing when no legacy data exists', async () => {
+    const migrate = vi.fn()
+
+    const result = await autoMigrateLegacyProfileData(profileId, {
+      legacyDatabaseExists: async () => false,
+      migrate
+    })
+
+    expect(result).toBe('none')
+    expect(migrate).not.toHaveBeenCalled()
+    expect(localStorage.getItem(markerKey)).toBe('completed')
+  })
+
+  it('returns none immediately when the marker is already completed', async () => {
+    localStorage.setItem(markerKey, 'completed')
+    seedLegacyReduxOwner('42')
+    seedProfileAuth('42')
+    const migrate = vi.fn()
+
+    const result = await autoMigrateLegacyProfileData(profileId, {
+      legacyDatabaseExists: async () => true,
+      migrate
+    })
+
+    expect(result).toBe('none')
+    expect(migrate).not.toHaveBeenCalled()
+  })
+
+  it('never migrates data owned by another account', async () => {
+    seedLegacyReduxOwner('42')
+    seedProfileAuth('43')
+    const migrate = vi.fn()
+
+    const result = await autoMigrateLegacyProfileData(profileId, {
+      legacyDatabaseExists: async () => false,
+      migrate
+    })
+
+    expect(result).toBe('skipped-owner-mismatch')
+    expect(migrate).not.toHaveBeenCalled()
+    expect(localStorage.getItem(markerKey)).toBeNull()
+  })
+
+  it('skips when the legacy owner cannot be determined', async () => {
+    localStorage.setItem('persist:aionly', JSON.stringify({ settings: '{}' }))
+    seedProfileAuth('43')
+    const migrate = vi.fn()
+
+    const result = await autoMigrateLegacyProfileData(profileId, {
+      legacyDatabaseExists: async () => false,
+      migrate
+    })
+
+    expect(result).toBe('skipped-owner-unknown')
+    expect(migrate).not.toHaveBeenCalled()
+  })
+
+  it('copies legacy data when the profile namespace is untouched', async () => {
+    seedLegacyReduxOwner('42')
+    seedProfileAuth('42')
+    localStorage.setItem('ai302_token', 'legacy-token')
+
+    const result = await autoMigrateLegacyProfileData(profileId, {
+      legacyDatabaseExists: async () => true,
+      migrate: (storage, id) => migrateLegacyProfileData(storage, id, async () => undefined)
+    })
+
+    expect(result).toBe('copied')
+    expect(localStorage.getItem(`persist:aionly:${profileId}`)).not.toBeNull()
+    expect(localStorage.getItem(`profile:${profileId}:ai302_token`)).toBe('legacy-token')
+    expect(localStorage.getItem(markerKey)).toBe('completed')
+    // 只拷不删：旧命名空间数据保留，支持回滚
+    expect(localStorage.getItem('persist:aionly')).not.toBeNull()
+  })
+
+  it('replaces an unused profile namespace that was already initialized', async () => {
+    seedLegacyReduxOwner('42')
+    seedProfileAuth('42')
+    localStorage.setItem(`persist:aionly:${profileId}`, JSON.stringify({ user: JSON.stringify({ token: 't' }) }))
+    const replaceIndexedDb = vi.fn(async () => undefined)
+
+    const result = await autoMigrateLegacyProfileData(profileId, {
+      legacyDatabaseExists: async () => true,
+      profileDatabaseInUse: async () => false,
+      replaceIndexedDb
+    })
+
+    expect(result).toBe('replaced')
+    expect(replaceIndexedDb).toHaveBeenCalledWith(profileId)
+    expect(localStorage.getItem(markerKey)).toBe('completed')
+    // user slice 保留当前登录态，其余 slice 来自旧数据
+    const restored = JSON.parse(localStorage.getItem(`persist:aionly:${profileId}`) || '{}')
+    expect(JSON.parse(restored.user)).toEqual({ token: 't' })
+  })
+
+  it('never replaces a profile namespace that already has conversation data', async () => {
+    seedLegacyReduxOwner('42')
+    seedProfileAuth('42')
+    localStorage.setItem(`persist:aionly:${profileId}`, JSON.stringify({ user: '{}' }))
+    const replaceReduxState = vi.fn()
+    const replaceIndexedDb = vi.fn()
+
+    const result = await autoMigrateLegacyProfileData(profileId, {
+      legacyDatabaseExists: async () => true,
+      profileDatabaseInUse: async () => true,
+      replaceReduxState,
+      replaceIndexedDb
+    })
+
+    expect(result).toBe('skipped-target-in-use')
+    expect(replaceReduxState).not.toHaveBeenCalled()
+    expect(replaceIndexedDb).not.toHaveBeenCalled()
+    expect(localStorage.getItem(markerKey)).toBeNull()
+  })
+
+  it('marks failure and rethrows when replacement fails', async () => {
+    seedLegacyReduxOwner('42')
+    seedProfileAuth('42')
+    localStorage.setItem(`persist:aionly:${profileId}`, JSON.stringify({ user: '{}' }))
+
+    await expect(
+      autoMigrateLegacyProfileData(profileId, {
+        legacyDatabaseExists: async () => true,
+        profileDatabaseInUse: async () => false,
+        replaceIndexedDb: async () => {
+          throw new Error('replace failed')
+        }
+      })
+    ).rejects.toThrow('replace failed')
+    expect(localStorage.getItem(markerKey)).toBe('failed')
+  })
+
+  it('skips when only the legacy database exists and the owner is undeterminable', async () => {
+    seedProfileAuth('42')
+    const migrate = vi.fn(async () => undefined)
+    const replaceReduxState = vi.fn()
+
+    const result = await autoMigrateLegacyProfileData(profileId, {
+      legacyDatabaseExists: async () => true,
+      profileDatabaseInUse: async () => false,
+      migrate,
+      replaceReduxState
+    })
+
+    // 无旧 redux 状态则无法判定归属，保守跳过（可走设置里的手动"数据恢复"）
+    expect(result).toBe('skipped-owner-unknown')
+    expect(migrate).not.toHaveBeenCalled()
+    expect(replaceReduxState).not.toHaveBeenCalled()
   })
 })
